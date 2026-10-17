@@ -277,7 +277,7 @@
               <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center font-bold text-lg">
                 <i class="fa-solid fa-shield-halved"></i>
               </div>
-              <h3 class="font-extrabold text-slate-900 text-sm">Presensi GPS 10 Meter & Swafoto</h3>
+              <h3 class="font-extrabold text-slate-900 text-sm">Presensi GPS & Swafoto</h3>
               <p class="text-slate-500 leading-relaxed">
                 Dilengkapi verifikasi lokasi radius Kantor DPMD (30 meter) khusus presensi Hadir, serta perekaman koordinat GPS otomatis untuk Dinas Luar, Izin, dan Sakit.
               </p>
@@ -1258,20 +1258,6 @@
           <input type="text" id="edit-prof-nik" required inputmode="numeric" maxlength="32" placeholder="Masukkan NIK"
             class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Alamat Email Login</label>
-            <input type="email" id="edit-prof-email" required autocomplete="email" placeholder="pegawai@contoh.go.id"
-              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Username Login (opsional)</label>
-            <input type="text" id="edit-prof-username" autocomplete="username" autocapitalize="none" placeholder="contoh: rianutama"
-              pattern="[a-zA-Z0-9._-]{3,32}" maxlength="32"
-              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
-            <p class="mt-1 text-[10px] text-slate-500">Jika diisi, username dapat digunakan untuk login tanpa mengetik email panjang.</p>
-          </div>
-        </div>
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Unggah Pas Foto (Pilih dari Perangkat)</label>
           <div class="flex items-center gap-3 mb-2">
@@ -1581,7 +1567,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Username / Email / NIK</label>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Email Terdaftar / NIK</label>
             <input type="text" id="login-identifier" name="siap-login-identifier" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" required placeholder="Masukkan username, email, atau NIK..."
               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-600">
           </div>
@@ -1746,6 +1732,9 @@
     let dbLaporan = [];
     let dbArsip = [];
     let gasSessionToken = '';
+    const SIAP_SESSION_KEY = 'siapdpmd_session_v1';
+    function persistSession() { try { if (gasSessionToken) localStorage.setItem(SIAP_SESSION_KEY, gasSessionToken); else localStorage.removeItem(SIAP_SESSION_KEY); } catch (_) {} }
+    function readSavedSession() { try { return localStorage.getItem(SIAP_SESSION_KEY) || ''; } catch (_) { return ''; } }
     let gasReady = false;
 
     // Escape teks dinamis sebelum dimasukkan ke template HTML.
@@ -1849,7 +1838,7 @@
       gasReady = true;
       if (currentUser) {
         const refreshed = dbUsers.find(u => u.id === currentUser.id);
-        if (refreshed) { currentUser = refreshed; updateUserNavbar(); }
+        if (refreshed) currentUser = refreshed;
       }
       return result;
     }
@@ -1858,6 +1847,7 @@
       try {
         await gasCall(action, payload);
         await refreshServerData();
+        if (action === 'saveReport') renderMonthlyProductiveEmployee();
         if (successMessage) notify(successMessage);
         if (currentUser) {
           if (currentUser.role === 'SuperAdmin') {
@@ -1987,7 +1977,9 @@
         const result = await gasCall('login', { identifier, password });
         authenticated = true;
         gasSessionToken = result.token;
+        persistSession();
         currentUser = result.user;
+        window.verifikatorNama = result.verifikatorNama || '';
         clearLoginCredentials();
         closeModal();
         updateUserNavbar();
@@ -2001,6 +1993,7 @@
           if (currentUser.role === 'SuperAdmin') switchAdminTab('users');
           else if (currentUser.role === 'Verifikator') renderVerifikatorDashboard();
           else renderPjlpTables();
+          renderMonthlyProductiveEmployee();
         } catch (loadErr) {
           console.error('Dashboard data load failed:', loadErr);
           notify('Login berhasil, tetapi sebagian data belum termuat. Gunakan Muat Ulang atau coba lagi.');
@@ -2127,6 +2120,7 @@
       if (logoutButton) { logoutButton.setAttribute('aria-busy','true'); }
       try { if (gasSessionToken) await gasCall('logout', {}); } catch (_) {}
       gasSessionToken = '';
+      persistSession();
       currentUser = null;
       clearLoginCredentials();
       const alertBox = document.getElementById('modal-alert'); if (alertBox) { alertBox.textContent=''; alertBox.classList.add('hidden'); }
@@ -2137,13 +2131,6 @@
     }
 
     // Profile Editing & Photo Upload
-    function normalizePhoneDisplay(value) {
-      let phone = String(value || '').trim().replace(/[\s().-]/g, '');
-      if (phone.startsWith('+62')) phone = '0' + phone.slice(3);
-      else if (phone.startsWith('62')) phone = '0' + phone.slice(2);
-      else if (/^[89]\d{8,12}$/.test(phone)) phone = '0' + phone;
-      return phone;
-    }
     function openEditProfileModal(targetUserId = null) {
       const uId = targetUserId || (currentUser ? currentUser.id : null);
       if (!uId) return;
@@ -2152,9 +2139,6 @@
 
       document.getElementById('edit-profile-target-id').value = target.id;
       document.getElementById('edit-prof-nik').value = target.nik || '';
-      document.getElementById('edit-prof-email').value = target.email || '';
-      document.getElementById('edit-prof-username').value = target.username || '';
-      document.getElementById('edit-prof-hp').value = normalizePhoneDisplay(target.hp || '');
       const avatarPreview = document.getElementById('edit-prof-avatar-preview');
       const avatarStatus = document.getElementById('edit-prof-avatar-status');
       if (avatarPreview) { avatarPreview.src = target.avatar || ''; avatarPreview.classList.toggle('hidden', !target.avatar); }
@@ -2237,12 +2221,10 @@
         const newName = document.getElementById('edit-prof-nama')?.value.trim();
         const payload = {
           userId: target.id, nik,
-          email: document.getElementById('edit-prof-email').value.trim(),
-          username: document.getElementById('edit-prof-username').value.trim().toLowerCase(),
           ttl: document.getElementById('edit-prof-ttl').value.trim(),
           pendidikanTerakhir: document.getElementById('edit-prof-pendidikan').value,
           tmt: document.getElementById('edit-prof-tmt').value.trim(),
-          hp: normalizePhoneDisplay(document.getElementById('edit-prof-hp').value),
+          hp: document.getElementById('edit-prof-hp').value.trim(),
           rekening: document.getElementById('edit-prof-rekening').value.trim(),
           kawin: document.getElementById('edit-prof-kawin').value,
           jenisKelamin: document.getElementById('edit-prof-jenis-kelamin').value,
@@ -2555,8 +2537,11 @@
                 <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">${escapeHTML(ar.status)}</span>
               </div>
               <div class="flex items-center gap-2 pt-2 border-t border-slate-200">
+                <button onclick="viewArchive(${safeJsArg(ar.id)})" class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] flex items-center justify-center gap-1">
+                  <i class="fa-solid fa-eye"></i> Lihat
+                </button>
                 <button onclick="downloadArchive(${safeJsArg(ar.id)})" class="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] flex items-center justify-center gap-1">
-                  <i class="fa-solid fa-download"></i> Unduh Berkas
+                  <i class="fa-solid fa-download"></i> Unduh
                 </button>
               </div>
             </div>
@@ -2601,6 +2586,7 @@
         const meta = `<section class="rekap-meta-grid"><div class="rekap-meta-item"><div class="rekap-meta-label">Periode Rekap</div><div class="rekap-meta-value">${safe(periode)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Total Hari Kerja</div><div class="rekap-meta-value">${safe(document.querySelector("#rekap-hari-kerja")?.textContent?.trim() || "22 Hari")}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Laporan Disetujui</div><div class="rekap-meta-value">${safe(approved)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Status Verifikasi Atasan</div><div class="rekap-meta-value">${safe(status)}</div></div></section>`;
         const printDate = new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(new Date());
         const placeDate = `<div class="rekap-place-date" style="text-align:right;margin-top:14px;font-size:9pt">Pelaihari, ${escapeHTML(printDate)}</div>`;
+        window.verifikatorNama = window.verifikatorNama || '';
         const signatures = `<section class="rekap-signatures"><div class="rekap-signature"><div class="signature-heading">Mengetahui,</div><div class="signature-role">Verifikator / Atasan</div><div class="sign-space"></div><div class="signature-name">${safe(window.verifikatorNama || 'Nama Verifikator / Atasan')}</div></div><div class="rekap-signature"><div class="signature-heading">${safe(currentUser.jabatan || 'Tugas / Jabatan Kontrak')}</div><div class="signature-role">Pegawai PJLP</div><div class="sign-space"></div><div class="signature-name">${safe(currentUser.nama)}</div></div></section>`;
         finalBodyHtml = `${profile}${meta}${bodyHtml}${placeDate}${signatures}`;
       }
@@ -2624,7 +2610,7 @@
         if (elementId === 'printable-laporan-container' && currentUser) {
           const u = currentUser;
           const safe = v => escapeHTML(v || '—');
-          const profileFields = [['Nama Pegawai',u.nama],['NIK',u.nik],['Tempat/Tanggal Lahir',u.ttl],['Pendidikan Terakhir',u.pendidikanTerakhir || u.pendidikan || u.education],['Bidang/Sub Bagian Kerja',u.bidang],['Tugas/Jabatan Kontrak',u.jabatan],['Nomor HP/WhatsApp',normalizePhoneDisplay(u.hp)],['Email',u.email],['TMT Kerja',u.tmt],['Masa Kerja',tenureFromTmt(u.tmt)]];
+          const profileFields = [['Nama Pegawai',u.nama],['NIK',u.nik],['Tempat/Tanggal Lahir',u.ttl],['Pendidikan Terakhir',u.pendidikanTerakhir || u.pendidikan || u.education],['Bidang/Sub Bagian Kerja',u.bidang],['Tugas/Jabatan Kontrak',u.jabatan],['Nomor HP/WhatsApp',u.hp],['Email',u.email],['TMT Kerja',u.tmt],['Masa Kerja',tenureFromTmt(u.tmt)]];
           const profile = `<section class=\"print-employee-profile\"><h3>BIODATA PEGAWAI</h3><div class=\"print-employee-grid\">${profileFields.map(([k,v])=>`<div><b>${safe(k)}:</b> ${safe(v)}</div>`).join('')}</div></section>`;
           clone.insertAdjacentHTML('afterbegin', profile);
         }
@@ -2643,7 +2629,7 @@
     function printBiodata() {
       if (!currentUser) return;
       const u=currentUser;
-      const fields=[['Nama Lengkap',u.nama],['NIK',u.nik],['Jenis Kelamin',u.jenisKelamin],['Tempat/Tanggal Lahir',u.ttl],['Umur',ageFromTtl(u.ttl) || '—'],['Pendidikan Terakhir',u.pendidikanTerakhir || u.pendidikan || u.education],['Jabatan / Tugas Kontrak',u.jabatan],['Bidang / Sub Bagian Kerja',u.bidang],['Nomor HP / WhatsApp',normalizePhoneDisplay(u.hp)],['Email',u.email],['TMT Kerja',u.tmt],['Masa Kerja',tenureFromTmt(u.tmt)],['Status Perkawinan',u.kawin],['Nomor Rekening',u.rekening],['Alamat Lengkap',u.alamat],['Status Pegawai',u.status]];
+      const fields=[['Nama Lengkap',u.nama],['NIK',u.nik],['Jenis Kelamin',u.jenisKelamin],['Tempat/Tanggal Lahir',u.ttl],['Umur',ageFromTtl(u.ttl) || '—'],['Pendidikan Terakhir',u.pendidikanTerakhir || u.pendidikan || u.education],['Jabatan / Tugas Kontrak',u.jabatan],['Bidang / Sub Bagian Kerja',u.bidang],['Nomor HP / WhatsApp',u.hp],['Email',u.email],['TMT Kerja',u.tmt],['Masa Kerja',tenureFromTmt(u.tmt)],['Status Perkawinan',u.kawin],['Nomor Rekening',u.rekening],['Alamat Lengkap',u.alamat],['Status Pegawai',u.status]];
       const photo=u.avatar?`<img class="profile-photo" src="${escapeHTML(u.avatar)}" alt="Foto pegawai">`:'';
       const body=photo+'<div class="biodata-grid">'+fields.map(([k,v])=>`<div class="biodata-item"><div class="biodata-label">${escapeHTML(k)}</div><div class="biodata-value">${escapeHTML(v||'—')}</div></div>`).join('')+'</div>';
       printDocument('BIODATA PEGAWAI PJLP',body);
@@ -3040,6 +3026,25 @@
       }
     }
 
+    async function viewArchive(archiveId) {
+      // Open the tab synchronously to avoid popup blocking while the file is fetched.
+      const w = window.open('', '_blank', 'width=1000,height=800');
+      if (!w) { notify('Izinkan pop-up untuk melihat arsip.'); return; }
+      w.document.open(); w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Pratinjau Arsip</title></head><body style="font:14px Arial;padding:24px">Memuat arsip…</body></html>'); w.document.close();
+      try {
+        const result = await gasCall('downloadArchive', {archiveId});
+        const bytes = atob(result.base64); const arr = new Uint8Array(bytes.length);
+        for (let i=0; i<bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+        const blob = new Blob([arr], {type:result.mimeType || 'application/pdf'});
+        const url = URL.createObjectURL(blob);
+        w.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } catch (err) {
+        try { w.document.body.textContent = 'Arsip tidak dapat ditampilkan: ' + (err.message || 'akses ditolak'); } catch (_) {}
+        notify('Arsip tidak dapat ditampilkan: ' + err.message);
+      }
+    }
+
     async function downloadArchive(archiveId) {
       try {
         const result = await gasCall('downloadArchive', {archiveId});
@@ -3225,7 +3230,7 @@
             <td class="py-3.5 px-4"><span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold">${escapeHTML(ar.jenis)}</span></td>
             <td class="py-3.5 px-4 font-semibold">${escapeHTML(ar.nama)}</td>
             <td class="py-3.5 px-4">${escapeHTML(formatDateDisplay(ar.tanggal))}</td>
-            <td class="py-3.5 px-4 text-center space-x-1"><button onclick="downloadArchive(${safeJsArg(ar.id)})" class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-[10px] font-bold">Unduh</button><button onclick="deleteServerRecord('deleteArchive',${safeJsArg(ar.id)})" class="px-2 py-1 bg-rose-50 text-rose-600 rounded text-[10px] font-bold">Hapus</button></td>
+            <td class="py-3.5 px-4 text-center space-x-1"><button onclick="viewArchive(${safeJsArg(ar.id)})" class="px-2 py-1 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold">Lihat</button><button onclick="downloadArchive(${safeJsArg(ar.id)})" class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-[10px] font-bold">Unduh</button><button onclick="deleteServerRecord('deleteArchive',${safeJsArg(ar.id)})" class="px-2 py-1 bg-rose-50 text-rose-600 rounded text-[10px] font-bold">Hapus</button></td>
           </tr>
         `;
       });
@@ -3348,6 +3353,30 @@
       }).catch(err => notify('Gagal memperbarui kata sandi: ' + err.message));
     }
 
+    function formatProductivityPeriod(key) {
+      const parts = String(key || '').split('-');
+      const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+      return parts.length === 2 ? `${monthNames[Number(parts[1])-1] || parts[1]} Tahun ${parts[0]}` : key;
+    }
+    async function renderMonthlyProductiveEmployee() {
+      if (!currentUser) return;
+      try {
+        const result = await gasCall('getMonthlyProductivity', {});
+        const employee = result.employee;
+        ['view-pjlp','view-verifikator','view-superadmin'].forEach(viewId => {
+          const root = document.getElementById(viewId); if (!root) return;
+          let card = root.querySelector('.siap-productivity-card');
+          if (!card) { card = document.createElement('div'); card.className = 'siap-productivity-card rounded-3xl border border-amber-300 bg-gradient-to-r from-amber-50 via-white to-yellow-50 p-4 sm:p-5 shadow-sm'; root.insertBefore(card, root.firstChild); }
+          if (!employee) {
+            card.innerHTML = `<div class="flex items-center gap-3"><div class="text-3xl">🏅</div><div><p class="font-black text-slate-800">Pegawai Produktif Bulan Ini</p><p class="text-xs text-slate-500">Periode ${escapeHTML(formatProductivityPeriod(result.period))} · Belum ada kegiatan harian tercatat.</p></div></div>`;
+            return;
+          }
+          const photo = employee.avatar ? `<img src="${escapeHTML(employee.avatar)}" alt="Foto ${escapeHTML(employee.nama)}" class="w-20 h-20 rounded-2xl object-cover border-2 border-amber-300 shadow-sm" onerror="this.style.display='none'">` : `<div class="w-20 h-20 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-3xl"><i class="fa-solid fa-user"></i></div>`;
+          card.innerHTML = `<div class="flex flex-col sm:flex-row sm:items-center gap-4"><div class="flex items-center gap-3 min-w-0"><div class="text-4xl" aria-label="Lencana emas">🏅</div><div><p class="text-[10px] uppercase tracking-widest font-black text-amber-700">Pegawai Produktif</p><h3 class="text-lg sm:text-xl font-black text-slate-900">Bulan ${escapeHTML(formatProductivityPeriod(result.period))}</h3><p class="text-xs text-slate-500">Pegawai dengan jumlah kegiatan harian terbanyak</p></div></div><div class="sm:ml-auto flex items-center gap-4 bg-white/80 border border-amber-200 rounded-2xl p-3 min-w-0">${photo}<div class="min-w-0"><p class="font-black text-slate-900 text-base break-words">${escapeHTML(employee.nama)}</p><p class="text-xs text-slate-600 mt-1">${escapeHTML(employee.jabatan || 'Jabatan belum diisi')}</p><p class="text-xs text-slate-500">${escapeHTML(employee.bidang || 'Unit kerja belum diisi')}</p><p class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-800"><i class="fa-solid fa-list-check"></i> ${Number(employee.total)||0} Kegiatan Harian</p></div></div></div>`;
+        });
+      } catch (err) { console.warn('Data pegawai produktif belum dapat dimuat:', err); }
+    }
+
     function updateLiveClock() {
       const now = new Date();
       const clock = document.getElementById('clock-realtime');
@@ -3364,25 +3393,43 @@
       switchView('landing');
       updateLiveClock();
       setInterval(updateLiveClock, 1000);
-      // Frontend ini dapat berjalan di GitHub Pages; seluruh operasi data dikirim ke API Web App.
-      // Ulangi health check untuk menghindari pesan gagal akibat gangguan sesaat.
+      gasSessionToken = readSavedSession();
       let lastError = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const health = await gasCall('healthCheck', {});
-          if (health && health.ok === true) {
-            gasReady = true;
-            return;
-          }
+          if (health && health.ok === true) { gasReady = true; break; }
           lastError = new Error('Server tidak mengonfirmasi status sehat.');
-        } catch (err) {
-          lastError = err;
-        }
-        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 900));
+        } catch (err) { lastError = err; }
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500));
       }
-      gasReady = false;
-      console.error('Health check SIAP-DPMD gagal:', lastError);
-      notify('Server Google Apps Script belum merespons. Muat ulang halaman; jika tetap gagal, periksa deployment Web App dan izin akses.');
+      if (!gasReady) {
+        console.error('Health check SIAP-DPMD gagal:', lastError);
+        notify('Server Google Apps Script belum merespons. Muat ulang halaman; jika tetap gagal, periksa deployment Web App dan izin akses.');
+        return;
+      }
+      // Restore authenticated session after refresh; only clear saved token if the server rejects it.
+      if (gasSessionToken) {
+        try {
+          const session = await gasCall('getCurrentUser', {});
+          currentUser = session.user;
+          window.verifikatorNama = session.verifikatorNama || '';
+          updateUserNavbar();
+          if (currentUser.role === 'SuperAdmin') switchView('superadmin');
+          else if (currentUser.role === 'Verifikator') switchView('verifikator');
+          else switchView('pjlp');
+          await refreshServerData();
+          if (currentUser.role === 'SuperAdmin') switchAdminTab('users');
+          else if (currentUser.role === 'Verifikator') renderVerifikatorDashboard();
+          else renderPjlpTables();
+          renderMonthlyProductiveEmployee();
+          return;
+        } catch (err) {
+          console.warn('Sesi tersimpan tidak dapat dipulihkan:', err);
+          gasSessionToken = ''; persistSession(); currentUser = null;
+        }
+      }
+      switchView('landing');
     };
   </script>
 </body>
