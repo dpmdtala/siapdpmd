@@ -1258,6 +1258,20 @@
           <input type="text" id="edit-prof-nik" required inputmode="numeric" maxlength="32" placeholder="Masukkan NIK"
             class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
         </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Alamat Email Login</label>
+            <input type="email" id="edit-prof-email" required autocomplete="email" placeholder="pegawai@contoh.go.id"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Username Login (opsional)</label>
+            <input type="text" id="edit-prof-username" autocomplete="username" autocapitalize="none" placeholder="contoh: rianutama"
+              pattern="[a-zA-Z0-9._-]{3,32}" maxlength="32"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
+            <p class="mt-1 text-[10px] text-slate-500">Jika diisi, username dapat digunakan untuk login tanpa mengetik email panjang.</p>
+          </div>
+        </div>
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Unggah Pas Foto (Pilih dari Perangkat)</label>
           <div class="flex items-center gap-3 mb-2">
@@ -1567,7 +1581,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Email Terdaftar / NIK</label>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Username / Email / NIK</label>
             <input type="text" id="login-identifier" name="siap-login-identifier" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" required placeholder="Masukkan username, email, atau NIK..."
               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-600">
           </div>
@@ -1835,7 +1849,7 @@
       gasReady = true;
       if (currentUser) {
         const refreshed = dbUsers.find(u => u.id === currentUser.id);
-        if (refreshed) currentUser = refreshed;
+        if (refreshed) { currentUser = refreshed; updateUserNavbar(); }
       }
       return result;
     }
@@ -2123,6 +2137,13 @@
     }
 
     // Profile Editing & Photo Upload
+    function normalizePhoneDisplay(value) {
+      let phone = String(value || '').trim().replace(/[\s().-]/g, '');
+      if (phone.startsWith('+62')) phone = '0' + phone.slice(3);
+      else if (phone.startsWith('62')) phone = '0' + phone.slice(2);
+      else if (/^[89]\d{8,12}$/.test(phone)) phone = '0' + phone;
+      return phone;
+    }
     function openEditProfileModal(targetUserId = null) {
       const uId = targetUserId || (currentUser ? currentUser.id : null);
       if (!uId) return;
@@ -2131,6 +2152,9 @@
 
       document.getElementById('edit-profile-target-id').value = target.id;
       document.getElementById('edit-prof-nik').value = target.nik || '';
+      document.getElementById('edit-prof-email').value = target.email || '';
+      document.getElementById('edit-prof-username').value = target.username || '';
+      document.getElementById('edit-prof-hp').value = normalizePhoneDisplay(target.hp || '');
       const avatarPreview = document.getElementById('edit-prof-avatar-preview');
       const avatarStatus = document.getElementById('edit-prof-avatar-status');
       if (avatarPreview) { avatarPreview.src = target.avatar || ''; avatarPreview.classList.toggle('hidden', !target.avatar); }
@@ -2213,10 +2237,12 @@
         const newName = document.getElementById('edit-prof-nama')?.value.trim();
         const payload = {
           userId: target.id, nik,
+          email: document.getElementById('edit-prof-email').value.trim(),
+          username: document.getElementById('edit-prof-username').value.trim().toLowerCase(),
           ttl: document.getElementById('edit-prof-ttl').value.trim(),
           pendidikanTerakhir: document.getElementById('edit-prof-pendidikan').value,
           tmt: document.getElementById('edit-prof-tmt').value.trim(),
-          hp: document.getElementById('edit-prof-hp').value.trim(),
+          hp: normalizePhoneDisplay(document.getElementById('edit-prof-hp').value),
           rekening: document.getElementById('edit-prof-rekening').value.trim(),
           kawin: document.getElementById('edit-prof-kawin').value,
           jenisKelamin: document.getElementById('edit-prof-jenis-kelamin').value,
@@ -2598,7 +2624,7 @@
         if (elementId === 'printable-laporan-container' && currentUser) {
           const u = currentUser;
           const safe = v => escapeHTML(v || '—');
-          const profileFields = [['Nama Pegawai',u.nama],['NIK',u.nik],['Tempat/Tanggal Lahir',u.ttl],['Pendidikan Terakhir',u.pendidikanTerakhir || u.pendidikan || u.education],['Bidang/Sub Bagian Kerja',u.bidang],['Tugas/Jabatan Kontrak',u.jabatan],['Nomor HP/WhatsApp',u.hp],['Email',u.email],['TMT Kerja',u.tmt],['Masa Kerja',tenureFromTmt(u.tmt)]];
+          const profileFields = [['Nama Pegawai',u.nama],['NIK',u.nik],['Tempat/Tanggal Lahir',u.ttl],['Pendidikan Terakhir',u.pendidikanTerakhir || u.pendidikan || u.education],['Bidang/Sub Bagian Kerja',u.bidang],['Tugas/Jabatan Kontrak',u.jabatan],['Nomor HP/WhatsApp',normalizePhoneDisplay(u.hp)],['Email',u.email],['TMT Kerja',u.tmt],['Masa Kerja',tenureFromTmt(u.tmt)]];
           const profile = `<section class=\"print-employee-profile\"><h3>BIODATA PEGAWAI</h3><div class=\"print-employee-grid\">${profileFields.map(([k,v])=>`<div><b>${safe(k)}:</b> ${safe(v)}</div>`).join('')}</div></section>`;
           clone.insertAdjacentHTML('afterbegin', profile);
         }
@@ -2617,7 +2643,7 @@
     function printBiodata() {
       if (!currentUser) return;
       const u=currentUser;
-      const fields=[['Nama Lengkap',u.nama],['NIK',u.nik],['Jenis Kelamin',u.jenisKelamin],['Tempat/Tanggal Lahir',u.ttl],['Umur',ageFromTtl(u.ttl) || '—'],['Pendidikan Terakhir',u.pendidikanTerakhir || u.pendidikan || u.education],['Jabatan / Tugas Kontrak',u.jabatan],['Bidang / Sub Bagian Kerja',u.bidang],['Nomor HP / WhatsApp',u.hp],['Email',u.email],['TMT Kerja',u.tmt],['Masa Kerja',tenureFromTmt(u.tmt)],['Status Perkawinan',u.kawin],['Nomor Rekening',u.rekening],['Alamat Lengkap',u.alamat],['Status Pegawai',u.status]];
+      const fields=[['Nama Lengkap',u.nama],['NIK',u.nik],['Jenis Kelamin',u.jenisKelamin],['Tempat/Tanggal Lahir',u.ttl],['Umur',ageFromTtl(u.ttl) || '—'],['Pendidikan Terakhir',u.pendidikanTerakhir || u.pendidikan || u.education],['Jabatan / Tugas Kontrak',u.jabatan],['Bidang / Sub Bagian Kerja',u.bidang],['Nomor HP / WhatsApp',normalizePhoneDisplay(u.hp)],['Email',u.email],['TMT Kerja',u.tmt],['Masa Kerja',tenureFromTmt(u.tmt)],['Status Perkawinan',u.kawin],['Nomor Rekening',u.rekening],['Alamat Lengkap',u.alamat],['Status Pegawai',u.status]];
       const photo=u.avatar?`<img class="profile-photo" src="${escapeHTML(u.avatar)}" alt="Foto pegawai">`:'';
       const body=photo+'<div class="biodata-grid">'+fields.map(([k,v])=>`<div class="biodata-item"><div class="biodata-label">${escapeHTML(k)}</div><div class="biodata-value">${escapeHTML(v||'—')}</div></div>`).join('')+'</div>';
       printDocument('BIODATA PEGAWAI PJLP',body);
