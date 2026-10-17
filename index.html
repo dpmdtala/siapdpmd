@@ -132,10 +132,7 @@
             <p id="user-display-role" class="text-[10px] font-semibold text-blue-700">Role System</p>
           </div>
         </div>
-        <button id="nav-btn-verifikasi" onclick="switchView('verifikator')" class="hidden px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition flex items-center gap-1.5">
-          <i class="fa-solid fa-clipboard-check"></i>
-          <span>Verifikasi Bidang Saya</span>
-        </button>
+
         <button onclick="openChangePasswordModal()" class="px-3.5 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition flex items-center gap-1.5">
           <i class="fa-solid fa-key"></i><span class="hidden sm:inline">Ganti Sandi</span>
         </button>
@@ -593,6 +590,13 @@
                   <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Catatan / Detail Lokasi</label>
                   <input type="text" id="absen-catatan" placeholder="Contoh: Kantor DPMD Pelaihari / Tugas Luar Desa..." required
                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium outline-none focus:ring-2 focus:ring-blue-600">
+                </div>
+
+                <div id="absen-evidence-wrap" class="hidden space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <label id="absen-evidence-label" for="absen-evidence-file" class="block text-xs font-extrabold text-amber-900">Surat Tugas / Surat Izin / Surat Sakit (Wajib)</label>
+                  <input id="absen-evidence-file" type="file" accept="application/pdf,image/jpeg,image/png" class="block w-full text-xs" onchange="handleAttendanceEvidenceFile(event)">
+                  <p class="text-[10px] text-amber-800">Wajib untuk Dinas Luar, Izin, atau Sakit. Format PDF/JPG/PNG, maksimal 5 MB.</p>
+                  <p id="absen-evidence-file-name" class="text-xs font-semibold text-slate-700"></p>
                 </div>
 
                 <button type="submit" id="btn-submit-absen" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-blue-600/20 transition flex items-center justify-center gap-2">
@@ -2651,12 +2655,33 @@
     }
 
     // Geofence & Camera
+    let attendanceEvidenceDataUrl = '';
+    let attendanceEvidenceName = '';
+    function handleAttendanceEvidenceFile(event) {
+      const file = event.target.files && event.target.files[0];
+      attendanceEvidenceDataUrl = ''; attendanceEvidenceName = '';
+      const nameEl = document.getElementById('absen-evidence-file-name');
+      if (!file) { if(nameEl) nameEl.textContent=''; return; }
+      if (!['application/pdf','image/jpeg','image/png'].includes(file.type)) { event.target.value=''; notify('Berkas harus PDF, JPG, atau PNG.'); return; }
+      if (file.size > 5 * 1024 * 1024) { event.target.value=''; notify('Ukuran berkas maksimal 5 MB.'); return; }
+      const reader = new FileReader();
+      reader.onload = e => { attendanceEvidenceDataUrl = String(e.target.result || ''); attendanceEvidenceName = file.name; if(nameEl) nameEl.textContent='Berkas dipilih: ' + file.name; };
+      reader.onerror = () => notify('Berkas gagal dibaca. Silakan pilih kembali.');
+      reader.readAsDataURL(file);
+    }
+
     function handleStatusChange() {
       const status = document.getElementById('absen-status').value;
       locationVerified = false; locationWithinFence = false; lastGpsPosition = null;
       const title = document.getElementById('geofence-title');
       const desc = document.getElementById('geofence-desc');
       const card = document.getElementById('geofence-status-card');
+      const evidenceWrap = document.getElementById('absen-evidence-wrap');
+      const evidenceInput = document.getElementById('absen-evidence-file');
+      const needsEvidence = ['Dinas Luar','Izin','Sakit'].includes(status);
+      if (evidenceWrap) evidenceWrap.classList.toggle('hidden', !needsEvidence);
+      if (evidenceInput) evidenceInput.required = needsEvidence;
+      if (!needsEvidence) { attendanceEvidenceDataUrl=''; attendanceEvidenceName=''; if(evidenceInput) evidenceInput.value=''; const nameEl=document.getElementById('absen-evidence-file-name'); if(nameEl) nameEl.textContent=''; }
       if (!card || !title || !desc) return;
       if (status === 'Hadir') {
         card.className = "p-3.5 rounded-2xl text-xs font-bold border flex items-center justify-between bg-sky-50 text-sky-900 border-sky-200";
@@ -2910,6 +2935,7 @@
       e.preventDefault();
       if (!validateAttendanceWindow(true)) return;
       if (!capturedFaceDataUrl) { notify('Swafoto wajib diambil terlebih dahulu. Tekan Buka Kamera, tunggu video tampil, lalu Ambil Foto Wajah.'); return; }
+      if (['Dinas Luar','Izin','Sakit'].includes(document.getElementById('absen-status').value) && !attendanceEvidenceDataUrl) { notify('Unggah Surat Tugas, Surat Izin, atau Surat Sakit sebelum menyimpan presensi.'); return; }
       if (!signatureDrawn) { notify('Tanda tangan digital wajib dibubuhkan sebelum menyimpan presensi.'); return; }
       const status = document.getElementById('absen-status').value;
       const catatan = document.getElementById('absen-catatan').value.trim();
@@ -2926,12 +2952,17 @@
           accuracy:lastGpsPosition.accuracy,
           distanceMeters:lastGpsPosition.distanceMeters,
           selfie:capturedFaceDataUrl,
-          signature:(sigCanvas && signatureDrawn) ? sigCanvas.toDataURL('image/png') : ''
+          signature:(sigCanvas && signatureDrawn) ? sigCanvas.toDataURL('image/png') : '',
+          suratData:attendanceEvidenceDataUrl, suratNama:attendanceEvidenceName
         });
         await refreshServerData();
         notify('Tersimpan');
         clearSignature();
         capturedFaceDataUrl = null;
+        attendanceEvidenceDataUrl = ''; attendanceEvidenceName = '';
+        const evidenceInput = document.getElementById('absen-evidence-file'); if (evidenceInput) evidenceInput.value='';
+        const evidenceWrap = document.getElementById('absen-evidence-wrap'); if (evidenceWrap) evidenceWrap.classList.add('hidden');
+        const evidenceName = document.getElementById('absen-evidence-file-name'); if (evidenceName) evidenceName.textContent='';
         lastGpsPosition = null;
         locationVerified = false;
         locationWithinFence = false;
@@ -3042,6 +3073,23 @@
       } catch (err) {
         try { w.document.body.textContent = 'Arsip tidak dapat ditampilkan: ' + (err.message || 'akses ditolak'); } catch (_) {}
         notify('Arsip tidak dapat ditampilkan: ' + err.message);
+      }
+    }
+
+    async function viewAttendanceEvidence(attendanceId) {
+      const w = window.open('', '_blank', 'width=1000,height=800');
+      if (!w) { notify('Izinkan pop-up untuk melihat surat pendukung.'); return; }
+      w.document.open(); w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Surat Pendukung Presensi</title></head><body style="font:14px Arial;padding:24px">Memuat surat pendukung…</body></html>'); w.document.close();
+      try {
+        const result = await gasCall('downloadAttendanceEvidence', {attendanceId});
+        const bytes = atob(result.base64); const arr = new Uint8Array(bytes.length);
+        for (let i=0; i<bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+        const blob = new Blob([arr], {type:result.mimeType || 'application/pdf'});
+        const url = URL.createObjectURL(blob); w.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } catch (err) {
+        try { w.document.body.textContent = 'Surat pendukung tidak dapat ditampilkan: ' + (err.message || 'akses ditolak'); } catch (_) {}
+        notify('Surat pendukung tidak dapat ditampilkan: ' + err.message);
       }
     }
 
@@ -3226,7 +3274,7 @@
         const owner = dbUsers.find(u => u.id === ar.userId);
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50 transition">
-            <td class="py-3.5 px-4 font-bold text-slate-900">${escapeHTML(owner ? owner.nama : 'Pegawai')}</td>
+            <td class="py-3.5 px-4 font-bold text-slate-900">${escapeHTML(owner ? owner.nama : 'Pegawai')}<div class="text-[10px] text-slate-500 font-medium">${escapeHTML(owner ? (owner.bidang || '') : '')}</div></td>
             <td class="py-3.5 px-4"><span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold">${escapeHTML(ar.jenis)}</span></td>
             <td class="py-3.5 px-4 font-semibold">${escapeHTML(ar.nama)}</td>
             <td class="py-3.5 px-4">${escapeHTML(formatDateDisplay(ar.tanggal))}</td>
@@ -3301,7 +3349,7 @@
             <td class="py-3.5 px-4 font-semibold">${escapeHTML(formatDateDisplay(a.tanggal))} - ${escapeHTML(formatTimeDisplay(a.jam))}</td>
             <td class="py-3.5 px-4 font-bold text-slate-700">${escapeHTML(a.sesi)}</td>
             <td class="py-3.5 px-4"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">${escapeHTML(a.status)}</span></td>
-            <td class="py-3.5 px-4">${escapeHTML(a.catatan)}</td>
+            <td class="py-3.5 px-4">${escapeHTML(a.catatan)}${a.suratFileId ? ` <button type="button" onclick="viewAttendanceEvidence(${safeJsArg(a.id)})" class="ml-2 inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-extrabold text-amber-800 border border-amber-200"><i class="fa-solid fa-paperclip"></i> Lihat Surat</button>` : ''}</td>
           </tr>
         `;
       });
@@ -3368,11 +3416,11 @@
           let card = root.querySelector('.siap-productivity-card');
           if (!card) { card = document.createElement('div'); card.className = 'siap-productivity-card rounded-3xl border border-amber-300 bg-gradient-to-r from-amber-50 via-white to-yellow-50 p-4 sm:p-5 shadow-sm'; root.insertBefore(card, root.firstChild); }
           if (!employee) {
-            card.innerHTML = `<div class="flex items-center gap-3"><div class="text-3xl">🏅</div><div><p class="font-black text-slate-800">Pegawai Produktif Bulan Ini</p><p class="text-xs text-slate-500">Periode ${escapeHTML(formatProductivityPeriod(result.period))} · Belum ada kegiatan harian tercatat.</p></div></div>`;
+            card.innerHTML = `<div class="flex items-center gap-3"><div class="text-3xl">🏅</div><div><p class="text-xl sm:text-2xl font-black tracking-wide text-amber-800">PEGAWAI PRODUKTIF</p><p class="text-sm font-bold text-slate-700">Bulan ${escapeHTML(formatProductivityPeriod(result.period))}</p><p class="text-xs text-slate-500">Pegawai dengan jumlah kegiatan harian terbanyak</p></div></div>`;
             return;
           }
           const photo = employee.avatar ? `<img src="${escapeHTML(employee.avatar)}" alt="Foto ${escapeHTML(employee.nama)}" class="w-20 h-20 rounded-2xl object-cover border-2 border-amber-300 shadow-sm" onerror="this.style.display='none'">` : `<div class="w-20 h-20 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-3xl"><i class="fa-solid fa-user"></i></div>`;
-          card.innerHTML = `<div class="flex flex-col sm:flex-row sm:items-center gap-4"><div class="flex items-center gap-3 min-w-0"><div class="text-4xl" aria-label="Lencana emas">🏅</div><div><p class="text-[10px] uppercase tracking-widest font-black text-amber-700">Pegawai Produktif</p><h3 class="text-lg sm:text-xl font-black text-slate-900">Bulan ${escapeHTML(formatProductivityPeriod(result.period))}</h3><p class="text-xs text-slate-500">Pegawai dengan jumlah kegiatan harian terbanyak</p></div></div><div class="sm:ml-auto flex items-center gap-4 bg-white/80 border border-amber-200 rounded-2xl p-3 min-w-0">${photo}<div class="min-w-0"><p class="font-black text-slate-900 text-base break-words">${escapeHTML(employee.nama)}</p><p class="text-xs text-slate-600 mt-1">${escapeHTML(employee.jabatan || 'Jabatan belum diisi')}</p><p class="text-xs text-slate-500">${escapeHTML(employee.bidang || 'Unit kerja belum diisi')}</p><p class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-800"><i class="fa-solid fa-list-check"></i> ${Number(employee.total)||0} Kegiatan Harian</p></div></div></div>`;
+          card.innerHTML = `<div class="flex flex-col sm:flex-row sm:items-center gap-4"><div class="flex items-center gap-3 min-w-0"><div class="text-4xl" aria-label="Lencana emas">🏅</div><div><p class="text-2xl sm:text-3xl uppercase tracking-wide font-black text-amber-700">PEGAWAI PRODUKTIF</p><h3 class="text-base sm:text-lg font-extrabold text-slate-900 mt-1">Bulan ${escapeHTML(formatProductivityPeriod(result.period))}</h3><p class="text-xs text-slate-500">Pegawai dengan jumlah kegiatan harian terbanyak</p></div></div><div class="sm:ml-auto flex items-center gap-4 bg-white/80 border border-amber-200 rounded-2xl p-3 min-w-0">${photo}<div class="min-w-0"><p class="font-black text-slate-900 text-base break-words">${escapeHTML(employee.nama)}</p><p class="text-xs text-slate-600 mt-1">${escapeHTML(employee.jabatan || 'Jabatan belum diisi')}</p><p class="text-xs text-slate-500">${escapeHTML(employee.bidang || 'Unit kerja belum diisi')}</p><p class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-800"><i class="fa-solid fa-list-check"></i> ${Number(employee.total)||0} Kegiatan Harian</p></div></div></div>`;
         });
       } catch (err) { console.warn('Data pegawai produktif belum dapat dimuat:', err); }
     }
