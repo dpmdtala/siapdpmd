@@ -2572,7 +2572,7 @@
     // Print terarah: hanya dokumen yang dipilih yang dikirim ke dialog cetak.
     function printDocument(title, bodyHtml, printWindow = null) {
       const kop = document.getElementById('global-print-kop')?.innerHTML || '';
-      const footer = 'Dokumen ini diterbitkan secara Elektronik dan telah TER-AUTHENTIKASI secara resmi oleh Sistem Informasi & Aktivitas PJLP Dinas Pemberdayaan Masyarakat dan Desa Kabupaten Tanah Laut, Segala Informasi yang tercantum dalam berkas ini dinyatakan SAH dan ASLI.';
+      const footer = 'DOKUMEN INI DITERBITKAN SECARA ELEKTRONIK DAN TELAH TER-AUTHENTIKASI SECARA RESMI OLEH SISTEM INFORMASI & AKTIVITAS PJLP DINAS PEMBERDAYAAN MASYARAKAT DAN DESA KABUPATEN TANAH LAUT, SEGALA INFORMASI YANG TERCANTUM DALAM BERKAS INI DINYATAKAN SAH DAN ASLI.';
       let finalBodyHtml = bodyHtml;
       if ((/REKAPITULASI KEHADIRAN BULANAN|RIWAYAT PRESENSI/i.test(title)) && currentUser) {
         const safe = v => escapeHTML(v || '—');
