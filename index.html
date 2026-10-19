@@ -1670,7 +1670,7 @@
         </form>
 
         <!-- FORM 2: REGISTER -->
-        <form id="form-register" onsubmit="handleRegisterSubmit(event)" class="space-y-3 hidden">
+        <form id="form-register" onsubmit="handleRegisterSubmit(event)" class="space-y-3 hidden" autocomplete="off" autocapitalize="off" spellcheck="false">
           <div>
             <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap & Gelar</label>
             <input type="text" id="reg-nama" required placeholder="Contoh: Ahmad Raihan, A.Md"
@@ -1732,10 +1732,37 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Kata Sandi</label>
-            <input type="password" id="reg-password" required placeholder="Buat kata sandi..."
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Username untuk Login</label>
+            <input type="text" id="reg-username" required minlength="3" maxlength="64" pattern="[a-zA-Z0-9._-]{3,64}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Buat username unik (3–64 karakter)"
               class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-600">
+            <p class="mt-1 text-[10px] text-slate-500">Gunakan huruf, angka, titik, garis bawah, atau tanda hubung.</p>
           </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tempat Lahir</label>
+              <input type="text" id="reg-tempat-lahir" required maxlength="80" autocomplete="off" placeholder="Contoh: Pelaihari" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-600"></div>
+            <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tanggal Lahir</label>
+              <input type="date" id="reg-tanggal-lahir" required autocomplete="off" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-600"></div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">TMT Kerja</label>
+              <input type="date" id="reg-tmt" required autocomplete="off" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-600"></div>
+            <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Status Perkawinan</label>
+              <select id="reg-kawin" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-blue-600"><option value="">Pilih status perkawinan</option><option value="Belum Kawin">Belum Kawin</option><option value="Kawin">Kawin</option><option value="Cerai">Cerai</option></select></div>
+          </div>
+
+          <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nomor Rekening BANK KALSEL</label>
+            <input type="text" id="reg-rekening" inputmode="numeric" pattern="[0-9]{5,30}" required maxlength="30" autocomplete="off" placeholder="Masukkan nomor rekening saja" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-600"></div>
+
+          <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Alamat Domisili Lengkap</label>
+            <textarea id="reg-alamat" required rows="2" autocomplete="off" placeholder="Jalan, RT/RW, Desa/Kelurahan, Kecamatan, Kabupaten" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-600"></textarea></div>
+
+          <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Kata Sandi Baru</label>
+            <input type="password" id="reg-password" required minlength="10" autocomplete="new-password" placeholder="Buat kata sandi minimal 10 karakter" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-600"></div>
+
+          <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Konfirmasi Kata Sandi</label>
+            <input type="password" id="reg-password-confirm" required minlength="10" autocomplete="new-password" placeholder="Ulangi kata sandi baru" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-600"></div>
 
           <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-2">
             <i class="fa-solid fa-user-plus"></i>
@@ -1994,6 +2021,13 @@
       if (modal) modal.classList.add('hidden');
     }
 
+    function clearRegistrationCredentials() {
+      ['reg-email','reg-username','reg-password','reg-password-confirm'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    }
+
     function switchTab(tab) {
       const formLogin = document.getElementById('form-login');
       const formReg = document.getElementById('form-register');
@@ -2008,6 +2042,7 @@
         if (btnLogin) btnLogin.className = "flex-1 py-3.5 text-center border-b-2 border-blue-600 text-blue-700 bg-blue-50/50";
         if (btnReg) btnReg.className = "flex-1 py-3.5 text-center border-b-2 border-transparent text-slate-500 hover:text-slate-700";
       } else {
+        clearRegistrationCredentials();
         if (formLogin) formLogin.classList.add('hidden');
         if (formReg) formReg.classList.remove('hidden');
         if (btnReg) btnReg.className = "flex-1 py-3.5 text-center border-b-2 border-blue-600 text-blue-700 bg-blue-50/50";
@@ -2118,6 +2153,23 @@
 
     async function handleRegisterSubmit(e) {
       e.preventDefault();
+      const form = document.getElementById('form-register');
+      if (!form.reportValidity()) return;
+      const password = document.getElementById('reg-password').value;
+      const confirmPassword = document.getElementById('reg-password-confirm').value;
+      if (password.length < 10) { notify('Kata sandi minimal 10 karakter.'); return; }
+      if (password !== confirmPassword) { notify('Konfirmasi kata sandi tidak sama.'); return; }
+      const email = document.getElementById('reg-email').value.trim().toLowerCase();
+      const username = document.getElementById('reg-username').value.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { notify('Format email tidak valid.'); return; }
+      if (!/^[a-z0-9._-]{3,64}$/.test(username)) { notify('Username harus 3–64 karakter dan hanya boleh berisi huruf, angka, titik, garis bawah, atau tanda hubung.'); return; }
+      const dob = document.getElementById('reg-tanggal-lahir').value;
+      const tmt = document.getElementById('reg-tmt').value;
+      const today = new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Makassar'});
+      if (!dob || dob > today) { notify('Tanggal lahir tidak valid.'); return; }
+      if (!tmt || tmt > today) { notify('TMT Kerja tidak boleh melewati tanggal hari ini.'); return; }
+      const dobDate = new Date(dob + 'T12:00:00');
+      const ttlText = `${document.getElementById('reg-tempat-lahir').value.trim()}, ${new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(dobDate)}`;
       const payload = {
         nama: document.getElementById('reg-nama').value.trim(),
         nik: document.getElementById('reg-nik').value.trim(),
@@ -2126,23 +2178,32 @@
         pendidikanTerakhir: document.getElementById('reg-pendidikan').value,
         bidang: document.getElementById('reg-bidang').value,
         jabatan: document.getElementById('reg-jabatan').value,
-        email: document.getElementById('reg-email').value.trim(),
-        password: document.getElementById('reg-password').value
+        email, username, ttl: ttlText, tmt,
+        kawin: document.getElementById('reg-kawin').value,
+        rekening: document.getElementById('reg-rekening').value.replace(/\D/g,''),
+        alamat: document.getElementById('reg-alamat').value.trim(),
+        password
       };
       const alertBox = document.getElementById('modal-alert');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalBtn = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('opacity-70','cursor-wait'); submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim pendaftaran…'; }
       try {
         await gasCall('register', payload);
+        form.reset();
+        clearRegistrationCredentials();
         alertBox.className = "mb-4 p-3 rounded-xl text-xs flex items-center gap-2 bg-blue-50 text-blue-800 border border-blue-200";
-        alertBox.textContent = 'Pendaftaran berhasil dikirim. Tunggu persetujuan Super Admin sebelum masuk.';
+        alertBox.textContent = 'Pendaftaran berhasil dikirim. Silakan masuk menggunakan username/email dan kata sandi yang baru dibuat.';
         alertBox.classList.remove('hidden');
         setTimeout(() => switchTab('login'), 1200);
       } catch (err) {
         alertBox.className = "mb-4 p-3 rounded-xl text-xs flex items-center gap-2 bg-rose-50 text-rose-700 border border-rose-200";
         alertBox.textContent = err.message;
         alertBox.classList.remove('hidden');
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-70','cursor-wait'); submitBtn.innerHTML = originalBtn; }
       }
     }
-
     function updateUserNavbar() {
       const navAuthActions = document.getElementById('nav-auth-actions');
       const navUserBadge = document.getElementById('nav-user-badge');
