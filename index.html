@@ -3041,13 +3041,31 @@
     }
 
     function switchPjlpTab(tabName) {
-      if (tabName !== 'hadir') stopCameraStream();
-      ['profile', 'hadir', 'kegiatan', 'rekap-hadir', 'rekap-kinerja', 'arsip'].forEach(t => {
-        document.getElementById(`pjlp-tab-${t}`).classList.add('hidden');
-        document.getElementById(`pjlp-tab-btn-${t}`).className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
+      // Camera/selfie was removed from the attendance workflow. Guard the legacy
+      // cleanup hook so its absence can never block navigation between PJLP tabs.
+      if (tabName !== 'hadir' && typeof stopCameraStream === 'function') {
+        try { stopCameraStream(); } catch (err) { console.warn('Pembersihan kamera dilewati:', err); }
+      }
+      const allowedTabs = ['profile', 'hadir', 'kegiatan', 'rekap-hadir', 'rekap-kinerja', 'arsip'];
+      if (!allowedTabs.includes(tabName)) {
+        console.warn('Tab PJLP tidak dikenal:', tabName);
+        return;
+      }
+      allowedTabs.forEach(t => {
+        const panel = document.getElementById(`pjlp-tab-${t}`);
+        const button = document.getElementById(`pjlp-tab-btn-${t}`);
+        if (panel) panel.classList.add('hidden');
+        if (button) button.className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
       });
-      document.getElementById(`pjlp-tab-${tabName}`).classList.remove('hidden');
-      document.getElementById(`pjlp-tab-btn-${tabName}`).className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
+      const activePanel = document.getElementById(`pjlp-tab-${tabName}`);
+      const activeButton = document.getElementById(`pjlp-tab-btn-${tabName}`);
+      if (!activePanel || !activeButton) {
+        console.error('Panel atau tombol tab PJLP tidak ditemukan:', tabName);
+        notify('Menu belum dapat dibuka karena komponen halaman tidak ditemukan. Muat ulang aplikasi.');
+        return;
+      }
+      activePanel.classList.remove('hidden');
+      activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
     }
 
     function switchVerifTab(tabName) {
