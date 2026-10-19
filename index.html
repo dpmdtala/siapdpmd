@@ -3418,14 +3418,40 @@
 
     function filterAdminGlobalView() { renderAdminUserTable(); }
 
+    function ensureHistoryDateFilter(tableBodyId, filterId, label, rerender) {
+      const body = document.getElementById(tableBodyId);
+      if (!body || document.getElementById(filterId)) return;
+      const table = body.closest('table');
+      const host = table && table.parentElement;
+      if (!host) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'no-print flex flex-wrap items-end gap-2 mb-3';
+      wrap.innerHTML = `<label class="text-xs font-bold">${label}<input type="date" id="${filterId}" class="block mt-1 rounded-lg border border-slate-300 px-3 py-2 text-xs"></label><button type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold">Semua tanggal</button>`;
+      wrap.querySelector('input').addEventListener('change', rerender);
+      wrap.querySelector('button').addEventListener('click', () => { wrap.querySelector('input').value=''; rerender(); });
+      host.insertBefore(wrap, table);
+    }
+
+    function ensureHistoryDateFilter(tableBodyId, filterId, label, rerender) {
+      const body = document.getElementById(tableBodyId);
+      if (!body || document.getElementById(filterId)) return;
+      const table = body.closest('table'); const host = table && table.parentElement; if (!host) return;
+      const wrap = document.createElement('div'); wrap.className='no-print flex flex-wrap items-end gap-2 mb-3';
+      wrap.innerHTML=`<label class="text-xs font-bold">${label}<input type="date" id="${filterId}" class="block mt-1 rounded-lg border border-slate-300 px-3 py-2 text-xs"></label><button type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold">Semua tanggal</button>`;
+      wrap.querySelector('input').addEventListener('change',rerender); wrap.querySelector('button').addEventListener('click',()=>{wrap.querySelector('input').value='';rerender();}); host.insertBefore(wrap,table);
+    }
+
     function renderAdminAbsensiTable() {
+      ensureHistoryDateFilter('admin-hadir-table-body','admin-hadir-filter-tanggal','Tanggal presensi',renderAdminAbsensiTable);
       const tbody = document.getElementById('admin-hadir-table-body');
       tbody.innerHTML = "";
       const bidangFilter = document.getElementById('admin-filter-hadir-bidang')?.value || 'Semua';
       const statusFilter = document.getElementById('admin-filter-hadir-status')?.value || 'Semua';
       const searchKey = (document.getElementById('admin-search-hadir')?.value || '').toLowerCase();
+      const selectedDate = document.getElementById('admin-hadir-filter-tanggal')?.value || '';
 
       dbAbsensi.filter(a => {
+        if (selectedDate && dateKeyISO(a.tanggal) !== selectedDate) return false;
         const owner = dbUsers.find(u => u.id === a.userId);
         if (bidangFilter !== 'Semua' && owner && owner.bidang !== bidangFilter) return false;
         if (statusFilter !== 'Semua' && a.status !== statusFilter) return false;
@@ -3447,13 +3473,16 @@
     }
 
     function renderAdminLaporanTable() {
+      ensureHistoryDateFilter('admin-laporan-table-body','admin-laporan-filter-tanggal','Tanggal laporan',renderAdminLaporanTable);
       const tbody = document.getElementById('admin-laporan-table-body');
       tbody.innerHTML = "";
       const bidangFilter = document.getElementById('admin-filter-lap-bidang')?.value || 'Semua';
       const statusFilter = document.getElementById('admin-filter-lap-status')?.value || 'Semua';
       const searchKey = (document.getElementById('admin-search-lap')?.value || '').toLowerCase();
+      const selectedDate = document.getElementById('admin-laporan-filter-tanggal')?.value || '';
 
       dbLaporan.filter(l => {
+        if (selectedDate && dateKeyISO(l.tanggal) !== selectedDate) return false;
         const owner = dbUsers.find(u => u.id === l.userId);
         if (bidangFilter !== 'Semua' && owner && owner.bidang !== bidangFilter) return false;
         if (statusFilter !== 'Semua' && l.status !== statusFilter) return false;
@@ -3564,15 +3593,20 @@
 
     function renderVerifikatorTable() {
       if (!currentUser) return;
+      ensureHistoryDateFilter('verifikator-table-body','verif-filter-tanggal','Tanggal laporan',renderVerifikatorTable);
+      ensureHistoryDateFilter('verifikator-table-body','verif-filter-tanggal','Tanggal laporan',renderVerifikatorTable);
       const userBidang = String(currentUser.bidang || '').trim();
       const filterStatus = document.getElementById('verif-filter-status')?.value || 'Semua';
       const filterPegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
       const filterBulan = document.getElementById('verif-filter-bulan')?.value || 'Semua';
+      const selectedDate = document.getElementById('verif-filter-tanggal')?.value || '';
       const tbody = document.getElementById('verifikator-table-body');
       if (!tbody) return;
       const rows = dbLaporan.filter(l => {
         const owner = dbUsers.find(u => String(u.id) === String(l.userId));
         if (!owner || String(owner.bidang || '').trim() !== userBidang) return false;
+        if (selectedDate && dateKeyISO(l.tanggal) !== selectedDate) return false;
+        if (selectedDate && dateKeyISO(l.tanggal) !== selectedDate) return false;
         if (filterPegawai !== 'Semua' && String(l.userId) !== filterPegawai) return false;
         if (filterBulan !== 'Semua' && verifMonthKey(l.tanggal) !== filterBulan) return false;
         if (filterStatus !== 'Semua' && l.status !== filterStatus) return false;
@@ -3613,14 +3647,19 @@
 
     function renderVerifikatorHadirTable() {
       if (!currentUser) return;
+      ensureHistoryDateFilter('verifikator-hadir-table-body','verif-hadir-filter-tanggal','Tanggal presensi',renderVerifikatorHadirTable);
+      ensureHistoryDateFilter('verifikator-hadir-table-body','verif-hadir-filter-tanggal','Tanggal presensi',renderVerifikatorHadirTable);
       const tbody = document.getElementById('verifikator-hadir-table-body');
       if (!tbody) return;
       const bidang = String(currentUser.bidang || '').trim();
       const filterPegawai = document.getElementById('verif-hadir-filter-pegawai')?.value || 'Semua';
       const filterBulan = document.getElementById('verif-hadir-filter-bulan')?.value || 'Semua';
+      const selectedDate = document.getElementById('verif-hadir-filter-tanggal')?.value || '';
       const rows = dbAbsensi.filter(a => {
         const owner = dbUsers.find(u => String(u.id) === String(a.userId));
         if (!owner || String(owner.bidang || '').trim() !== bidang) return false;
+        if (selectedDate && dateKeyISO(a.tanggal) !== selectedDate) return false;
+        if (selectedDate && dateKeyISO(a.tanggal) !== selectedDate) return false;
         if (filterPegawai !== 'Semua' && String(a.userId) !== filterPegawai) return false;
         if (filterBulan !== 'Semua' && verifMonthKey(a.tanggal) !== filterBulan) return false;
         return true;
