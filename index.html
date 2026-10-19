@@ -2996,21 +2996,26 @@
       }
     }
 
-    function handleSaveLaporan(e) {
+    async function handleSaveLaporan(e) {
       e.preventDefault();
+      const form = e.currentTarget || document.getElementById('form-laporan');
+      const submitBtn = form && form.querySelector('button[type="submit"]');
+      if (submitBtn && submitBtn.disabled) return;
       const kegiatan = document.getElementById('lap-kegiatan').value.trim();
       const output = document.getElementById('lap-output').value.trim();
       const jamMulai = document.getElementById('lap-jam-mulai').value;
       const jamSelesai = document.getElementById('lap-jam-selesai').value;
       if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi!'); return; }
       if (jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai.'); return; }
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.innerHTML; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…'; }
 
-      gasCall('saveReport', {
-        tanggal: document.getElementById('lap-tanggal').value,
-        jamMulai, jamSelesai, kegiatan, output, foto: tempLapFotoBase64
-      }).then(async () => {
+      try {
+        await gasCall('saveReport', {
+          tanggal: document.getElementById('lap-tanggal').value,
+          jamMulai, jamSelesai, kegiatan, output, foto: tempLapFotoBase64
+        });
         await refreshServerData();
-        notify('Terkirim');
+        notify('Kegiatan harian berhasil disimpan.');
         document.getElementById('lap-kegiatan').value = '';
         document.getElementById('lap-output').value = '';
         document.getElementById('lap-jam-mulai').value = '';
@@ -3019,7 +3024,11 @@
         document.getElementById('lap-foto-preview-container').classList.add('hidden');
         tempLapFotoBase64 = null;
         renderPjlpTables();
-      }).catch(err => notify('Laporan gagal disimpan: ' + err.message));
+      } catch (err) {
+        notify('Kegiatan harian gagal disimpan: ' + err.message);
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = submitBtn.dataset.originalText || 'Kirim Kegiatan'; }
+      }
     }
 
     function openUploadArsipModal() { document.getElementById('arsip-modal').classList.remove('hidden'); }
