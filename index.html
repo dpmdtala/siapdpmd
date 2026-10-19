@@ -540,7 +540,7 @@
                   <div class="flex items-center gap-2.5">
                     <i id="geofence-icon" class="fa-solid fa-location-dot text-base text-sky-600"></i>
                     <div>
-                      <p id="geofence-title" class="font-extrabold text-xs">Radius 10m Kantor DPMD Aktif</p>
+                      <p id="geofence-title" class="font-extrabold text-xs">Radius 30m Kantor DPMD Aktif</p>
                       <p id="geofence-desc" class="text-[10px] font-normal opacity-90">Koordinat Kantor DPMD: -3.7994516, 114.7790374</p>
                     </div>
                   </div>
@@ -665,7 +665,7 @@
               <form onsubmit="handleSaveLaporan(event)" class="space-y-4">
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tanggal Pelaksanaan (Hari Ini) <span class="text-rose-500">*</span></label>
-                  <input type="date" id="lap-tanggal" value="" readonly required 
+                  <input type="date" id="lap-tanggal" value="" required 
                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold bg-slate-100 text-slate-600 outline-none cursor-not-allowed">
                   <p class="text-[10px] text-blue-600 mt-1"><i class="fa-solid fa-lock mr-1"></i>Tanggal dikunci hanya untuk hari pelaksanaan saat ini.</p>
                 </div>
@@ -1262,6 +1262,19 @@
           <input type="text" id="edit-prof-nik" required inputmode="numeric" maxlength="32" placeholder="Masukkan NIK"
             class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
         </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email untuk Login</label>
+            <input type="email" id="edit-prof-email" required autocomplete="email" placeholder="nama@email.com"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Username untuk Login</label>
+            <input type="text" id="edit-prof-username" required minlength="3" maxlength="64" pattern="[A-Za-z0-9._-]{3,64}" autocomplete="username" placeholder="contoh: rian.utama"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
+            <p class="mt-1 text-[10px] text-slate-500">3–64 karakter; huruf, angka, titik, garis bawah, atau tanda hubung.</p>
+          </div>
+        </div>
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Unggah Pas Foto (Pilih dari Perangkat)</label>
           <div class="flex items-center gap-3 mb-2">
@@ -1296,7 +1309,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">TMT Kerja</label>
-            <input type="text" id="edit-prof-tmt" required placeholder="02 Januari 2024"
+            <input type="date" id="edit-prof-tmt" required
               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
           </div>
           <div>
@@ -1308,8 +1321,8 @@
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Bank & No. Rekening</label>
-            <input type="text" id="edit-prof-rekening" placeholder="Bank Kalsel - 00103491829"
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Bank: BANK KALSEL (Tetap) • Nomor Rekening</label>
+            <input type="text" id="edit-prof-rekening" inputmode="numeric" pattern="[0-9]{5,30}" placeholder="Masukkan nomor rekening BANK KALSEL"
               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
           </div>
           <div>
@@ -2072,10 +2085,10 @@
         if (document.getElementById('prof-detail-ttl')) document.getElementById('prof-detail-ttl').innerText = currentUser.ttl || 'Pelaihari, 18 Mei 1990';
         const ageEl = document.getElementById('prof-detail-umur'); if (ageEl) ageEl.textContent = ageFromTtl(currentUser.ttl) || 'Tanggal lahir belum tersedia';
         renderBirthdayGreeting(currentUser);
-        if (document.getElementById('prof-detail-tmt')) document.getElementById('prof-detail-tmt').innerText = currentUser.tmt || '—';
+        if (document.getElementById('prof-detail-tmt')) document.getElementById('prof-detail-tmt').innerText = currentUser.tmt ? formatDateDisplay(currentUser.tmt) : '—';
         if (document.getElementById('prof-detail-pendidikan')) document.getElementById('prof-detail-pendidikan').innerText = currentUser.pendidikanTerakhir || '—';
         if (document.getElementById('prof-detail-masa-kerja')) document.getElementById('prof-detail-masa-kerja').innerText = tenureFromTmt(currentUser.tmt);
-        if (document.getElementById('prof-detail-rekening')) document.getElementById('prof-detail-rekening').innerText = currentUser.rekening || 'Bank Kalsel - 00103491829';
+        if (document.getElementById('prof-detail-rekening')) document.getElementById('prof-detail-rekening').innerText = currentUser.rekening ? ('BANK KALSEL - ' + String(currentUser.rekening).replace(/^BANK\s+KALSEL\s*[-:]?\s*/i, '')) : 'BANK KALSEL - Belum diisi';
         if (document.getElementById('prof-detail-kawin')) document.getElementById('prof-detail-kawin').innerText = currentUser.kawin || 'Kawin';
         if (document.getElementById('prof-detail-jenis-kelamin')) document.getElementById('prof-detail-jenis-kelamin').innerText = currentUser.jenisKelamin || 'Belum diisi';
         if (document.getElementById('prof-detail-alamat')) document.getElementById('prof-detail-alamat').innerText = currentUser.alamat || 'Pelaihari';
@@ -2125,6 +2138,8 @@
 
       document.getElementById('edit-profile-target-id').value = target.id;
       document.getElementById('edit-prof-nik').value = target.nik || '';
+      document.getElementById('edit-prof-email').value = target.email || '';
+      document.getElementById('edit-prof-username').value = target.username || target.nik || '';
       const avatarPreview = document.getElementById('edit-prof-avatar-preview');
       const avatarStatus = document.getElementById('edit-prof-avatar-status');
       if (avatarPreview) { avatarPreview.src = target.avatar || ''; avatarPreview.classList.toggle('hidden', !target.avatar); }
@@ -2133,9 +2148,9 @@
       if (avatarInput) avatarInput.value = '';
       document.getElementById('edit-prof-ttl').value = target.ttl || '';
       document.getElementById('edit-prof-pendidikan').value = target.pendidikanTerakhir || '';
-      document.getElementById('edit-prof-tmt').value = target.tmt || '02 Januari 2024';
+      document.getElementById('edit-prof-tmt').value = dateKeyISO(target.tmt) || '2024-01-02';
       document.getElementById('edit-prof-hp').value = target.hp || '';
-      document.getElementById('edit-prof-rekening').value = target.rekening || '';
+      document.getElementById('edit-prof-rekening').value = String(target.rekening || '').replace(/^BANK\s+KALSEL\s*[-:]?\s*/i, '').replace(/^BANK KALSEL\s*[-:]?\s*/i, '').trim();
       document.getElementById('edit-prof-kawin').value = target.kawin || 'Kawin';
       document.getElementById('edit-prof-jenis-kelamin').value = target.jenisKelamin || '';
       document.getElementById('edit-prof-alamat').value = target.alamat || '';
@@ -2203,15 +2218,19 @@
       try {
         if (avatarReadPromise) await avatarReadPromise;
         const nik = document.getElementById('edit-prof-nik').value.trim();
+        const email = document.getElementById('edit-prof-email').value.trim().toLowerCase();
+        const username = document.getElementById('edit-prof-username').value.trim().toLowerCase();
         if (!nik) throw new Error('NIK wajib diisi.');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Format email tidak valid.');
+        if (!/^[a-z0-9._-]{3,64}$/.test(username)) throw new Error('Username harus 3–64 karakter dan hanya berisi huruf, angka, titik, garis bawah, atau tanda hubung.');
         const newName = document.getElementById('edit-prof-nama')?.value.trim();
         const payload = {
-          userId: target.id, nik,
+          userId: target.id, nik, email, username,
           ttl: document.getElementById('edit-prof-ttl').value.trim(),
           pendidikanTerakhir: document.getElementById('edit-prof-pendidikan').value,
           tmt: document.getElementById('edit-prof-tmt').value.trim(),
           hp: document.getElementById('edit-prof-hp').value.trim(),
-          rekening: document.getElementById('edit-prof-rekening').value.trim(),
+          rekening: document.getElementById('edit-prof-rekening').value.replace(/\D/g, '').trim(),
           kawin: document.getElementById('edit-prof-kawin').value,
           jenisKelamin: document.getElementById('edit-prof-jenis-kelamin').value,
           alamat: document.getElementById('edit-prof-alamat').value.trim()
@@ -2226,7 +2245,7 @@
         if (currentUser && currentUser.id === target.id) updateUserNavbar();
         renderPjlpTables();
         if (currentUser && currentUser.role === 'SuperAdmin') renderAdminUserTable();
-        notify('Profil, NIK, dan foto berhasil diperbarui.');
+        notify('Profil, email, username login, nomor rekening BANK KALSEL, dan foto berhasil diperbarui.');
       } catch (err) {
         notify('Gagal memperbarui profil: ' + (err.message || err));
       } finally {
@@ -2318,8 +2337,11 @@
       const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
       // Terima format tampilan DD:MM:YYYY dan format lama DD-MM-YYYY.
-      const dmy = value.match(/^(\d{2})[:-](\d{2})[:-](\d{4})$/);
-      if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+      const dmy = value.match(/^(\d{1,2})[:-](\d{1,2})[:-](\d{4})$/);
+      if (dmy) return `${dmy[3]}-${String(dmy[2]).padStart(2,'0')}-${String(dmy[1]).padStart(2,'0')}`;
+      const monthMap = {januari:'01',jan:'01',februari:'02',feb:'02',maret:'03',mar:'03',april:'04',apr:'04',mei:'05',may:'05',juni:'06',jun:'06',juli:'07',jul:'07',agustus:'08',agu:'08',aug:'08',september:'09',sep:'09',oktober:'10',okt:'10',oct:'10',november:'11',nov:'11',desember:'12',des:'12',dec:'12'};
+      const named = value.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/i);
+      if (named && monthMap[named[2].toLowerCase()]) return `${named[3]}-${monthMap[named[2].toLowerCase()]}-${String(named[1]).padStart(2,'0')}`;
       return value;
     }
     function formatDateDisplay(dateValue) {
@@ -2574,7 +2596,7 @@
     // Print terarah: hanya dokumen yang dipilih yang dikirim ke dialog cetak.
     function printDocument(title, bodyHtml, printWindow = null) {
       const kop = document.getElementById('global-print-kop')?.innerHTML || '';
-      const footer = 'Dokumen ini diterbitkan secara Elektronik dan telah TER-AUTHENTIKASI secara resmi oleh Sistem Informasi & Aktivitas PJLP Dinas Pemberdayaan Masyarakat dan Desa Kabupaten Tanah Laut, Segala Informasi yang tercantum dalam berkas ini dinyatakan SAH dan ASLI.';
+      const footer = 'DOKUMEN INI DITERBITKAN SECARA DIGITAL DAN TELAH TER-AUTHENTIKASI SECARA RESMI OLEH SISTEM INFORMASI & AKTIVITAS PJLP DINAS PEMBERDAYAAN MASYARAKAT DAN DESA KABUPATEN TANAH LAUT, SEGALA INFORMASI YANG TERCANTUM DALAM BERKAS INI DINYATAKAN SAH DAN ASLI.';
       let finalBodyHtml = bodyHtml;
       if ((/REKAPITULASI KEHADIRAN BULANAN|RIWAYAT PRESENSI/i.test(title)) && currentUser) {
         const safe = v => escapeHTML(v || '—');
@@ -2600,7 +2622,7 @@
       if (!w) { notify('Jendela cetak diblokir. Izinkan pop-up untuk SIAP-DPMD atau gunakan Izinkan sekali, lalu ulangi cetak.'); return; }
       w.document.open();
       w.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>${escapeHTML(title)}</title><style>
-        @page{size:A4 portrait;margin:12mm 12mm 24mm} body{font:11pt Arial,sans-serif;color:#111;background:#fff;margin:0} .kop{display:flex;align-items:center;gap:14px;border-bottom:4px double #111;padding-bottom:10px;margin-bottom:18px}.kop img{width:76px;height:76px;object-fit:contain;flex:0 0 76px}.kop img.print-logo-right{margin-left:10px}.kop .print-kop-text{flex:1;text-align:center}.kop h2{font-size:13pt;text-transform:uppercase;margin:0}.kop h1{font-size:15pt;text-transform:uppercase;margin:3px 0}.kop p{font-size:9pt;margin:0}.doc-title{text-align:center;font-size:13pt;font-weight:bold;margin:8px 0 16px} table{width:100%;border-collapse:collapse;font-size:9pt} th,td{border:1px solid #777;padding:6px;vertical-align:top;color:#111!important;background:#fff!important} img{max-width:100%;} .biodata-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.biodata-item{border:1px solid #ccc;padding:8px}.biodata-label{font-size:8pt;color:#444;text-transform:uppercase}.biodata-value{font-weight:bold;margin-top:3px}.profile-photo{width:110px;height:140px;object-fit:cover;border:1px solid #aaa;float:right;margin:0 0 12px 16px}.auth-notice{border:1px solid #555;border-left:3px solid #1d4ed8;padding:5px 7px;margin:-8px 0 10px;font-size:7.5pt;line-height:1.25;text-align:center;break-inside:avoid;page-break-inside:avoid}.print-footer{display:block!important;position:fixed;bottom:-15mm;left:0;right:0;text-align:center;font-size:7pt;background:white;border-top:1px solid #888;padding-top:3mm;z-index:10}.auth-text{display:block;max-width:100%;overflow-wrap:anywhere;text-align:center}.print-employee-profile{border:1px solid #777;padding:7px;margin:0 0 10px;break-inside:avoid;page-break-inside:avoid}.print-employee-profile h3{text-align:center;font-size:10pt;font-weight:bold;margin:0 0 5px}.print-employee-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:8.5pt}.print-employee-grid>div{overflow-wrap:anywhere} @media print{main{padding-bottom:0} tr, .biodata-item{break-inside:avoid;page-break-inside:avoid}}.rekap-meta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:8px 0;break-inside:avoid;page-break-inside:avoid}.rekap-meta-item{border:1px solid #777;padding:6px;min-width:0}.rekap-meta-label{font-size:7.5pt;color:#333;margin-bottom:3px}.rekap-meta-value{font-size:8.5pt;font-weight:bold;overflow-wrap:anywhere}.rekap-pegawai{display:flex;gap:10px;align-items:center;border:1px solid #777;padding:7px;margin:8px 0}.rekap-pegawai-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;font-size:8.5pt}.rekap-pegawai img{width:58px;height:70px;object-fit:cover}.rekap-signatures{display:grid;grid-template-columns:1fr 1fr;gap:28mm;margin-top:14mm;page-break-inside:avoid;break-inside:avoid}.rekap-signature{min-width:0;text-align:center;display:flex;flex-direction:column;align-items:stretch}.rekap-signature .signature-heading{min-height:1.4em;font-weight:bold}.rekap-signature .signature-role{min-height:1.4em;font-size:9pt}.rekap-signature .sign-space{height:22mm}.rekap-signature .signature-name{border-top:1px solid #222;padding-top:3px;font-weight:bold;white-space:normal;overflow-wrap:anywhere}.rekap-evidence{font-size:8pt;margin:3px 0;overflow-wrap:anywhere}.rekap-evidence a{color:#0645ad;text-decoration:underline}.rekap-pegawai{break-inside:avoid} button,.no-print{display:none!important} .overflow-x-auto{overflow:visible!important} .rounded-xl,.rounded-2xl,.rounded-3xl{border-radius:0!important;box-shadow:none!important} @media print{.bg-slate-50 .grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}.bg-slate-50 .grid>div{border:1px solid #777!important;padding:5px!important;min-width:0}.bg-slate-50 .grid p,.bg-slate-50 .grid span{margin:0!important;font-size:8pt!important;line-height:1.2!important}.bg-slate-50 .grid p:first-child{font-size:7pt!important;color:#444!important}.bg-slate-50{padding:5px!important;margin:5px 0!important}.doc-title{margin:5px 0 8px!important}} @media screen{body{padding:20px;max-width:900px;margin:auto}}
+        @page{size:A4 portrait;margin:12mm 12mm 24mm} body{font:11pt Arial,sans-serif;color:#111;background:#fff;margin:0} .kop{display:flex;align-items:center;gap:14px;border-bottom:4px double #111;padding-bottom:10px;margin-bottom:18px}.kop img{width:76px;height:76px;object-fit:contain;flex:0 0 76px}.kop img.print-logo-right{margin-left:10px}.kop .print-kop-text{flex:1;text-align:center}.kop h2{font-size:13pt;text-transform:uppercase;margin:0}.kop h1{font-size:15pt;text-transform:uppercase;margin:3px 0}.kop p{font-size:9pt;margin:0}.doc-title{text-align:center;font-size:13pt;font-weight:bold;margin:8px 0 16px} table{width:100%;border-collapse:collapse;font-size:9pt} th,td{border:1px solid #777;padding:6px;vertical-align:top;color:#111!important;background:#fff!important} img{max-width:100%;} .biodata-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.biodata-item{border:1px solid #ccc;padding:8px}.biodata-label{font-size:8pt;color:#444;text-transform:uppercase}.biodata-value{font-weight:bold;margin-top:3px}.profile-photo{width:110px;height:140px;object-fit:cover;border:1px solid #aaa;float:right;margin:0 0 12px 16px}.auth-notice{border:1px solid #b91c1c;border-left:3px solid #b91c1c;padding:5px 7px;margin:-8px 0 10px;font-size:7.5pt;line-height:1.25;text-align:center;color:#b91c1c;font-weight:800;break-inside:avoid;page-break-inside:avoid;text-transform:uppercase}.print-footer{display:block!important;position:fixed;bottom:-15mm;left:0;right:0;text-align:center;font-size:7pt;background:white;border-top:1px solid #888;padding-top:3mm;z-index:10}.auth-text{display:block;max-width:100%;overflow-wrap:anywhere;text-align:center;color:#b91c1c;font-weight:800;text-transform:uppercase}.print-employee-profile{border:1px solid #777;padding:7px;margin:0 0 10px;break-inside:avoid;page-break-inside:avoid}.print-employee-profile h3{text-align:center;font-size:10pt;font-weight:bold;margin:0 0 5px}.print-employee-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:8.5pt}.print-employee-grid>div{overflow-wrap:anywhere} @media print{main{padding-bottom:0} tr, .biodata-item{break-inside:avoid;page-break-inside:avoid}}.rekap-meta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:8px 0;break-inside:avoid;page-break-inside:avoid}.rekap-meta-item{border:1px solid #777;padding:6px;min-width:0}.rekap-meta-label{font-size:7.5pt;color:#333;margin-bottom:3px}.rekap-meta-value{font-size:8.5pt;font-weight:bold;overflow-wrap:anywhere}.rekap-pegawai{display:flex;gap:10px;align-items:center;border:1px solid #777;padding:7px;margin:8px 0}.rekap-pegawai-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;font-size:8.5pt}.rekap-pegawai img{width:58px;height:70px;object-fit:cover}.rekap-signatures{display:grid;grid-template-columns:1fr 1fr;gap:28mm;margin-top:14mm;page-break-inside:avoid;break-inside:avoid}.rekap-signature{min-width:0;text-align:center;display:flex;flex-direction:column;align-items:stretch}.rekap-signature .signature-heading{min-height:1.4em;font-weight:bold}.rekap-signature .signature-role{min-height:1.4em;font-size:9pt}.rekap-signature .sign-space{height:22mm}.rekap-signature .signature-name{border-top:1px solid #222;padding-top:3px;font-weight:bold;white-space:normal;overflow-wrap:anywhere}.rekap-evidence{font-size:8pt;margin:3px 0;overflow-wrap:anywhere}.rekap-evidence a{color:#0645ad;text-decoration:underline}.rekap-pegawai{break-inside:avoid} button,.no-print{display:none!important} .overflow-x-auto{overflow:visible!important} .rounded-xl,.rounded-2xl,.rounded-3xl{border-radius:0!important;box-shadow:none!important} @media print{.bg-slate-50 .grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}.bg-slate-50 .grid>div{border:1px solid #777!important;padding:5px!important;min-width:0}.bg-slate-50 .grid p,.bg-slate-50 .grid span{margin:0!important;font-size:8pt!important;line-height:1.2!important}.bg-slate-50 .grid p:first-child{font-size:7pt!important;color:#444!important}.bg-slate-50{padding:5px!important;margin:5px 0!important}.doc-title{margin:5px 0 8px!important}} @media screen{body{padding:20px;max-width:900px;margin:auto}}
         </style></head><body><header class="kop">${kop}</header><section class="auth-notice"><span class="auth-text">${escapeHTML(footer)}</span></section><h2 class="doc-title">${escapeHTML(title)}</h2><main>${finalBodyHtml}</main><footer class="print-footer">${escapeHTML(footer)}</footer><script>window.onload=()=>{const imgs=[...document.images];Promise.all(imgs.map(i=>i.complete?Promise.resolve():new Promise(r=>{i.onload=r;i.onerror=r}))).then(()=>setTimeout(()=>window.print(),250));};<\/script></body></html>`);
       w.document.close();
     }
@@ -2619,6 +2641,11 @@
           const profileFields = [['Nama Pegawai',u.nama],['NIK',u.nik],['Tempat/Tanggal Lahir',u.ttl],['Pendidikan Terakhir',u.pendidikanTerakhir || u.pendidikan || u.education],['Bidang/Sub Bagian Kerja',u.bidang],['Tugas/Jabatan Kontrak',u.jabatan],['Nomor HP/WhatsApp',u.hp],['Email',u.email],['TMT Kerja',u.tmt],['Masa Kerja',tenureFromTmt(u.tmt)]];
           const profile = `<section class=\"print-employee-profile\"><h3>BIODATA PEGAWAI</h3><div class=\"print-employee-grid\">${profileFields.map(([k,v])=>`<div><b>${safe(k)}:</b> ${safe(v)}</div>`).join('')}</div></section>`;
           clone.insertAdjacentHTML('afterbegin', profile);
+        }
+        if (['printable-absensi-container','printable-rekap-hadir-container'].includes(elementId) && currentUser) {
+          const safeSign = v => escapeHTML(v || '—');
+          const signatureBlock = `<section class="rekap-signatures"><div class="rekap-signature"><div class="signature-heading">Mengetahui / Verifikator</div><div class="signature-role">Verifikator / Atasan Bidang</div><div class="sign-space"></div><div class="signature-name">${safeSign(window.verifikatorNama || 'Nama dan tanda tangan verifikator')}</div></div><div class="rekap-signature"><div class="signature-heading">Pegawai PJLP</div><div class="signature-role">Tanda tangan pegawai</div><div class="sign-space"></div><div class="signature-name">${safeSign(currentUser.nama)}</div></div></section>`;
+          clone.insertAdjacentHTML('beforeend', signatureBlock);
         }
         if (elementId === 'printable-rekap-kinerja-container') {
           const previewHeader = clone.querySelector(':scope > .flex.flex-col');
@@ -2687,7 +2714,7 @@
       if (!card || !title || !desc) return;
       if (status === 'Hadir') {
         card.className = "p-3.5 rounded-2xl text-xs font-bold border flex items-center justify-between bg-sky-50 text-sky-900 border-sky-200";
-        title.innerText = "Radius 10m Kantor DPMD Aktif";
+        title.innerText = "Radius 30m Kantor DPMD Aktif";
         desc.innerText = "Koordinat Kantor DPMD: -3.7994516, 114.7790374";
       } else {
         card.className = "p-3.5 rounded-2xl text-xs font-bold border flex items-center justify-between bg-indigo-50 text-indigo-900 border-indigo-200";
@@ -2754,11 +2781,11 @@
           notify(`Lokasi ${Math.round(distance)} meter dari kantor. Presensi Hadir wajib dalam radius 30 meter.`);
           return;
         }
-        if (pos.coords.accuracy > 30) {
+        if (!Number.isFinite(pos.coords.accuracy) || pos.coords.accuracy <= 0 || pos.coords.accuracy > 50) {
           locationVerified = false;
           if (title) title.textContent = 'Akurasi GPS belum memadai';
-          if (desc) desc.textContent = `Akurasi saat ini ±${Math.round(pos.coords.accuracy)} meter. Aktifkan lokasi presisi dan coba lagi.`;
-          notify('Akurasi GPS belum memadai. Aktifkan lokasi presisi atau coba di area terbuka.');
+          if (desc) desc.textContent = `Akurasi saat ini ±${Math.round(pos.coords.accuracy)} meter. Batas akurasi 50 meter; aktifkan lokasi presisi dan coba lagi.`;
+          notify('Akurasi GPS belum memadai. Sistem menerima akurasi maksimal 50 meter; aktifkan lokasi presisi atau coba di area terbuka.');
           return;
         }
         if (title) title.textContent = status === 'Hadir' ? 'Lokasi terverifikasi dalam radius 30 meter' : 'Lokasi GPS berhasil direkam';
@@ -2916,6 +2943,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       sigCanvas = document.getElementById('sig-canvas');
       document.querySelectorAll('input[name="absen-sesi"]').forEach(el => el.addEventListener('change', () => validateAttendanceWindow(false)));
+      document.getElementById('lap-tanggal')?.addEventListener('change', e => { e.target.dataset.userSelected = 'true'; });
       document.getElementById('absen-status')?.addEventListener('change', () => { locationVerified=false; lastGpsPosition=null; });
       setInterval(() => validateAttendanceWindow(false), 1000);
       validateAttendanceWindow(false);
@@ -2933,8 +2961,10 @@
 
     function clearSignature() { if (sigCtx && sigCanvas) sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height); signatureDrawn = false; }
 
+    let attendanceSubmissionInFlight = false;
     async function handleSaveAbsen(e) {
       e.preventDefault();
+      if (attendanceSubmissionInFlight) { notify('Presensi sedang diproses. Mohon tunggu sampai selesai.'); return; }
       if (!validateAttendanceWindow(true)) return;
       if (!capturedFaceDataUrl) { notify('Swafoto wajib diambil terlebih dahulu. Tekan Buka Kamera, tunggu video tampil, lalu Ambil Foto Wajah.'); return; }
       if (['Dinas Luar','Izin','Sakit'].includes(document.getElementById('absen-status').value) && !attendanceEvidenceDataUrl) { notify('Unggah Surat Tugas, Surat Izin, atau Surat Sakit sebelum menyimpan presensi.'); return; }
@@ -2943,7 +2973,9 @@
       const catatan = document.getElementById('absen-catatan').value.trim();
       const sesi = document.querySelector('input[name="absen-sesi"]:checked')?.value || 'Masuk';
       if (!lastGpsPosition || !locationVerified) { notify('Tekan Cek Lokasi dan tunggu GPS berhasil diverifikasi terlebih dahulu.'); return; }
+      if (!lastGpsPosition.capturedAt || Date.now() - lastGpsPosition.capturedAt > 120000) { locationVerified = false; lastGpsPosition = null; notify('Data GPS sudah lebih dari 2 menit. Tekan Cek Lokasi kembali sebelum menyimpan presensi.'); return; }
       if (status === 'Hadir' && (!locationWithinFence || lastGpsPosition.distanceMeters > 30)) { notify('Presensi Hadir ditolak karena lokasi di luar radius 30 meter kantor.'); return; }
+      attendanceSubmissionInFlight = true;
       const button = document.getElementById('btn-submit-absen');
       if (button) { button.disabled = true; button.classList.add('opacity-50'); }
       try {
@@ -2979,6 +3011,7 @@
       } catch (err) {
         notify('Presensi gagal disimpan: ' + err.message);
       } finally {
+        attendanceSubmissionInFlight = false;
         if (button) { button.disabled = false; button.classList.remove('opacity-50'); validateAttendanceWindow(false); }
       }
     }
@@ -3443,7 +3476,7 @@
       if (clock) clock.textContent = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(now) + ' WITA';
       if (date) date.textContent = formatDateDisplay(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now));
       const dateInput = document.getElementById('lap-tanggal');
-      if (dateInput) {
+      if (dateInput && (!dateInput.value || dateInput.dataset.userSelected !== 'true')) {
         const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Makassar', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now).reduce((o, p) => (o[p.type] = p.value, o), {});
         dateInput.value = `${parts.year}-${parts.month}-${parts.day}`;
       }
