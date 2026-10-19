@@ -9,6 +9,16 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    @media screen {
+      body { padding-bottom: 118px !important; }
+      .app-footer-fixed { position:fixed; left:0; right:0; bottom:0; z-index:45; padding:10px 16px 9px!important; box-shadow:0 -6px 24px rgba(15,23,42,.12); background:rgba(255,255,255,.97); backdrop-filter:blur(12px); }
+      .app-footer-fixed .footer-brand { font-size:15px; font-weight:900; letter-spacing:.02em; color:#0f2f6f; }
+      .app-footer-fixed .footer-copy { font-size:12px; font-weight:600; color:#334155; line-height:1.25; }
+      .app-footer-fixed nav { margin-top:7px!important; gap:14px!important; }
+      .app-footer-fixed nav a { font-size:12px; font-weight:800; }
+      .app-footer-fixed nav i { font-size:15px!important; }
+      @media(max-width:640px){ body{padding-bottom:142px!important}.app-footer-fixed{padding:8px 8px 7px!important}.app-footer-fixed .footer-brand{font-size:13px}.app-footer-fixed .footer-copy{font-size:10px}.app-footer-fixed nav{gap:10px!important;margin-top:5px!important}.app-footer-fixed nav a{font-size:10px}.app-footer-fixed nav i{font-size:13px!important} }
+    }
     #view-landing > .relative:first-child { background-position:center center; }
     @media(max-width:640px){#view-landing > .relative:first-child{background-position:58% center!important}#view-landing > .relative:first-child .grid{gap:1.5rem!important}#view-landing > .relative:first-child .max-w-7xl{background:rgba(7,24,66,.18);border-radius:1rem}}
     #tentang-siap, #alur { scroll-margin-top: 115px; }
@@ -295,7 +305,7 @@
     </section>
 
     <!-- ================= VIEW 2: DASHBOARD PJLP ================= -->
-    <section id="view-pjlp" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 no-print">
+    <section id="view-pjlp" class="hidden w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 no-print">
       
       <!-- User Banner Header (Office Immersive Workspace Theme) -->
       <div class="bg-gradient-to-r from-blue-900 via-sky-800 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden border border-blue-400/30">
@@ -536,7 +546,7 @@
                   </div>
                 </div>
 
-                <div id="geofence-status-card" class="p-3.5 rounded-2xl text-xs font-bold border flex items-center justify-between bg-sky-50 text-sky-900 border-sky-200">
+                <div id="geofence-status-card" class="p-3.5 rounded-2xl text-xs font-bold border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-sky-50 text-sky-900 border-sky-200 w-full min-w-0">
                   <div class="flex items-center gap-2.5">
                     <i id="geofence-icon" class="fa-solid fa-location-dot text-base text-sky-600"></i>
                     <div>
@@ -544,8 +554,8 @@
                       <p id="geofence-desc" class="text-[10px] font-normal opacity-90">Koordinat Kantor DPMD: -3.7994516, 114.7790374</p>
                     </div>
                   </div>
-                  <button type="button" onclick="checkUserLocation()" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-[10px] font-bold border border-slate-200 shadow-sm transition">
-                    <i class="fa-solid fa-arrows-rotate mr-1"></i>Cek Lokasi
+                  <button type="button" onclick="checkUserLocation({silent:false})" class="self-start sm:self-auto shrink-0 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-[10px] font-bold border border-slate-200 shadow-sm transition">
+                    <i class="fa-solid fa-arrows-rotate mr-1"></i>Perbarui GPS
                   </button>
                 </div>
 
@@ -1679,9 +1689,9 @@
   </div>
 
   <!-- ================= FOOTER ================= -->
-  <footer class="bg-white border-t border-slate-200 py-6 px-4 text-center text-xs text-slate-500 no-print">
-    <p class="font-bold text-slate-800">SIAP-DPMD Kabupaten Tanah Laut</p>
-    <p class="mt-1">TIM IT Sub Bagian Umum dan Kepegawaian © 2026 Dinas Pemberdayaan Masyarakat dan Desa. Seluruh hak cipta dilindungi.</p>
+  <footer class="app-footer-fixed bg-white border-t border-slate-200 py-3 px-4 text-center text-xs text-slate-500 no-print">
+    <p class="footer-brand">SIAP-DPMD Kabupaten Tanah Laut</p>
+    <p class="footer-copy mt-1">TIM IT Sub Bagian Umum dan Kepegawaian © 2026 Dinas Pemberdayaan Masyarakat dan Desa. Seluruh hak cipta dilindungi.</p>
     <nav aria-label="Media sosial Dinas PMD Kabupaten Tanah Laut" class="mt-4 flex flex-wrap items-center justify-center gap-4">
       <a href="https://www.instagram.com/dinaspmdkabtala/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-pink-600 hover:text-pink-800 font-semibold"><i class="fa-brands fa-instagram text-lg" aria-hidden="true"></i><span>Instagram</span></a>
       <a href="https://www.facebook.com/dinaspmd.tanahlaut#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-blue-700 hover:text-blue-900 font-semibold"><i class="fa-brands fa-facebook text-lg" aria-hidden="true"></i><span>Facebook</span></a>
@@ -2665,10 +2675,38 @@
           const profile = `<section class=\"print-employee-profile\"><h3>BIODATA PEGAWAI</h3><div class=\"print-employee-grid\">${profileFields.map(([k,v])=>`<div><b>${safe(k)}:</b> ${safe(v)}</div>`).join('')}</div></section>`;
           clone.insertAdjacentHTML('afterbegin', profile);
         }
-        if (['printable-absensi-container','printable-rekap-hadir-container'].includes(elementId) && currentUser) {
+        if (['printable-absensi-container','printable-rekap-hadir-container','printable-laporan-container'].includes(elementId) && currentUser) {
           const safeSign = v => escapeHTML(v || '—');
           const signatureBlock = `<section class="rekap-signatures"><div class="rekap-signature"><div class="signature-heading">Mengetahui / Verifikator</div><div class="signature-role">Verifikator / Atasan Bidang</div><div class="sign-space"></div><div class="signature-name">${safeSign(window.verifikatorNama || 'Nama dan tanda tangan verifikator')}</div></div><div class="rekap-signature"><div class="signature-heading">Pegawai PJLP</div><div class="signature-role">Tanda tangan pegawai</div><div class="sign-space"></div><div class="signature-name">${safeSign(currentUser.nama)}</div></div></section>`;
           clone.insertAdjacentHTML('beforeend', signatureBlock);
+        }
+        if (elementId === 'printable-laporan-container') {
+          const table = clone.querySelector('table');
+          if (table) {
+            const headRow = table.querySelector('thead tr');
+            if (headRow && ![...headRow.cells].some(c => /foto/i.test(c.textContent || ''))) {
+              const th = document.createElement('th'); th.textContent = 'Foto Dokumentasi';
+              headRow.insertBefore(th, headRow.lastElementChild || null);
+            }
+            const bodyRows = [...table.querySelectorAll('tbody tr')];
+            await Promise.all(bodyRows.map(async row => {
+              if (row.cells.length === 1 && Number(row.cells[0].colSpan || 1) > 1) return;
+              const link = row.querySelector('a[onclick*="openReportPhotoById"]');
+              const photoCell = link ? link.closest('td') : (row.cells.length >= 6 ? row.cells[4] : null);
+              if (!photoCell) return;
+              if (!link) { photoCell.textContent = photoCell.textContent.trim() || '—'; return; }
+              const match = String(link.getAttribute('onclick') || '').match(/openReportPhotoById\((.*?)\)/);
+              const rawId = match ? match[1].trim().replace(/^['"]|['"]$/g, '') : '';
+              if (!rawId) { photoCell.textContent = 'Foto tidak tersedia'; return; }
+              try {
+                const photoResult = await gasCall('getReportPhoto', {reportId:rawId});
+                const src = String(photoResult?.foto || '');
+                if (!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(src)) throw new Error('Foto tidak valid');
+                const img = document.createElement('img'); img.src = src; img.alt = 'Foto dokumentasi kegiatan'; img.style.cssText = 'width:100px;height:72px;object-fit:contain;border:1px solid #aaa';
+                photoCell.replaceChildren(img);
+              } catch (photoErr) { photoCell.textContent = 'Foto tidak dapat dimuat'; }
+            }));
+          }
         }
         if (elementId === 'printable-rekap-kinerja-container') {
           const previewHeader = clone.querySelector(':scope > .flex.flex-col');
@@ -2783,49 +2821,57 @@
       return !message;
     }
 
-    async function checkUserLocation() {
+    async function checkUserLocation(options = {}) {
+      const silent = typeof options === 'boolean' ? options : !!options.silent;
       const status = document.getElementById('absen-status')?.value || 'Hadir';
       const title = document.getElementById('geofence-title');
       const desc = document.getElementById('geofence-desc');
-      if (!navigator.geolocation) { notify('Perangkat/browser tidak mendukung GPS.'); return; }
-      if (!window.isSecureContext) { notify('GPS dan kamera memerlukan HTTPS atau localhost. Buka aplikasi melalui URL Web App Google Apps Script.'); return; }
-      if (title) title.textContent = 'Memeriksa lokasi GPS...';
-      if (desc) desc.textContent = 'Izinkan akses lokasi dan tunggu hasil GPS.';
-      navigator.geolocation.getCurrentPosition(pos => {
-        const lat = pos.coords.latitude, lon = pos.coords.longitude;
-        const officeLat = -3.7994516, officeLon = 114.7790374;
-        const rad = n => n * Math.PI / 180;
-        const dLat = rad(lat-officeLat), dLon = rad(lon-officeLon);
-        const a = Math.sin(dLat/2)**2 + Math.cos(rad(officeLat))*Math.cos(rad(lat))*Math.sin(dLon/2)**2;
-        const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        lastGpsPosition = {latitude:lat, longitude:lon, distanceMeters:Math.round(distance*100)/100, accuracy:pos.coords.accuracy, capturedAt:Date.now()};
-        locationVerified = true;
-        locationWithinFence = status !== 'Hadir' || distance <= 30;
-        if (status === 'Hadir' && distance > 30) {
-          locationVerified = false;
-          if (title) title.textContent = 'Di luar radius kantor';
-          if (desc) desc.textContent = `Jarak ${Math.round(distance)} m; akurasi ±${Math.round(pos.coords.accuracy)} m. Batas 30 meter.`;
-          notify(`Lokasi ${Math.round(distance)} meter dari kantor. Presensi Hadir wajib dalam radius 30 meter.`);
-          return;
+      const card = document.getElementById('geofence-status-card');
+      const setStatus = (heading, detail, danger = false) => {
+        if (title) title.textContent = heading;
+        if (desc) desc.textContent = detail;
+        if (card) {
+          card.classList.toggle('bg-rose-50', danger); card.classList.toggle('text-rose-900', danger); card.classList.toggle('border-rose-300', danger);
+          card.classList.toggle('bg-sky-50', !danger); card.classList.toggle('text-sky-900', !danger); card.classList.toggle('border-sky-200', !danger);
         }
-        if (!Number.isFinite(pos.coords.accuracy) || pos.coords.accuracy <= 0 || pos.coords.accuracy > 50) {
-          locationVerified = false;
-          if (title) title.textContent = 'Akurasi GPS belum memadai';
-          if (desc) desc.textContent = `Akurasi saat ini ±${Math.round(pos.coords.accuracy)} meter. Batas akurasi 50 meter; aktifkan lokasi presisi dan coba lagi.`;
-          notify('Akurasi GPS belum memadai. Sistem menerima akurasi maksimal 50 meter; aktifkan lokasi presisi atau coba di area terbuka.');
-          return;
-        }
-        if (title) title.textContent = status === 'Hadir' ? 'Lokasi terverifikasi dalam radius 30 meter' : 'Lokasi GPS berhasil direkam';
-        if (desc) desc.textContent = `Koordinat: ${lat.toFixed(6)}, ${lon.toFixed(6)} • Jarak ${Math.round(distance)} m • Akurasi ±${Math.round(pos.coords.accuracy)} m`;
-      }, err => {
-        locationVerified = false; locationWithinFence = false; lastGpsPosition = null;
-        if (title) title.textContent = 'Lokasi belum terverifikasi';
-        const msg = err.code === 1 ? 'Izin lokasi ditolak. Izinkan lokasi di pengaturan browser.' :
-          err.code === 2 ? 'Sinyal lokasi tidak tersedia. Aktifkan GPS perangkat.' :
-          'Waktu mendapatkan lokasi habis. Coba lagi di area terbuka.';
-        if (desc) desc.textContent = msg;
-        notify(msg);
-      }, {enableHighAccuracy:true, timeout:20000, maximumAge:0});
+      };
+      if (!navigator.geolocation) { setStatus('GPS tidak tersedia', 'Browser/perangkat tidak mendukung pembacaan lokasi.', true); if (!silent) notify('Perangkat/browser tidak mendukung GPS.'); return false; }
+      if (!window.isSecureContext) { setStatus('GPS memerlukan koneksi aman', 'Buka aplikasi melalui URL HTTPS Google Apps Script.', true); if (!silent) notify('GPS memerlukan HTTPS. Buka aplikasi melalui URL Web App Google Apps Script.'); return false; }
+      setStatus('Membaca koordinat perangkat…', 'GPS sedang mengambil lokasi secara otomatis. Izinkan akses lokasi jika diminta.');
+      return await new Promise(resolve => {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const lat = pos.coords.latitude, lon = pos.coords.longitude;
+          const accuracy = Number(pos.coords.accuracy);
+          const officeLat = -3.7994516, officeLon = 114.7790374;
+          const rad = n => n * Math.PI / 180;
+          const dLat = rad(lat-officeLat), dLon = rad(lon-officeLon);
+          const a = Math.sin(dLat/2)**2 + Math.cos(rad(officeLat))*Math.cos(rad(lat))*Math.sin(dLon/2)**2;
+          const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          lastGpsPosition = {latitude:lat, longitude:lon, distanceMeters:Math.round(distance*100)/100, accuracy, capturedAt:Date.now()};
+          locationWithinFence = distance <= 30;
+          if (!Number.isFinite(accuracy) || accuracy <= 0 || accuracy > 50) {
+            locationVerified = false;
+            setStatus('Akurasi GPS belum memadai', `Akurasi ±${Math.round(accuracy || 0)} meter. Maksimal 50 meter; aktifkan lokasi presisi.`, true);
+            if (!silent) notify('Akurasi GPS belum memadai. Aktifkan lokasi presisi atau coba di area terbuka.');
+            resolve(false); return;
+          }
+          if (status === 'Hadir' && distance > 30) {
+            locationVerified = false;
+            setStatus('Anda berada diluar radius kantor !', `Jarak ${Math.round(distance)} m dari kantor • Akurasi ±${Math.round(accuracy)} m • Batas 30 meter.`, true);
+            notify('Anda berada diluar radius kantor !');
+            resolve(false); return;
+          }
+          locationVerified = true;
+          setStatus(status === 'Hadir' ? 'Lokasi terverifikasi dalam radius 30 meter' : 'Lokasi GPS berhasil direkam', `Koordinat: ${lat.toFixed(6)}, ${lon.toFixed(6)} • Jarak ${Math.round(distance)} m • Akurasi ±${Math.round(accuracy)} m`, false);
+          resolve(true);
+        }, err => {
+          locationVerified = false; locationWithinFence = false; lastGpsPosition = null;
+          const msg = err.code === 1 ? 'Izin lokasi ditolak. Izinkan lokasi di pengaturan browser.' : err.code === 2 ? 'Sinyal lokasi tidak tersedia. Aktifkan GPS perangkat.' : 'Waktu mendapatkan lokasi habis. Coba lagi di area terbuka.';
+          setStatus('Lokasi belum terverifikasi', msg, true);
+          if (!silent) notify(msg);
+          resolve(false);
+        }, {enableHighAccuracy:true, timeout:20000, maximumAge:0});
+      });
     }
 
     let isDrawing = false;
@@ -2834,7 +2880,7 @@
       sigCanvas = document.getElementById('sig-canvas');
       document.querySelectorAll('input[name="absen-sesi"]').forEach(el => el.addEventListener('change', () => validateAttendanceWindow(false)));
       document.getElementById('lap-tanggal')?.addEventListener('change', e => { e.target.dataset.userSelected = 'true'; });
-      document.getElementById('absen-status')?.addEventListener('change', () => { locationVerified=false; lastGpsPosition=null; });
+      document.getElementById('absen-status')?.addEventListener('change', () => { locationVerified=false; lastGpsPosition=null; checkUserLocation({silent:true}); });
       setInterval(() => validateAttendanceWindow(false), 1000);
       validateAttendanceWindow(false);
       if (sigCanvas) {
@@ -2863,9 +2909,11 @@
       const catatan = ['Dinas Luar','Izin','Sakit'].includes(status) && catatanInput ? catatanInput.value.trim() : '';
       if (['Dinas Luar','Izin','Sakit'].includes(status) && !catatan) { notify('Catatan / Detail Lokasi wajib diisi untuk status ' + status + '.'); if (catatanInput) catatanInput.focus(); return; }
       const sesi = document.querySelector('input[name="absen-sesi"]:checked')?.value || 'Masuk';
-      if (!lastGpsPosition || !locationVerified) { notify('Tekan Cek Lokasi dan tunggu GPS berhasil diverifikasi terlebih dahulu.'); return; }
-      if (!lastGpsPosition.capturedAt || Date.now() - lastGpsPosition.capturedAt > 120000) { locationVerified = false; lastGpsPosition = null; notify('Data GPS sudah lebih dari 2 menit. Tekan Cek Lokasi kembali sebelum menyimpan presensi.'); return; }
-      if (status === 'Hadir' && (!locationWithinFence || lastGpsPosition.distanceMeters > 30)) { notify('Presensi Hadir ditolak karena lokasi di luar radius 30 meter kantor.'); return; }
+      if (!lastGpsPosition || !locationVerified || !lastGpsPosition.capturedAt || Date.now() - lastGpsPosition.capturedAt > 120000) {
+        const gpsReady = await checkUserLocation({silent:false});
+        if (!gpsReady) return;
+      }
+      if (status === 'Hadir' && (!locationWithinFence || lastGpsPosition.distanceMeters > 30)) { notify('Anda berada diluar radius kantor !'); return; }
       attendanceSubmissionInFlight = true;
       const button = document.getElementById('btn-submit-absen');
       if (button) { button.disabled = true; button.classList.add('opacity-50'); }
@@ -3124,6 +3172,7 @@
       }
       activePanel.classList.remove('hidden');
       activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
+      if (tabName === 'hadir') { locationVerified = false; lastGpsPosition = null; checkUserLocation({silent:true}); }
     }
 
     function switchVerifTab(tabName) {
