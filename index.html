@@ -559,9 +559,9 @@
                   </div>
                 </div>
 
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Catatan / Detail Lokasi</label>
-                  <input type="text" id="absen-catatan" placeholder="Contoh: Kantor DPMD Pelaihari / Tugas Luar Desa..." required
+                <div id="absen-catatan-wrap" class="hidden">
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Catatan / Detail Lokasi <span class="text-rose-600">(wajib untuk Dinas Luar / Izin / Sakit)</span></label>
+                  <input type="text" id="absen-catatan" placeholder="Jelaskan detail lokasi atau alasan presensi..."
                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium outline-none focus:ring-2 focus:ring-blue-600">
                 </div>
 
@@ -1678,6 +1678,7 @@
     let currentUser = null;
     let tempAvatarBase64 = null;
     let tempLapFotoBase64 = null;
+    let lapPhotoProcessing = false;
     let locationVerified = false;
     let locationWithinFence = false;
     let lastGpsPosition = null;
@@ -2262,6 +2263,7 @@
       const roleEl = document.getElementById('new-user-role');
       if (roleEl) roleEl.addEventListener('change', syncNewUserRoleFields);
       syncNewUserRoleFields();
+      if (document.getElementById('absen-status')) handleStatusChange();
     });
     function handleSaveNewUser(e) {
       e.preventDefault();
@@ -2712,6 +2714,10 @@
       const evidenceWrap = document.getElementById('absen-evidence-wrap');
       const evidenceInput = document.getElementById('absen-evidence-file');
       const needsEvidence = ['Dinas Luar','Izin','Sakit'].includes(status);
+      const catatanWrap = document.getElementById('absen-catatan-wrap');
+      const catatanInput = document.getElementById('absen-catatan');
+      if (catatanWrap) catatanWrap.classList.toggle('hidden', !needsEvidence);
+      if (catatanInput) { catatanInput.required = needsEvidence; if (!needsEvidence) catatanInput.value = ''; }
       if (evidenceWrap) evidenceWrap.classList.toggle('hidden', !needsEvidence);
       if (evidenceInput) evidenceInput.required = needsEvidence;
       if (!needsEvidence) { attendanceEvidenceDataUrl=''; attendanceEvidenceName=''; if(evidenceInput) evidenceInput.value=''; const nameEl=document.getElementById('absen-evidence-file-name'); if(nameEl) nameEl.textContent=''; }
@@ -2836,7 +2842,9 @@
       if (['Dinas Luar','Izin','Sakit'].includes(document.getElementById('absen-status').value) && !attendanceEvidenceDataUrl) { notify('Unggah Surat Tugas, Surat Izin, atau Surat Sakit sebelum menyimpan presensi.'); return; }
       if (!signatureDrawn) { notify('Tanda tangan digital wajib dibubuhkan sebelum menyimpan presensi.'); return; }
       const status = document.getElementById('absen-status').value;
-      const catatan = document.getElementById('absen-catatan').value.trim();
+      const catatanInput = document.getElementById('absen-catatan');
+      const catatan = ['Dinas Luar','Izin','Sakit'].includes(status) && catatanInput ? catatanInput.value.trim() : '';
+      if (['Dinas Luar','Izin','Sakit'].includes(status) && !catatan) { notify('Catatan / Detail Lokasi wajib diisi untuk status ' + status + '.'); if (catatanInput) catatanInput.focus(); return; }
       const sesi = document.querySelector('input[name="absen-sesi"]:checked')?.value || 'Masuk';
       if (!lastGpsPosition || !locationVerified) { notify('Tekan Cek Lokasi dan tunggu GPS berhasil diverifikasi terlebih dahulu.'); return; }
       if (!lastGpsPosition.capturedAt || Date.now() - lastGpsPosition.capturedAt > 120000) { locationVerified = false; lastGpsPosition = null; notify('Data GPS sudah lebih dari 2 menit. Tekan Cek Lokasi kembali sebelum menyimpan presensi.'); return; }
@@ -2873,17 +2881,49 @@
       }
     }
 
-    function previewLapFoto(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = evt => {
-          tempLapFotoBase64 = evt.target.result;
-          document.getElementById('lap-foto-preview').src = tempLapFotoBase64;
-          document.getElementById('lap-foto-preview-container').classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-      }
+    async function compressImageFile(file, maxSide = 1600, quality = 0.76) {
+      if (!file || !/^image\/(jpeg|jpg|png|webp)$/i.test(file.type || '')) throw new Error('Pilih foto JPG, PNG, atau WEBP.');
+      const imageUrl = URL.createObjectURL(file);
+      try {
+        const img = new Image();
+        img.decoding = 'async';
+        img.src = imageUrl;
+        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = () => reject(new Error('Foto tidak dapat dibaca.')); });
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+        canvas.height = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+        const ctx = canvas.getContext('2d', {alpha:false});
+        if (!ctx) throw new Error('Pemrosesan foto tidak didukung browser.');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        // Kurangi kualitas bertahap agar upload tetap ringan untuk jaringan seluler.
+        for (let q = quality - 0.12; dataUrl.length > 1_400_000 && q >= 0.48; q -= 0.08) dataUrl = canvas.toDataURL('image/jpeg', q);
+        if (dataUrl.length > 5_000_000) throw new Error('Ukuran foto masih terlalu besar setelah dikompresi. Pilih foto lain.');
+        return dataUrl;
+      } finally { URL.revokeObjectURL(imageUrl); }
+    }
+
+    async function previewLapFoto(e) {
+      const file = e && e.target && e.target.files ? e.target.files[0] : null;
+      if (!file) { tempLapFotoBase64 = null; lapPhotoProcessing = false; return; }
+      const preview = document.getElementById('lap-foto-preview');
+      const container = document.getElementById('lap-foto-preview-container');
+      lapPhotoProcessing = true; tempLapFotoBase64 = null;
+      try {
+        if (file.size > 15 * 1024 * 1024) throw new Error('Pilih foto dengan ukuran asli maksimal 15 MB.');
+        if (container) container.classList.remove('hidden');
+        if (preview) { preview.removeAttribute('src'); preview.alt = 'Mengoptimalkan foto…'; }
+        tempLapFotoBase64 = await compressImageFile(file);
+        if (preview) { preview.src = tempLapFotoBase64; preview.alt = 'Pratinjau foto kegiatan'; }
+        notify('Foto dioptimalkan agar pengiriman lebih cepat.');
+      } catch (err) {
+        tempLapFotoBase64 = null;
+        if (container) container.classList.add('hidden');
+        e.target.value = '';
+        notify('Foto gagal diproses: ' + (err.message || err));
+      } finally { lapPhotoProcessing = false; }
     }
 
     async function handleSaveLaporan(e) {
@@ -2895,7 +2935,8 @@
       const output = document.getElementById('lap-output').value.trim();
       const jamMulai = document.getElementById('lap-jam-mulai').value;
       const jamSelesai = document.getElementById('lap-jam-selesai').value;
-      if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi!'); return; }
+      if (lapPhotoProcessing) { notify('Foto sedang dioptimalkan. Tunggu sampai pratinjau foto muncul, lalu kirim kembali.'); return; }
+      if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi, termasuk foto yang sudah selesai dioptimalkan!'); return; }
       if (jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai.'); return; }
       if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.innerHTML; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…'; }
 
