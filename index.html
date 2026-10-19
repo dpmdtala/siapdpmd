@@ -95,6 +95,56 @@
 
     }
   </style>
+
+  <style id="siap-pjlp-mobile-report-form">
+    @media (max-width: 767px) {
+      html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+      #view-pjlp, #pjlp-tab-kegiatan, #pjlp-tab-kegiatan > .grid,
+      #pjlp-tab-kegiatan > .grid > div,
+      #pjlp-tab-kegiatan form,
+      #pjlp-tab-kegiatan form > div,
+      #pjlp-tab-kegiatan .bg-white {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+      }
+      #pjlp-tab-kegiatan { gap: .75rem !important; }
+      #pjlp-tab-kegiatan > .grid { display: grid; grid-template-columns: minmax(0, 1fr) !important; gap: .75rem !important; }
+      #pjlp-tab-kegiatan .lg\:col-span-5,
+      #pjlp-tab-kegiatan .lg\:col-span-7 { grid-column: 1 / -1; width: 100%; }
+      #pjlp-tab-kegiatan .bg-white.p-6,
+      #pjlp-tab-kegiatan .bg-white.p-8 {
+        padding: .85rem !important;
+        border-radius: 1rem !important;
+      }
+      #pjlp-tab-kegiatan .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: .75rem !important; }
+      #pjlp-tab-kegiatan form { display: flex; flex-direction: column; gap: .65rem !important; }
+      #pjlp-tab-kegiatan form > div { width: 100%; }
+      #pjlp-tab-kegiatan label { font-size: .66rem !important; line-height: 1rem; }
+      #pjlp-tab-kegiatan input:not([type="file"]),
+      #pjlp-tab-kegiatan textarea,
+      #pjlp-tab-kegiatan select {
+        display: block; width: 100%; min-width: 0; max-width: 100%;
+        box-sizing: border-box; padding: .55rem .65rem !important;
+        font-size: 16px !important; line-height: 1.25rem;
+      }
+      #pjlp-tab-kegiatan textarea { min-height: 4.5rem; }
+      #pjlp-tab-kegiatan input[type="file"] {
+        display: block; width: 100%; max-width: 100%; box-sizing: border-box;
+        font-size: .7rem; line-height: 1.2rem;
+      }
+      #pjlp-tab-kegiatan input[type="file"]::file-selector-button {
+        max-width: 100%; margin-right: .4rem; padding: .35rem .5rem;
+        font-size: .68rem; white-space: normal;
+      }
+      #pjlp-tab-kegiatan .grid.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: .5rem !important; }
+      #pjlp-tab-kegiatan #lap-foto-preview { height: 7rem; }
+      #pjlp-tab-kegiatan form button[type="submit"] { padding: .7rem .65rem !important; font-size: .75rem; }
+      #pjlp-tab-kegiatan .overflow-x-auto { max-width: 100%; -webkit-overflow-scrolling: touch; }
+      #pjlp-tab-kegiatan table { min-width: 620px; }
+    }
+  </style>
+
 </head>
 <body class="bg-blue-50/50 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
@@ -145,10 +195,6 @@
       <!-- Logged-in Profile Badge -->
       <div id="nav-user-badge" class="hidden flex items-center gap-3">
         <div class="flex items-center gap-2.5 text-right">
-          <div class="w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-400 overflow-hidden flex items-center justify-center text-blue-700 font-bold text-xs shadow-sm">
-            <img id="nav-user-avatar" src="" class="w-full h-full object-cover hidden" alt="Avatar">
-            <span id="nav-user-avatar-initial">U</span>
-          </div>
           <div class="hidden sm:block">
             <p id="user-display-name" class="font-bold text-xs text-slate-800">User Active</p>
             <p id="user-display-role" class="text-[10px] font-semibold text-blue-700">Role System</p>
