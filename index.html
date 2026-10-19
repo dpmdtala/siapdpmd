@@ -981,6 +981,9 @@
         <button id="verif-tab-btn-hadir" onclick="switchVerifTab('hadir')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-calendar-user"></i> Presensi Staf Bidang
         </button>
+        <button id="verif-tab-btn-riwayat" onclick="switchVerifTab('riwayat')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Verifikasi</button>
+        <button id="verif-tab-btn-staf" onclick="switchVerifTab('staf')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition"><i class="fa-solid fa-users"></i> Data Staf Bidang</button>
+        <button id="verif-tab-btn-rekap" onclick="switchVerifTab('rekap')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition"><i class="fa-solid fa-file-lines"></i> Rekap & Cetak</button>
       </div>
 
       <!-- TAB 1 VERIFIKASI LAPORAN -->
@@ -1062,6 +1065,25 @@
         </div>
       </div>
 
+      <!-- TAB 3 RIWAYAT VERIFIKASI: memakai data laporan yang sudah ada, tanpa tabel baru -->
+      <div id="verif-tab-riwayat" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4"><div><h3 class="font-black text-slate-900 text-lg">Riwayat Verifikasi</h3><p class="text-xs text-slate-500">Laporan bidang yang sudah diputuskan, dengan filter dan cetak browser.</p></div><button onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold"><i class="fa-solid fa-print mr-1"></i> Cetak Riwayat</button></div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-slate-50"><tr><th class="p-3">Tanggal</th><th class="p-3">Nama Staf</th><th class="p-3">Kegiatan</th><th class="p-3">Output</th><th class="p-3">Status</th></tr></thead><tbody id="verif-riwayat-body" class="divide-y divide-slate-100"></tbody></table></div>
+      </div>
+
+      <!-- TAB 4 DATA STAF BIDANG: hanya data akun yang sudah dikirim oleh getAppData sesuai bidang -->
+      <div id="verif-tab-staf" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4"><div><h3 class="font-black text-slate-900 text-lg">Data Staf Bidang</h3><p class="text-xs text-slate-500">Daftar staf dalam lingkup bidang verifikator.</p></div><button onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold"><i class="fa-solid fa-print mr-1"></i> Cetak Daftar</button></div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-slate-50"><tr><th class="p-3">Nama</th><th class="p-3">Bidang</th><th class="p-3">Jabatan</th><th class="p-3">Status Akun</th></tr></thead><tbody id="verif-staf-body" class="divide-y divide-slate-100"></tbody></table></div>
+      </div>
+
+      <!-- TAB 5 REKAP -->
+      <div id="verif-tab-rekap" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4"><div><h3 class="font-black text-slate-900 text-lg">Rekapitulasi Laporan Bidang</h3><p class="text-xs text-slate-500">Ringkasan berbasis daftar status, tanpa grafik tambahan.</p></div><button onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold"><i class="fa-solid fa-print mr-1"></i> Cetak Rekap</button></div>
+        <div id="verif-rekap-status" class="grid sm:grid-cols-3 gap-3"></div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-slate-50"><tr><th class="p-3">Periode</th><th class="p-3">Total Laporan</th><th class="p-3">Disetujui</th><th class="p-3">Menunggu</th></tr></thead><tbody id="verif-rekap-body" class="divide-y divide-slate-100"></tbody></table></div>
+      </div>
+
     </section>
 
     <!-- ================= VIEW 4: SUPER ADMIN CONTROL PANEL ================= -->
@@ -1106,6 +1128,10 @@
         <button id="admin-tab-btn-arsip" onclick="switchAdminTab('arsip')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-folder-tree"></i> Semua Arsip Berkas Pegawai
         </button>
+        <button id="admin-tab-btn-dashboard" onclick="switchAdminTab('dashboard')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition"><i class="fa-solid fa-gauge-high"></i> Dashboard Dinas</button>
+        <button id="admin-tab-btn-rekap" onclick="switchAdminTab('rekap')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition"><i class="fa-solid fa-file-lines"></i> Rekapitulasi Dinas</button>
+        <button id="admin-tab-btn-audit" onclick="switchAdminTab('audit')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition"><i class="fa-solid fa-shield-halved"></i> Audit Trail</button>
+        <button id="admin-tab-btn-status" onclick="switchAdminTab('status')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition"><i class="fa-solid fa-heart-pulse"></i> Status Sistem</button>
       </div>
 
       <!-- ADMIN TAB: REGISTRASI MENUNGGU PERSETUJUAN -->
@@ -1290,6 +1316,23 @@
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div id="admin-tab-dashboard" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
+        <div class="border-b border-slate-100 pb-4"><h3 class="font-black text-slate-900 text-lg">Dashboard Dinas</h3><p class="text-xs text-slate-500">Ringkasan lintas bidang menggunakan data yang sudah dimuat aplikasi.</p></div>
+        <div id="admin-dashboard-kpis" class="grid sm:grid-cols-2 xl:grid-cols-4 gap-3"></div>
+        <div class="grid lg:grid-cols-2 gap-5"><div class="border border-slate-200 rounded-2xl p-4"><h4 class="font-bold mb-3">Rekap Laporan per Bidang</h4><div id="admin-dashboard-bidang" class="space-y-3"></div></div><div class="border border-slate-200 rounded-2xl p-4"><h4 class="font-bold mb-3">Status Verifikasi</h4><div id="admin-dashboard-status" class="space-y-3"></div></div></div>
+      </div>
+      <div id="admin-tab-rekap" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4"><div><h3 class="font-black text-slate-900 text-lg">Rekapitulasi Dinas</h3><p class="text-xs text-slate-500">Rekap laporan dan presensi seluruh bidang dalam bentuk tabel.</p></div><button onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold"><i class="fa-solid fa-print mr-1"></i> Cetak Rekap</button></div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-slate-50"><tr><th class="p-3">Bidang</th><th class="p-3">Jumlah Staf</th><th class="p-3">Laporan</th><th class="p-3">Disetujui</th><th class="p-3">Menunggu</th><th class="p-3">Catatan Presensi</th></tr></thead><tbody id="admin-rekap-body" class="divide-y divide-slate-100"></tbody></table></div>
+      </div>
+      <div id="admin-tab-audit" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4"><div><h3 class="font-black text-slate-900 text-lg">Audit Trail / Log Aktivitas</h3><p class="text-xs text-slate-500">Log dibaca dari sheet AuditLog yang sudah ada. Data dimuat hanya saat menu dibuka.</p></div><button onclick="loadAdminAuditLog()" class="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold"><i class="fa-solid fa-rotate mr-1"></i> Muat Ulang</button></div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-slate-50"><tr><th class="p-3">Waktu</th><th class="p-3">Aktor</th><th class="p-3">Aksi</th><th class="p-3">Entitas</th><th class="p-3">Keterangan</th></tr></thead><tbody id="admin-audit-body"><tr><td colspan="5" class="p-4 text-center text-slate-400">Buka menu untuk memuat log.</td></tr></tbody></table></div>
+      </div>
+      <div id="admin-tab-status" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
+        <div class="border-b border-slate-100 pb-4"><h3 class="font-black text-slate-900 text-lg">Status Sistem</h3><p class="text-xs text-slate-500">Pemeriksaan koneksi API tanpa mengubah database.</p></div><div id="admin-system-status" class="space-y-3"><button onclick="checkAdminSystemStatus()" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold">Periksa Status Sistem</button></div>
       </div>
 
     </section>
@@ -2099,7 +2142,7 @@
       if (targetView) targetView.classList.remove('hidden');
 
       if (viewName === 'verifikator') renderVerifikatorDashboard();
-      if (viewName === 'superadmin') switchAdminTab('users');
+      if (viewName === 'superadmin') switchAdminTab('dashboard');
       if (viewName === 'pjlp') renderPjlpTables();
     }
 
@@ -2129,7 +2172,7 @@
         notify('Login berhasil. Menyiapkan data dashboard…');
         try {
           await refreshServerData();
-          if (currentUser.role === 'SuperAdmin') switchAdminTab('users');
+          if (currentUser.role === 'SuperAdmin') switchAdminTab('dashboard');
           else if (currentUser.role === 'Verifikator') renderVerifikatorDashboard();
           else renderPjlpTables();
           renderMonthlyProductiveEmployee();
@@ -3331,20 +3374,20 @@
 
     // Super Admin & Verifikator Tabs
     function switchAdminTab(tabName) {
-      ['registrasi', 'users', 'hadir', 'laporan', 'arsip'].forEach(t => {
-        const tabEl = document.getElementById(`admin-tab-${t}`);
-        const btnEl = document.getElementById(`admin-tab-btn-${t}`);
-        if (tabEl) tabEl.classList.add('hidden');
-        if (btnEl) btnEl.className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
-      });
-      document.getElementById(`admin-tab-${tabName}`).classList.remove('hidden');
-      document.getElementById(`admin-tab-btn-${tabName}`).className = "px-4 py-2.5 rounded-xl bg-indigo-600 text-white flex items-center gap-2 transition shadow-sm";
-
+      const tabs = ['registrasi','users','hadir','laporan','arsip','dashboard','rekap','audit','status'];
+      tabs.forEach(t => { const panel=document.getElementById(`admin-tab-${t}`); const btn=document.getElementById(`admin-tab-btn-${t}`); if(panel) panel.classList.add('hidden'); if(btn) btn.className='px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold'; });
+      const activePanel=document.getElementById(`admin-tab-${tabName}`), activeBtn=document.getElementById(`admin-tab-btn-${tabName}`);
+      if(!activePanel || !activeBtn) return;
+      activePanel.classList.remove('hidden'); activeBtn.className='px-4 py-2.5 rounded-xl bg-indigo-600 text-white flex items-center gap-2 transition shadow-sm';
       if (tabName === 'registrasi') renderPendingRegistrations();
       if (tabName === 'users') renderAdminUserTable();
       if (tabName === 'hadir') renderAdminAbsensiTable();
       if (tabName === 'laporan') renderAdminLaporanTable();
       if (tabName === 'arsip') renderAdminArsipTable();
+      if (tabName === 'dashboard') renderAdminSummary();
+      if (tabName === 'rekap') renderAdminRecap();
+      if (tabName === 'audit') loadAdminAuditLog();
+      if (tabName === 'status') checkAdminSystemStatus();
     }
 
     function switchPjlpTab(tabName) {
@@ -3377,14 +3420,47 @@
     }
 
     function switchVerifTab(tabName) {
-      document.getElementById('verif-tab-laporan').classList.add('hidden');
-      document.getElementById('verif-tab-hadir').classList.add('hidden');
-      ['laporan', 'hadir'].forEach(t => {
-        document.getElementById(`verif-tab-btn-${t}`).className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
-      });
-      document.getElementById(`verif-tab-${tabName}`).classList.remove('hidden');
-      document.getElementById(`verif-tab-btn-${tabName}`).className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
+      const tabs=['laporan','hadir','riwayat','staf','rekap'];
+      tabs.forEach(t=>{const p=document.getElementById(`verif-tab-${t}`),b=document.getElementById(`verif-tab-btn-${t}`);if(p)p.classList.add('hidden');if(b)b.className='px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold';});
+      const panel=document.getElementById(`verif-tab-${tabName}`),button=document.getElementById(`verif-tab-btn-${tabName}`);if(!panel||!button)return;
+      panel.classList.remove('hidden');button.className='px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm';
+      if(tabName==='laporan')renderVerifikatorTable();
+      if(tabName==='hadir')renderVerifikatorHadirTable();
+      if(tabName==='riwayat')renderVerifHistory();
+      if(tabName==='staf')renderVerifStaff();
+      if(tabName==='rekap')renderVerifRecap();
     }
+
+    function statusPill(status) {
+      const s=String(status||'Pending'); const cls=(s==='Disetujui'||s==='Aktif')?'bg-emerald-100 text-emerald-800':((s==='Perlu Perbaikan'||s==='Nonaktif'||s==='Ditolak')?'bg-rose-100 text-rose-800':'bg-amber-100 text-amber-800');
+      return `<span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold ${cls}">${escapeHTML(s)}</span>`;
+    }
+    function renderVerifHistory(){
+      const body=document.getElementById('verif-riwayat-body');if(!body||!currentUser)return;
+      const rows=dbLaporan.filter(l=>{const u=dbUsers.find(x=>String(x.id)===String(l.userId));return u&&String(u.bidang||'').trim()===String(currentUser.bidang||'').trim()&&l.status!=='Pending';}).sort((a,b)=>String(b.tanggal||'').localeCompare(String(a.tanggal||'')));
+      body.innerHTML=rows.length?rows.map(l=>{const u=dbUsers.find(x=>String(x.id)===String(l.userId));return `<tr><td class="p-3">${escapeHTML(formatDateDisplay(l.tanggal))}</td><td class="p-3 font-bold">${escapeHTML(u?.nama||l.nama||'-')}</td><td class="p-3">${escapeHTML(l.kegiatan||'-')}</td><td class="p-3">${escapeHTML(l.output||'-')}</td><td class="p-3">${statusPill(l.status)}</td></tr>`}).join(''):'<tr><td colspan="5" class="p-5 text-center text-slate-400">Belum ada riwayat laporan yang selesai diverifikasi.</td></tr>';
+    }
+    function renderVerifStaff(){
+      const body=document.getElementById('verif-staf-body');if(!body||!currentUser)return;
+      const rows=dbUsers.filter(u=>u.role==='PJLP'&&String(u.bidang||'').trim()===String(currentUser.bidang||'').trim()).sort((a,b)=>String(a.nama||'').localeCompare(String(b.nama||''),'id'));
+      body.innerHTML=rows.length?rows.map(u=>`<tr><td class="p-3 font-bold">${escapeHTML(u.nama||'-')}</td><td class="p-3">${escapeHTML(u.bidang||'-')}</td><td class="p-3">${escapeHTML(u.jabatan||'-')}</td><td class="p-3">${statusPill(u.status||'-')}</td></tr>`).join(''):'<tr><td colspan="4" class="p-5 text-center text-slate-400">Tidak ada data staf.</td></tr>';
+    }
+    function renderVerifRecap(){
+      if(!currentUser)return;const bidang=String(currentUser.bidang||'').trim();const rows=dbLaporan.filter(l=>{const u=dbUsers.find(x=>String(x.id)===String(l.userId));return u&&String(u.bidang||'').trim()===bidang;});
+      const counts={total:rows.length,approved:rows.filter(x=>x.status==='Disetujui').length,pending:rows.filter(x=>x.status==='Pending').length};
+      const cards=document.getElementById('verif-rekap-status');if(cards)cards.innerHTML=[['Total Laporan',counts.total,'blue'],['Disetujui',counts.approved,'emerald'],['Menunggu',counts.pending,'amber']].map(x=>`<div class="border border-slate-200 rounded-2xl p-4"><p class="text-xs text-slate-500">${x[0]}</p><p class="text-2xl font-black text-${x[2]}-700">${x[1]}</p></div>`).join('');
+      const body=document.getElementById('verif-rekap-body');if(body)body.innerHTML=`<tr><td class="p-3">Seluruh periode</td><td class="p-3 font-bold">${counts.total}</td><td class="p-3">${counts.approved}</td><td class="p-3">${counts.pending}</td></tr>`;
+    }
+    function adminGroupByBidang(){const groups={};(dbUsers||[]).filter(u=>u.role==='PJLP').forEach(u=>{const k=u.bidang||'Belum ditentukan';groups[k]=groups[k]||{staff:0,reports:0,approved:0,pending:0,attendance:0};groups[k].staff++;});(dbLaporan||[]).forEach(l=>{const u=dbUsers.find(x=>String(x.id)===String(l.userId));if(!u)return;const g=groups[u.bidang||'Belum ditentukan']||(groups[u.bidang||'Belum ditentukan']={staff:0,reports:0,approved:0,pending:0,attendance:0});g.reports++;if(l.status==='Disetujui')g.approved++;else g.pending++;});(dbAbsensi||[]).forEach(a=>{const u=dbUsers.find(x=>String(x.id)===String(a.userId));if(u&&groups[u.bidang||'Belum ditentukan'])groups[u.bidang||'Belum ditentukan'].attendance++;});return groups;}
+    function renderAdminSummary(){
+      const users=(dbUsers||[]).filter(u=>u.role==='PJLP'),reports=dbLaporan||[],attendance=dbAbsensi||[];const pending=reports.filter(r=>r.status==='Pending').length,approved=reports.filter(r=>r.status==='Disetujui').length;
+      const k=document.getElementById('admin-dashboard-kpis');if(k)k.innerHTML=[['Staf Aktif',users.filter(u=>u.status==='Aktif').length,'fa-users'],['Total Laporan',reports.length,'fa-file-lines'],['Menunggu Verifikasi',pending,'fa-clock'],['Catatan Presensi',attendance.length,'fa-calendar-check']].map(x=>`<div class="border border-slate-200 rounded-2xl p-4 flex items-center gap-3"><span class="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center"><i class="fa-solid ${x[2]}"></i></span><div><p class="text-xs text-slate-500">${x[0]}</p><p class="text-2xl font-black text-slate-900">${x[1]}</p></div></div>`).join('');
+      const groups=adminGroupByBidang();const gb=document.getElementById('admin-dashboard-bidang');if(gb)gb.innerHTML=Object.entries(groups).sort((a,b)=>b[1].reports-a[1].reports).map(([name,g])=>`<div class="flex justify-between gap-3 border-b border-slate-100 pb-2"><span class="text-sm">${escapeHTML(name)}</span><strong>${g.reports} laporan</strong></div>`).join('')||'<p class="text-sm text-slate-400">Belum ada data.</p>';
+      const st=document.getElementById('admin-dashboard-status');if(st)st.innerHTML=[['Disetujui',approved,'emerald'],['Menunggu',pending,'amber'],['Perlu Perbaikan',reports.filter(r=>r.status==='Perlu Perbaikan').length,'rose']].map(x=>`<div class="flex items-center justify-between border-b border-slate-100 pb-3"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-${x[2]}-500"></span>${x[0]}</span><strong>${x[1]} laporan</strong></div>`).join('');
+    }
+    function renderAdminRecap(){const body=document.getElementById('admin-rekap-body');if(!body)return;const groups=adminGroupByBidang();body.innerHTML=Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0],'id')).map(([name,g])=>`<tr><td class="p-3 font-semibold">${escapeHTML(name)}</td><td class="p-3">${g.staff}</td><td class="p-3">${g.reports}</td><td class="p-3">${g.approved}</td><td class="p-3">${g.pending}</td><td class="p-3">${g.attendance}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-slate-400">Belum ada data.</td></tr>';}
+    async function loadAdminAuditLog(){const body=document.getElementById('admin-audit-body');if(!body)return;body.innerHTML='<tr><td colspan="5" class="p-4 text-center text-slate-400">Memuat log aktivitas…</td></tr>';try{const r=await gasCall('getAuditLog',{limit:200});const rows=r.logs||[];body.innerHTML=rows.length?rows.map(x=>`<tr><td class="p-3 whitespace-nowrap">${escapeHTML(x.createdAt||'-')}</td><td class="p-3">${escapeHTML(x.actorName||x.actorId||'-')}</td><td class="p-3 font-bold">${escapeHTML(x.action||'-')}</td><td class="p-3">${escapeHTML((x.entity||'-')+' / '+(x.entityId||'-'))}</td><td class="p-3">${escapeHTML(x.details||'-')}</td></tr>`).join(''):'<tr><td colspan="5" class="p-4 text-center text-slate-400">Belum ada log aktivitas.</td></tr>';}catch(e){body.innerHTML=`<tr><td colspan="5" class="p-4 text-center text-rose-600">Log gagal dimuat: ${escapeHTML(e.message)}</td></tr>`;}}
+    async function checkAdminSystemStatus(){const el=document.getElementById('admin-system-status');if(!el)return;el.innerHTML='<p class="text-sm text-slate-500">Memeriksa koneksi API…</p>';try{const r=await gasCall('healthCheck');el.innerHTML=`<div class="border border-emerald-200 bg-emerald-50 rounded-xl p-4"><p class="font-bold text-emerald-800"><i class="fa-solid fa-circle-check mr-2"></i>API SIAP-DPMD merespons</p><p class="text-xs text-emerald-700 mt-1">Waktu server: ${escapeHTML(r.time||'-')}</p><p class="text-xs text-slate-600 mt-2">Pemeriksaan ini tidak mengubah data. Koneksi spreadsheet dan Drive tidak diuji oleh pemeriksaan ringan ini.</p></div>`;}catch(e){el.innerHTML=`<div class="border border-rose-200 bg-rose-50 rounded-xl p-4 text-rose-700">Pemeriksaan gagal: ${escapeHTML(e.message)}</div>`;}}
 
     // Menu khusus Super Admin untuk menyetujui atau menolak akun baru.
     function renderPendingRegistrations() {
@@ -3803,7 +3879,7 @@
           else if (currentUser.role === 'Verifikator') switchView('verifikator');
           else switchView('pjlp');
           await refreshServerData();
-          if (currentUser.role === 'SuperAdmin') switchAdminTab('users');
+          if (currentUser.role === 'SuperAdmin') switchAdminTab('dashboard');
           else if (currentUser.role === 'Verifikator') renderVerifikatorDashboard();
           else renderPjlpTables();
           renderMonthlyProductiveEmployee();
