@@ -921,7 +921,13 @@
             <h3 class="font-black text-slate-900 text-lg">Daftar Laporan Harian Staf PJLP</h3>
             <p class="text-xs text-slate-500">Tinjau uraian kegiatan, volume output, dan foto bukti pelaksanaan pekerjaan</p>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="verif-filter-pegawai" onchange="renderVerifikatorTable()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white outline-none" aria-label="Filter pegawai laporan">
+              <option value="Semua">Semua Pegawai</option>
+            </select>
+            <select id="verif-filter-bulan" onchange="renderVerifikatorTable()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white outline-none" aria-label="Filter bulan kinerja">
+              <option value="Semua">Semua Bulan Kinerja</option>
+            </select>
             <select id="verif-filter-status" onchange="renderVerifikatorTable()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white outline-none">
               <option value="Semua">Semua Status</option>
               <option value="Pending">Perlu Diperiksa (Pending)</option>
@@ -953,9 +959,19 @@
 
       <!-- TAB 2 PRESENSI STAF BIDANG -->
       <div id="verif-tab-hadir" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
-        <div class="border-b border-slate-100 pb-4">
-          <h3 class="font-black text-slate-900 text-lg">Presensi Staf PJLP Bidang</h3>
-          <p class="text-xs text-slate-500">Daftar rekap kehadiran masuk/pulang staf yang dinaungi</p>
+        <div class="border-b border-slate-100 pb-4 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
+          <div>
+            <h3 class="font-black text-slate-900 text-lg">Presensi Staf PJLP Bidang</h3>
+            <p class="text-xs text-slate-500">Daftar rekap kehadiran masuk/pulang, ketepatan waktu, dan durasi keterlambatan staf yang dinaungi</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <select id="verif-hadir-filter-pegawai" onchange="renderVerifikatorHadirTable()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white outline-none" aria-label="Filter pegawai presensi">
+              <option value="Semua">Semua Pegawai</option>
+            </select>
+            <select id="verif-hadir-filter-bulan" onchange="renderVerifikatorHadirTable()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white outline-none" aria-label="Filter bulan kehadiran">
+              <option value="Semua">Semua Bulan Kehadiran</option>
+            </select>
+          </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -966,6 +982,7 @@
                 <th class="py-3.5 px-4">Tanggal & Jam</th>
                 <th class="py-3.5 px-4">Sesi</th>
                 <th class="py-3.5 px-4">Status</th>
+                <th class="py-3.5 px-4">Ketepatan Waktu</th>
                 <th class="py-3.5 px-4">Catatan / Lokasi</th>
               </tr>
             </thead>
@@ -3244,75 +3261,145 @@
       });
     }
 
-    // Verifikator Dashboard
+    // Verifikator Dashboard: filter pegawai dan bulan dibangun dari data yang tersedia.
+    function verifMonthKey(value) {
+      if (!value) return '';
+      const raw = String(value).trim();
+      let m = raw.match(/^(\d{4})-(\d{1,2})/);
+      if (m) return m[1] + '-' + String(m[2]).padStart(2, '0');
+      const d = new Date(raw);
+      if (!Number.isNaN(d.getTime())) return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      return '';
+    }
+
+    function verifMonthLabel(key) {
+      if (!key || !/^\d{4}-\d{2}$/.test(key)) return key || '';
+      const [y,m] = key.split('-').map(Number);
+      return new Date(y, m-1, 1).toLocaleDateString('id-ID', {month:'long', year:'numeric'});
+    }
+
+    function fillVerifSelect(id, items, defaultLabel) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const previous = el.value || 'Semua';
+      const html = [`<option value="Semua">${escapeHTML(defaultLabel)}</option>`].concat(items.map(item =>
+        `<option value="${escapeHTML(item.value)}">${escapeHTML(item.label)}</option>`));
+      el.innerHTML = html.join('');
+      if (items.some(item => item.value === previous)) el.value = previous;
+    }
+
+    function populateVerifikatorFilters() {
+      if (!currentUser) return;
+      const bidang = currentUser.bidang;
+      const staff = dbUsers.filter(u => u.role === 'PJLP' && String(u.bidang || '').trim() === String(bidang || '').trim())
+        .sort((a,b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id'));
+      const staffOptions = staff.map(u => ({value:String(u.id), label:String(u.nama || 'Tanpa Nama')}));
+      ['verif-filter-pegawai','verif-hadir-filter-pegawai'].forEach(id => fillVerifSelect(id, staffOptions, 'Semua Pegawai'));
+      const reports = dbLaporan.filter(r => { const owner = dbUsers.find(u => String(u.id) === String(r.userId)); return owner && String(owner.bidang || '').trim() === String(bidang || '').trim(); });
+      const attendance = dbAbsensi.filter(a => { const owner = dbUsers.find(u => String(u.id) === String(a.userId)); return owner && String(owner.bidang || '').trim() === String(bidang || '').trim(); });
+      const reportMonths = [...new Set(reports.map(r => verifMonthKey(r.tanggal)).filter(Boolean))].sort().reverse().map(k => ({value:k,label:verifMonthLabel(k)}));
+      const attendanceMonths = [...new Set(attendance.map(a => verifMonthKey(a.tanggal)).filter(Boolean))].sort().reverse().map(k => ({value:k,label:verifMonthLabel(k)}));
+      fillVerifSelect('verif-filter-bulan', reportMonths, 'Semua Bulan Kinerja');
+      fillVerifSelect('verif-hadir-filter-bulan', attendanceMonths, 'Semua Bulan Kehadiran');
+    }
+
     function renderVerifikatorDashboard() {
       if (!currentUser) return;
       const userBidang = currentUser.bidang;
-      document.getElementById('verif-scope-badge').innerText = `Ruang Lingkup: ${userBidang}`;
-      document.getElementById('verif-scope-desc').innerText = `Verifikasi laporan & presensi staf PJLP khusus di ${userBidang}.`;
+      const badge = document.getElementById('verif-scope-badge');
+      const desc = document.getElementById('verif-scope-desc');
+      if (badge) badge.innerText = `Ruang Lingkup: ${userBidang}`;
+      if (desc) desc.innerText = `Verifikasi laporan & presensi staf PJLP khusus di ${userBidang}.`;
 
       const divisionStaf = dbUsers.filter(u => u.bidang === userBidang && u.role === 'PJLP');
-      const divisionLaporan = dbLaporan.filter(l => {
-        const owner = dbUsers.find(u => u.id === l.userId);
-        return owner && owner.bidang === userBidang;
-      });
-      const divisionAbsensi = dbAbsensi.filter(a => {
-        const owner = dbUsers.find(u => u.id === a.userId);
-        return owner && owner.bidang === userBidang;
-      });
-
-      document.getElementById('verif-stat-staf').innerText = divisionStaf.length;
-      document.getElementById('verif-stat-pending').innerText = divisionLaporan.filter(l => l.status === 'Pending').length;
-
+      const divisionLaporan = dbLaporan.filter(l => { const owner = dbUsers.find(u => String(u.id) === String(l.userId)); return owner && owner.bidang === userBidang; });
+      const statStaf = document.getElementById('verif-stat-staf');
+      const statPending = document.getElementById('verif-stat-pending');
+      if (statStaf) statStaf.innerText = divisionStaf.length;
+      if (statPending) statPending.innerText = divisionLaporan.filter(l => l.status === 'Pending').length;
+      populateVerifikatorFilters();
       renderVerifikatorTable();
-      renderVerifikatorHadirTable(divisionAbsensi);
+      renderVerifikatorHadirTable();
     }
 
     function renderVerifikatorTable() {
       if (!currentUser) return;
-      const userBidang = currentUser.bidang;
+      const userBidang = String(currentUser.bidang || '').trim();
       const filterStatus = document.getElementById('verif-filter-status')?.value || 'Semua';
+      const filterPegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
+      const filterBulan = document.getElementById('verif-filter-bulan')?.value || 'Semua';
       const tbody = document.getElementById('verifikator-table-body');
-      tbody.innerHTML = "";
-
-      dbLaporan.filter(l => {
-        const owner = dbUsers.find(u => u.id === l.userId);
-        if (owner && owner.bidang !== userBidang) return false;
+      if (!tbody) return;
+      const rows = dbLaporan.filter(l => {
+        const owner = dbUsers.find(u => String(u.id) === String(l.userId));
+        if (!owner || String(owner.bidang || '').trim() !== userBidang) return false;
+        if (filterPegawai !== 'Semua' && String(l.userId) !== filterPegawai) return false;
+        if (filterBulan !== 'Semua' && verifMonthKey(l.tanggal) !== filterBulan) return false;
         if (filterStatus !== 'Semua' && l.status !== filterStatus) return false;
         return true;
-      }).forEach(l => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 transition">
-            <td class="py-3.5 px-4 font-bold text-slate-900">${escapeHTML(l.nama)}</td>
-            <td class="py-3.5 px-4 font-semibold">${escapeHTML(formatDateDisplay(l.tanggal))}</td>
-            <td class="py-3.5 px-4">${escapeHTML(l.jamMulai ? formatTimeDisplay(l.jamMulai) : "—")}–${escapeHTML(l.jamSelesai ? formatTimeDisplay(l.jamSelesai) : "—")}</td>
-            <td class="py-3.5 px-4">${escapeHTML(l.kegiatan)}</td>
-            <td class="py-3.5 px-4 font-bold text-blue-700">${escapeHTML(l.output)}</td>
-            <td class="py-3.5 px-4 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : `<span>Tidak ada foto</span>`}</td>
-            <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status)}</span></td>
-            <td class="py-3.5 px-4 text-center">
-              ${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold">Setujui</button>` : `<span class="text-xs text-blue-600 font-bold">Selesai</span>`}
-            </td>
-          </tr>
-        `;
-      });
+      }).sort((a,b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')));
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">Tidak ada laporan yang sesuai dengan filter pegawai, bulan, dan status.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(l => {
+        const owner = dbUsers.find(u => String(u.id) === String(l.userId));
+        return `<tr class="hover:bg-slate-50 transition">
+          <td class="py-3.5 px-4 font-bold text-slate-900">${escapeHTML(owner?.nama || l.nama || 'Pegawai')}</td>
+          <td class="py-3.5 px-4 font-semibold">${escapeHTML(formatDateDisplay(l.tanggal))}</td>
+          <td class="py-3.5 px-4">${escapeHTML(l.jamMulai ? formatTimeDisplay(l.jamMulai) : '—')}–${escapeHTML(l.jamSelesai ? formatTimeDisplay(l.jamSelesai) : '—')}</td>
+          <td class="py-3.5 px-4">${escapeHTML(l.kegiatan || '')}</td>
+          <td class="py-3.5 px-4 font-bold text-blue-700">${escapeHTML(l.output || '')}</td>
+          <td class="py-3.5 px-4 text-center">${l.foto || l.fotoFileId ? `<button type="button" onclick="openReportPhotoById(${safeJsArg(l.id)})" class="text-blue-700 underline text-xs font-semibold">Buka foto</button>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
+          <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status || 'Pending')}</span></td>
+          <td class="py-3.5 px-4 text-center">${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold">Setujui</button>` : '<span class="text-xs text-blue-600 font-bold">Selesai</span>'}</td>
+        </tr>`;
+      }).join('');
     }
 
-    function renderVerifikatorHadirTable(divisionAbsensi) {
+    function attendanceTimingDetail(a) {
+      if (String(a.sesi || '') !== 'Masuk' || String(a.status || '') !== 'Hadir') return '<span class="text-slate-400">—</span>';
+      let seconds = Number(a.lateBySeconds);
+      if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
+      // Backfill presentation for historical rows that predate lateBySeconds.
+      if (!a.lateBySeconds && a.jam) {
+        const m = String(a.jam).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (m) seconds = Math.max(0, Number(m[1])*3600 + Number(m[2])*60 + Number(m[3] || 0) - 8*3600);
+      }
+      if (seconds <= 0) return '<span class="inline-flex px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold">Tepat waktu</span>';
+      const h = Math.floor(seconds/3600), m = Math.floor((seconds%3600)/60), sec = seconds%60;
+      return `<span class="inline-flex px-2 py-1 rounded-full bg-rose-100 text-rose-800 font-bold">Terlambat</span><div class="mt-1 text-rose-700 font-bold">${h} jam ${m} menit ${sec} detik</div>`;
+    }
+
+    function renderVerifikatorHadirTable() {
+      if (!currentUser) return;
       const tbody = document.getElementById('verifikator-hadir-table-body');
-      tbody.innerHTML = "";
-      divisionAbsensi.forEach(a => {
-        const owner = dbUsers.find(u => u.id === a.userId);
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 transition">
-            <td class="py-3.5 px-4 font-bold text-slate-900">${escapeHTML(owner ? owner.nama : 'PJLP Staf')}</td>
-            <td class="py-3.5 px-4 font-semibold">${escapeHTML(formatDateDisplay(a.tanggal))} - ${escapeHTML(formatTimeDisplay(a.jam))}</td>
-            <td class="py-3.5 px-4 font-bold text-slate-700">${escapeHTML(a.sesi)}</td>
-            <td class="py-3.5 px-4"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">${escapeHTML(a.status)}</span></td>
-            <td class="py-3.5 px-4">${escapeHTML(a.catatan)}${a.suratFileId ? ` <button type="button" onclick="viewAttendanceEvidence(${safeJsArg(a.id)})" class="ml-2 inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-extrabold text-amber-800 border border-amber-200"><i class="fa-solid fa-paperclip"></i> Lihat Surat</button>` : ''}</td>
-          </tr>
-        `;
-      });
+      if (!tbody) return;
+      const bidang = String(currentUser.bidang || '').trim();
+      const filterPegawai = document.getElementById('verif-hadir-filter-pegawai')?.value || 'Semua';
+      const filterBulan = document.getElementById('verif-hadir-filter-bulan')?.value || 'Semua';
+      const rows = dbAbsensi.filter(a => {
+        const owner = dbUsers.find(u => String(u.id) === String(a.userId));
+        if (!owner || String(owner.bidang || '').trim() !== bidang) return false;
+        if (filterPegawai !== 'Semua' && String(a.userId) !== filterPegawai) return false;
+        if (filterBulan !== 'Semua' && verifMonthKey(a.tanggal) !== filterBulan) return false;
+        return true;
+      }).sort((a,b) => (String(b.tanggal || '') + ' ' + String(b.jam || '')).localeCompare(String(a.tanggal || '') + ' ' + String(a.jam || '')));
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Tidak ada data kehadiran yang sesuai dengan filter pegawai dan bulan.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(a => {
+        const owner = dbUsers.find(u => String(u.id) === String(a.userId));
+        return `<tr class="hover:bg-slate-50 transition">
+          <td class="py-3.5 px-4 font-bold text-slate-900">${escapeHTML(owner ? owner.nama : 'PJLP Staf')}</td>
+          <td class="py-3.5 px-4 font-semibold">${escapeHTML(formatDateDisplay(a.tanggal))} - ${escapeHTML(formatTimeDisplay(a.jam))}</td>
+          <td class="py-3.5 px-4 font-bold text-slate-700">${escapeHTML(a.sesi || '')}</td>
+          <td class="py-3.5 px-4"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">${escapeHTML(a.status || '')}</span></td>
+          <td class="py-3.5 px-4">${attendanceTimingDetail(a)}</td>
+          <td class="py-3.5 px-4">${escapeHTML(a.catatan || '—')}${a.suratFileId ? ` <button type="button" onclick="viewAttendanceEvidence(${safeJsArg(a.id)})" class="ml-2 inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-extrabold text-amber-800 border border-amber-200"><i class="fa-solid fa-paperclip"></i> Lihat Surat</button>` : ''}</td>
+        </tr>`;
+      }).join('');
     }
 
     function approveLaporan(lapId) {
