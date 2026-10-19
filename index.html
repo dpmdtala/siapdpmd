@@ -9,6 +9,18 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    /* Responsive layout: prevent PJLP cards/header from leaving unused side space on phones. */
+    html, body { width:100%; max-width:100%; overflow-x:hidden; }
+    #view-pjlp, #view-verifikator, #view-superadmin { box-sizing:border-box; width:100%; max-width:1280px; }
+    #view-pjlp > *, #view-verifikator > *, #view-superadmin > * { min-width:0; }
+    @media(max-width:640px) {
+      #view-pjlp { padding-left:12px!important; padding-right:12px!important; }
+      #view-pjlp .grid { min-width:0; }
+      #view-pjlp .rounded-3xl, #view-pjlp .rounded-2xl { max-width:100%; }
+      #view-pjlp #pjlp-tab-profile > *, #view-pjlp #pjlp-tab-hadir > *, #view-pjlp #pjlp-tab-kegiatan > * { min-width:0; }
+      #view-pjlp #pjlp-tab-hadir .lg\:col-span-5, #view-pjlp #pjlp-tab-hadir .lg\:col-span-7 { width:100%; min-width:0; }
+      #view-pjlp #geofence-status-card { width:100%; }
+    }
     @media screen {
       body { padding-bottom: 118px !important; }
       .app-footer-fixed { position:fixed; left:0; right:0; bottom:0; z-index:45; padding:10px 16px 9px!important; box-shadow:0 -6px 24px rgba(15,23,42,.12); background:rgba(255,255,255,.97); backdrop-filter:blur(12px); }
@@ -2849,10 +2861,10 @@
           const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
           lastGpsPosition = {latitude:lat, longitude:lon, distanceMeters:Math.round(distance*100)/100, accuracy, capturedAt:Date.now()};
           locationWithinFence = distance <= 30;
-          if (!Number.isFinite(accuracy) || accuracy <= 0 || accuracy > 50) {
+          if (!Number.isFinite(accuracy) || accuracy <= 0 || (status === 'Hadir' && accuracy > 50)) {
             locationVerified = false;
-            setStatus('Akurasi GPS belum memadai', `Akurasi ±${Math.round(accuracy || 0)} meter. Maksimal 50 meter; aktifkan lokasi presisi.`, true);
-            if (!silent) notify('Akurasi GPS belum memadai. Aktifkan lokasi presisi atau coba di area terbuka.');
+            setStatus('Akurasi GPS belum memadai', `Akurasi ±${Math.round(accuracy || 0)} meter. Untuk presensi Hadir, toleransi maksimal 50 meter; aktifkan lokasi presisi.`, true);
+            if (!silent) notify(status === 'Hadir' ? 'Akurasi GPS belum memadai. Untuk presensi Hadir, aktifkan lokasi presisi atau coba di area terbuka.' : 'Koordinat GPS tidak valid. Aktifkan lokasi perangkat dan coba lagi.');
             resolve(false); return;
           }
           if (status === 'Hadir' && distance > 30) {
@@ -2862,7 +2874,7 @@
             resolve(false); return;
           }
           locationVerified = true;
-          setStatus(status === 'Hadir' ? 'Lokasi terverifikasi dalam radius 30 meter' : 'Lokasi GPS berhasil direkam', `Koordinat: ${lat.toFixed(6)}, ${lon.toFixed(6)} • Jarak ${Math.round(distance)} m • Akurasi ±${Math.round(accuracy)} m`, false);
+          setStatus(status === 'Hadir' ? 'Lokasi terverifikasi dalam radius 30 meter' : 'Lokasi GPS saat ini berhasil direkam (tanpa batas radius kantor)', `Koordinat: ${lat.toFixed(6)}, ${lon.toFixed(6)} • Jarak dari kantor ${Math.round(distance)} m • Akurasi ±${Math.round(accuracy)} m`, false);
           resolve(true);
         }, err => {
           locationVerified = false; locationWithinFence = false; lastGpsPosition = null;
@@ -2909,6 +2921,9 @@
       const catatan = ['Dinas Luar','Izin','Sakit'].includes(status) && catatanInput ? catatanInput.value.trim() : '';
       if (['Dinas Luar','Izin','Sakit'].includes(status) && !catatan) { notify('Catatan / Detail Lokasi wajib diisi untuk status ' + status + '.'); if (catatanInput) catatanInput.focus(); return; }
       const sesi = document.querySelector('input[name="absen-sesi"]:checked')?.value || 'Masuk';
+      const todayLocalKey = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Makassar', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+      const alreadyRecorded = (dbAbsensi || []).some(a => String(a.userId) === String(currentUser?.id) && dateKeyISO(a.tanggal) === todayLocalKey && String(a.sesi || '').toLowerCase() === sesi.toLowerCase());
+      if (alreadyRecorded) { notify(`Anda sudah melakukan presensi ${sesi} hari ini.`); return; }
       if (!lastGpsPosition || !locationVerified || !lastGpsPosition.capturedAt || Date.now() - lastGpsPosition.capturedAt > 120000) {
         const gpsReady = await checkUserLocation({silent:false});
         if (!gpsReady) return;
