@@ -169,7 +169,7 @@
               </h1>
 
               <p class="text-sm sm:text-base text-sky-100/90 leading-relaxed max-w-2xl mx-auto lg:mx-0 font-normal">
-                <strong>SIAP-DPMD</strong> (Sistem Informasi & Aktivitas PJLP) memudahkan seluruh Penyedia Jasa Lainnya Perorangan di Dinas Pemberdayaan Masyarakat dan Desa Kabupaten Tanah Laut dalam mencatat kinerja harian, unggah dokumentasi, hingga pembuatan rekapitulasi guna kebutuhan pencairan gaji bulanan.
+                <strong>SIAP-DPMD</strong> (Sistem Informasi & Aktivitas PJLP) memudahkan seluruh Penyedia Jasa Lainnya Perorangan di Dinas Pemberdayaan Masyarakat dan Desa Kabupaten Tanah Laut dalam mencatat kinerja harian, unggah dokumentasi, hingga pembuatan rekapitulasi guna kebutuhan pencairan jasa bulanan.
               </p>
 
               <div class="pt-2 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -204,7 +204,7 @@
                     <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold flex-shrink-0">1</div>
                     <div>
                       <h4 class="font-bold text-white text-sm">Isi Presensi / Daftar Hadir</h4>
-                      <p class="text-sky-100/70 mt-0.5">PJLP melakukan absensi masuk & pulang dengan verifikasi swafoto, GPS, dan Tanda Tangan Digital.</p>
+                      <p class="text-sky-100/70 mt-0.5">PJLP melakukan presensi masuk & pulang dengan GPS, dan Tanda Tangan Digital.</p>
                     </div>
                   </div>
 
@@ -274,7 +274,7 @@
               <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center font-bold text-lg">
                 <i class="fa-solid fa-shield-halved"></i>
               </div>
-              <h3 class="font-extrabold text-slate-900 text-sm">Presensi GPS & Swafoto</h3>
+              <h3 class="font-extrabold text-slate-900 text-sm">Presensi GPS & Tanda Tangan Digital</h3>
               <p class="text-slate-500 leading-relaxed">
                 Dilengkapi verifikasi lokasi radius Kantor DPMD (30 meter) khusus presensi Hadir, serta perekaman koordinat GPS otomatis untuk Dinas Luar, Izin, dan Sakit.
               </p>
@@ -550,34 +550,7 @@
                 </div>
 
                 <div class="space-y-2">
-                  <label class="block text-xs font-bold text-slate-700 uppercase">3. Verifikasi Wajah (Swafoto / Selfie)</label>
-                  <div id="camera-container" class="bg-slate-900 rounded-2xl overflow-hidden relative border border-slate-300 aspect-video flex items-center justify-center">
-                    <video id="face-webcam" autoplay playsinline class="w-full h-full object-cover hidden"></video>
-                    <canvas id="face-canvas" class="hidden"></canvas>
-                    <input id="face-file-input" type="file" accept="image/*" capture="user" class="hidden" aria-label="Ambil foto wajah" onchange="handleCameraFile(event)">
-                    <img id="face-captured-preview" class="w-full h-full object-cover hidden" alt="Captured Selfie">
-                    
-                    <div id="camera-placeholder" class="text-center p-4 text-slate-400">
-                      <i class="fa-solid fa-camera text-3xl mb-1"></i>
-                      <p class="text-[11px]">Kamera verifikasi wajah belum aktif</p>
-                    </div>
-                  </div>
-
-                  <div class="flex gap-2">
-                    <button type="button" id="btn-start-camera" onclick="startCamera()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5">
-                      <i class="fa-solid fa-camera"></i> Izinkan & Buka Kamera
-                    </button>
-                    <button type="button" id="btn-snap-camera" onclick="takeSnapshot()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 hidden">
-                      <i class="fa-solid fa-camera-retro"></i> Ambil Foto Wajah
-                    </button>
-                    <button type="button" id="btn-retake-camera" onclick="retakeSnapshot()" class="py-2 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold transition hidden">
-                      Ulangi
-                    </button>
-                  </div>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="block text-xs font-bold text-slate-700 uppercase">4. Tanda Tangan Digital (Wajib)</label>
+                  <label class="block text-xs font-bold text-slate-700 uppercase">3. Tanda Tangan Digital (Wajib)</label>
                   <div class="border border-slate-300 rounded-2xl bg-white p-2 relative">
                     <canvas id="sig-canvas" class="w-full h-28 cursor-crosshair touch-none bg-slate-50 rounded-xl border border-dashed border-slate-200"></canvas>
                     <button type="button" onclick="clearSignature()" class="absolute top-3 right-3 px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[10px] font-bold">
@@ -807,8 +780,8 @@
           </div>
           <div class="overflow-x-auto border border-slate-200 rounded-xl">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="p-3">Sesi</th><th class="p-3">Jam</th><th class="p-3">Status</th><th class="p-3">Catatan</th></tr></thead>
-              <tbody id="rekap-hadir-month-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr></tbody>
+              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="p-3">Sesi</th><th class="p-3">Jam</th><th class="p-3">Status</th><th class="p-3">Keterangan Waktu</th><th class="p-3">Catatan</th></tr></thead>
+              <tbody id="rekap-hadir-month-body" class="divide-y divide-slate-100"><tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -1293,8 +1266,13 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tempat, Tanggal Lahir</label>
-          <input type="text" id="edit-prof-ttl" required placeholder="Pelaihari, 18 Mei 1990"
-            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input type="text" id="edit-prof-tempat-lahir" required maxlength="80" placeholder="Tempat lahir, contoh: Pelaihari"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
+            <input type="date" id="edit-prof-tanggal-lahir" required aria-label="Tanggal lahir"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
+          </div>
+          <p class="mt-1 text-[10px] text-slate-500">Pilih tanggal lahir melalui kalender, lalu isi tempat lahir.</p>
         </div>
 
         <div>
@@ -1700,12 +1678,9 @@
     let currentUser = null;
     let tempAvatarBase64 = null;
     let tempLapFotoBase64 = null;
-    let mediaStream = null;
-    let capturedFaceDataUrl = null;
     let locationVerified = false;
     let locationWithinFence = false;
     let lastGpsPosition = null;
-    let cameraStarting = false;
     let signatureDrawn = false;
 
 
@@ -2146,7 +2121,11 @@
       if (avatarStatus) avatarStatus.textContent = target.avatar ? 'Foto profil saat ini. Pilih foto baru jika ingin menggantinya.' : 'Belum ada foto profil. Pilih foto JPG, PNG, atau WEBP.';
       const avatarInput = document.getElementById('edit-prof-avatar-file');
       if (avatarInput) avatarInput.value = '';
-      document.getElementById('edit-prof-ttl').value = target.ttl || '';
+      const ttlParts = String(target.ttl || '').split(',');
+      const birthDate = parseBirthDateFromTtl(target.ttl);
+      document.getElementById('edit-prof-tempat-lahir').value = ttlParts.length > 1 ? ttlParts.slice(0, -1).join(',').trim() : (target.ttl ? ttlParts[0].trim() : '');
+      const birthDateInput = document.getElementById('edit-prof-tanggal-lahir');
+      if (birthDateInput) { birthDateInput.max = new Date().toISOString().slice(0,10); birthDateInput.value = birthDate ? `${birthDate.getFullYear()}-${String(birthDate.getMonth()+1).padStart(2,'0')}-${String(birthDate.getDate()).padStart(2,'0')}` : ''; }
       document.getElementById('edit-prof-pendidikan').value = target.pendidikanTerakhir || '';
       document.getElementById('edit-prof-tmt').value = dateKeyISO(target.tmt) || '2024-01-02';
       document.getElementById('edit-prof-hp').value = target.hp || '';
@@ -2226,7 +2205,15 @@
         const newName = document.getElementById('edit-prof-nama')?.value.trim();
         const payload = {
           userId: target.id, nik, email, username,
-          ttl: document.getElementById('edit-prof-ttl').value.trim(),
+          ttl: (() => {
+            const place = document.getElementById('edit-prof-tempat-lahir').value.trim();
+            const date = document.getElementById('edit-prof-tanggal-lahir').value;
+            if (!place || !date) throw new Error('Tempat dan tanggal lahir wajib diisi melalui form yang tersedia.');
+            const parsed = new Date(date + 'T12:00:00');
+            if (Number.isNaN(parsed.getTime()) || date > new Date().toISOString().slice(0,10)) throw new Error('Tanggal lahir tidak valid.');
+            const dateText = new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(parsed);
+            return `${place}, ${dateText}`;
+          })(),
           pendidikanTerakhir: document.getElementById('edit-prof-pendidikan').value,
           tmt: document.getElementById('edit-prof-tmt').value.trim(),
           hp: document.getElementById('edit-prof-hp').value.trim(),
@@ -2405,7 +2392,18 @@
         statusPill.className = `inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${attendanceRows.length ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`;
       }
       const abBody = document.getElementById('rekap-hadir-month-body');
-      if (abBody) abBody.innerHTML = attendanceRows.length ? attendanceRows.map(a => `<tr><td class="p-3">${escapeHTML(formatDateDisplay(a.tanggal))}</td><td class="p-3">${escapeHTML(a.sesi||'')}</td><td class="p-3">${escapeHTML(formatTimeDisplay(a.jam||''))}</td><td class="p-3">${escapeHTML(a.status||'')}</td><td class="p-3">${escapeHTML(a.catatan||'')}</td></tr>`).join('') : '<tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr>';
+      if (abBody) abBody.innerHTML = attendanceRows.length ? attendanceRows.map(a => {
+        let timing = '—';
+        if (a.sesi === 'Masuk' && a.status === 'Hadir') {
+          let late = Number(a.lateBySeconds || 0);
+          if (!Number.isFinite(late) || late <= 0) {
+            const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/);
+            if (hm) late = Math.max(0, Number(hm[1]) * 3600 + Number(hm[2]) * 60 - 8 * 3600);
+          }
+          timing = late > 0 ? 'Terlambat' : 'Tepat Waktu';
+        }
+        return `<tr><td class="p-3">${escapeHTML(formatDateDisplay(a.tanggal))}</td><td class="p-3">${escapeHTML(a.sesi||'')}</td><td class="p-3">${escapeHTML(formatTimeDisplay(a.jam||''))}</td><td class="p-3">${escapeHTML(a.status||'')}</td><td class="p-3 font-bold ${timing === 'Terlambat' ? 'text-rose-600' : timing === 'Tepat Waktu' ? 'text-emerald-700' : ''}">${escapeHTML(timing)}</td><td class="p-3">${escapeHTML(a.catatan||'')}</td></tr>`;
+      }).join('') : '<tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr>';
       const approved = reportRows.filter(r => r.status === 'Disetujui').length;
       const approvedEl = document.getElementById('rekap-disetujui-count');
       if (approvedEl) approvedEl.textContent = `${approved} dari ${reportRows.length} Laporan`;
@@ -2612,11 +2610,17 @@
         const safe = v => escapeHTML(v || '—');
         const profile = `<section class="rekap-pegawai">${photo}<div class="rekap-pegawai-details"><div><b>Nama Pegawai:</b> ${safe(currentUser.nama)}</div><div><b>NIK:</b> ${safe(currentUser.nik)}</div><div><b>Bidang/Sub Bagian Kerja:</b> ${safe(currentUser.bidang)}</div><div><b>Tugas / Jabatan Kontrak:</b> ${safe(currentUser.jabatan)}</div></div></section>`;
         const meta = `<section class="rekap-meta-grid"><div class="rekap-meta-item"><div class="rekap-meta-label">Periode Rekap</div><div class="rekap-meta-value">${safe(periode)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Total Hari Kerja</div><div class="rekap-meta-value">${safe(document.querySelector("#rekap-hari-kerja")?.textContent?.trim() || "22 Hari")}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Laporan Disetujui</div><div class="rekap-meta-value">${safe(approved)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Status Verifikasi Atasan</div><div class="rekap-meta-value">${safe(status)}</div></div></section>`;
-        const printDate = new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(new Date());
-        const placeDate = `<div class="rekap-place-date" style="text-align:right;margin-top:14px;font-size:9pt">Pelaihari, ${escapeHTML(printDate)}</div>`;
         window.verifikatorNama = window.verifikatorNama || '';
         const signatures = `<section class="rekap-signatures"><div class="rekap-signature"><div class="signature-heading">Mengetahui,</div><div class="signature-role">Verifikator / Atasan</div><div class="sign-space"></div><div class="signature-name">${safe(window.verifikatorNama || 'Nama Verifikator / Atasan')}</div></div><div class="rekap-signature"><div class="signature-heading">${safe(currentUser.jabatan || 'Tugas / Jabatan Kontrak')}</div><div class="signature-role">Pegawai PJLP</div><div class="sign-space"></div><div class="signature-name">${safe(currentUser.nama)}</div></div></section>`;
-        finalBodyHtml = `${profile}${meta}${bodyHtml}${placeDate}${signatures}`;
+        finalBodyHtml = `${profile}${meta}${bodyHtml}${signatures}`;
+      }
+      const printDate = new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(new Date());
+      const placeDate = `<div class="rekap-place-date" style="text-align:right;margin-top:14px;margin-bottom:2px;font-size:9pt">Pelaihari, ${escapeHTML(printDate)}</div>`;
+      if (!/class=[\"']rekap-place-date[\"']/.test(finalBodyHtml)) {
+        const sigIndex = finalBodyHtml.search(/<section[^>]*class=[\"'][^\"']*rekap-signatures/);
+        finalBodyHtml = sigIndex >= 0
+          ? finalBodyHtml.slice(0, sigIndex) + placeDate + finalBodyHtml.slice(sigIndex)
+          : finalBodyHtml + placeDate;
       }
       const w = printWindow || window.open('', '_blank', 'width=1000,height=750');
       if (!w) { notify('Jendela cetak diblokir. Izinkan pop-up untuk SIAP-DPMD atau gunakan Izinkan sekali, lalu ulangi cetak.'); return; }
@@ -2801,143 +2805,6 @@
       }, {enableHighAccuracy:true, timeout:20000, maximumAge:0});
     }
 
-    function stopCameraStream() {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => { try { track.stop(); } catch (_) {} });
-        mediaStream = null;
-      }
-      const video = document.getElementById('face-webcam');
-      if (video) { try { video.pause(); } catch (_) {} video.srcObject = null; }
-    }
-
-    async function startCamera() {
-      // Apps Script HtmlService kini dapat memblokir getUserMedia() karena iframe
-      // tidak diberi izin kamera. Gunakan pemilih kamera/foto native browser sebagai
-      // fallback yang kompatibel: perangkat mobile biasanya membuka kamera; desktop
-      // dapat memilih gambar dari perangkat.
-      const input = document.getElementById('face-file-input');
-      const placeholder = document.getElementById('camera-placeholder');
-      const btnStart = document.getElementById('btn-start-camera');
-      const preview = document.getElementById('face-captured-preview');
-      if (!input) {
-        notify('Fitur foto tidak tersedia. Muat ulang aplikasi atau hubungi administrator.');
-        return;
-      }
-      capturedFaceDataUrl = null;
-      if (preview) { preview.src = ''; preview.classList.add('hidden'); }
-      if (placeholder) {
-        placeholder.classList.remove('hidden');
-        placeholder.innerHTML = '<i class="fa-solid fa-camera text-3xl mb-1"></i><p class="text-[11px]">Pilih Ambil Foto dari kamera perangkat.</p>';
-      }
-      // Reset input so the same image can be selected again.
-      input.value = '';
-      try {
-        input.click();
-      } catch (err) {
-        notify('Tidak dapat membuka kamera/pemilih foto. Tekan tombol lagi atau periksa izin browser.');
-      }
-      if (btnStart) btnStart.innerHTML = '<i class="fa-solid fa-camera"></i> Ambil/Ulangi Foto';
-    }
-
-    async function handleCameraFile(event) {
-      const input = event && event.target;
-      const file = input && input.files && input.files[0];
-      if (!file) return;
-      if (!file.type || !file.type.startsWith('image/')) {
-        input.value = '';
-        notify('Pilih file gambar dari kamera atau perangkat.');
-        return;
-      }
-      if (file.size > 12 * 1024 * 1024) {
-        input.value = '';
-        notify('Ukuran foto terlalu besar. Ambil foto ulang atau pilih gambar di bawah 12 MB.');
-        return;
-      }
-      try {
-        const objectUrl = URL.createObjectURL(file);
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const maxSide = 1280;
-            const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-            const canvas = document.getElementById('face-canvas');
-            canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-            canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-            const ctx = canvas.getContext('2d', {alpha:false});
-            if (!ctx) throw new Error('Tidak dapat memproses foto.');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            capturedFaceDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-            if (!capturedFaceDataUrl || capturedFaceDataUrl.length < 1000) throw new Error('Foto tidak terbaca.');
-            const preview = document.getElementById('face-captured-preview');
-            const video = document.getElementById('face-webcam');
-            if (video) video.classList.add('hidden');
-            preview.src = capturedFaceDataUrl;
-            preview.classList.remove('hidden');
-            document.getElementById('camera-placeholder').classList.add('hidden');
-            document.getElementById('btn-snap-camera').classList.add('hidden');
-            document.getElementById('btn-start-camera').classList.add('hidden');
-            document.getElementById('btn-retake-camera').classList.remove('hidden');
-          } catch (err) {
-            capturedFaceDataUrl = null;
-            notify(err.message || 'Foto gagal diproses. Coba ambil foto kembali.');
-          } finally {
-            URL.revokeObjectURL(objectUrl);
-          }
-        };
-        img.onerror = () => { URL.revokeObjectURL(objectUrl); notify('Foto tidak dapat dibuka. Pilih gambar lain.'); };
-        img.src = objectUrl;
-      } catch (err) {
-        notify('Foto gagal diproses. Coba ambil foto kembali.');
-      }
-    }
-
-    function takeSnapshot() {
-      const video = document.getElementById('face-webcam');
-      const canvas = document.getElementById('face-canvas');
-      const preview = document.getElementById('face-captured-preview');
-      if (!mediaStream || !video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
-        notify('Video kamera belum siap. Tekan Buka Kamera dan tunggu hingga gambar tampil.');
-        return;
-      }
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d', {alpha:false});
-      if (!ctx) { notify('Browser tidak dapat membuat foto. Muat ulang halaman dan coba lagi.'); return; }
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      try {
-        capturedFaceDataUrl = canvas.toDataURL('image/jpeg', 0.88);
-      } catch (err) {
-        notify('Foto gagal diproses. Coba buka kamera kembali.');
-        return;
-      }
-      if (!capturedFaceDataUrl || capturedFaceDataUrl.length < 1000) {
-        capturedFaceDataUrl = null;
-        notify('Foto tidak berhasil diambil. Pastikan wajah terlihat dan coba kembali.');
-        return;
-      }
-      preview.src = capturedFaceDataUrl;
-      preview.classList.remove('hidden');
-      video.classList.add('hidden');
-      stopCameraStream();
-      document.getElementById('camera-placeholder').classList.add('hidden');
-      document.getElementById('btn-snap-camera').classList.add('hidden');
-      document.getElementById('btn-start-camera').classList.add('hidden');
-      document.getElementById('btn-retake-camera').classList.remove('hidden');
-    }
-
-    async function retakeSnapshot() {
-      capturedFaceDataUrl = null;
-      const preview = document.getElementById('face-captured-preview');
-      if (preview) { preview.src = ''; preview.classList.add('hidden'); }
-      document.getElementById('btn-retake-camera').classList.add('hidden');
-      document.getElementById('btn-start-camera').classList.remove('hidden');
-      document.getElementById('btn-start-camera').innerHTML = '<i class="fa-solid fa-camera"></i> Ambil Foto';
-      document.getElementById('camera-placeholder').classList.remove('hidden');
-      await startCamera();
-    }
-
-    window.addEventListener('pagehide', stopCameraStream);
-
     let isDrawing = false;
     let sigCanvas, sigCtx;
     window.addEventListener('DOMContentLoaded', () => {
@@ -2966,7 +2833,6 @@
       e.preventDefault();
       if (attendanceSubmissionInFlight) { notify('Presensi sedang diproses. Mohon tunggu sampai selesai.'); return; }
       if (!validateAttendanceWindow(true)) return;
-      if (!capturedFaceDataUrl) { notify('Swafoto wajib diambil terlebih dahulu. Tekan Buka Kamera, tunggu video tampil, lalu Ambil Foto Wajah.'); return; }
       if (['Dinas Luar','Izin','Sakit'].includes(document.getElementById('absen-status').value) && !attendanceEvidenceDataUrl) { notify('Unggah Surat Tugas, Surat Izin, atau Surat Sakit sebelum menyimpan presensi.'); return; }
       if (!signatureDrawn) { notify('Tanda tangan digital wajib dibubuhkan sebelum menyimpan presensi.'); return; }
       const status = document.getElementById('absen-status').value;
@@ -2985,14 +2851,12 @@
           longitude:lastGpsPosition.longitude,
           accuracy:lastGpsPosition.accuracy,
           distanceMeters:lastGpsPosition.distanceMeters,
-          selfie:capturedFaceDataUrl,
           signature:(sigCanvas && signatureDrawn) ? sigCanvas.toDataURL('image/png') : '',
           suratData:attendanceEvidenceDataUrl, suratNama:attendanceEvidenceName
         });
         await refreshServerData();
         notify('Tersimpan');
         clearSignature();
-        capturedFaceDataUrl = null;
         attendanceEvidenceDataUrl = ''; attendanceEvidenceName = '';
         const evidenceInput = document.getElementById('absen-evidence-file'); if (evidenceInput) evidenceInput.value='';
         const evidenceWrap = document.getElementById('absen-evidence-wrap'); if (evidenceWrap) evidenceWrap.classList.add('hidden');
@@ -3000,13 +2864,6 @@
         lastGpsPosition = null;
         locationVerified = false;
         locationWithinFence = false;
-        document.getElementById('face-captured-preview').src = '';
-        document.getElementById('face-captured-preview').classList.add('hidden');
-        document.getElementById('camera-placeholder').classList.remove('hidden');
-        document.getElementById('camera-placeholder').innerHTML = '<i class="fa-solid fa-camera text-3xl mb-1"></i><p class="text-[11px]">Kamera verifikasi wajah belum aktif</p>';
-        document.getElementById('btn-start-camera').classList.remove('hidden');
-        document.getElementById('btn-retake-camera').classList.add('hidden');
-        document.getElementById('btn-snap-camera').classList.add('hidden');
         renderPjlpTables();
       } catch (err) {
         notify('Presensi gagal disimpan: ' + err.message);
