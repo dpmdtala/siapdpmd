@@ -145,18 +145,6 @@
     }
   </style>
 
-
-<style id="siap-sidebar-theme">
-:root{--siap-navy:#082b50;--siap-blue:#1266b1;--siap-blue2:#287ed0;--siap-gold:#e3bd67;--siap-red:#b92e3b}
-.siap-workspace{display:grid!important;grid-template-columns:258px minmax(0,1fr);gap:0!important;width:100%;min-height:calc(100vh - 20px);align-items:stretch;background:linear-gradient(135deg,#f3f7fc 0%,#fff 60%,#fff8ed 100%);border-radius:18px;overflow:clip}
-.siap-sidebar{position:sticky;top:0;height:100vh;max-height:100vh;overflow-y:auto;padding:18px 12px 15px;color:#fff;background:linear-gradient(160deg,#061d38 0%,#0b3c6d 48%,#1768a8 78%,#8c2938 125%);border-right:3px solid var(--siap-gold);box-shadow:8px 0 26px rgba(8,43,80,.12);z-index:30;display:flex;flex-direction:column;gap:14px}
-.siap-brand{display:flex;align-items:center;gap:10px;padding:8px 8px 16px;border-bottom:1px solid #ffffff30}.siap-brand-mark{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#092e55;background:linear-gradient(145deg,#fff,#f1d18b);box-shadow:0 4px 12px #0003;font-size:20px;flex:none}.siap-brand-title{font-size:15px;font-weight:900;letter-spacing:.3px}.siap-brand-sub{font-size:10px;color:#d7e7f7;margin-top:3px;line-height:1.4}.siap-sidebar-caption{font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#f0cf83;padding:3px 11px 0}
-.siap-sidebar nav.siap-nav{display:flex;flex-direction:column;gap:5px;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}.siap-sidebar nav.siap-nav button{width:100%;justify-content:flex-start!important;text-align:left;padding:11px 10px!important;border:1px solid transparent;border-radius:11px!important;color:#eaf3fc!important;background:transparent!important;font-size:12px!important;font-weight:700!important;line-height:1.35;box-shadow:none!important;white-space:normal}.siap-sidebar nav.siap-nav button:hover{background:linear-gradient(100deg,#ffffff20,#ffffff09)!important;border-color:#ffffff22}.siap-sidebar nav.siap-nav button.siap-nav-active{background:linear-gradient(110deg,#f4d78e,#d8a94f)!important;color:#09294a!important;border-color:#ffe8a9!important;box-shadow:0 5px 13px #0002!important}.siap-sidebar nav.siap-nav button i{width:18px;text-align:center;flex:none}.siap-sidebar-footer{margin-top:auto;border-top:1px solid #ffffff2b;padding:13px 10px 0;color:#c8d9ea;font-size:10px;line-height:1.5}.siap-main{min-width:0;padding:20px clamp(12px,2vw,30px) 30px;overflow:hidden}.siap-main button:focus-visible{outline:3px solid #e3bd67;outline-offset:2px}.siap-sidebar-toggle{display:none}
-@media(max-width:900px){.siap-workspace{grid-template-columns:220px minmax(0,1fr)}.siap-main{padding:15px 11px 24px}.siap-sidebar{padding:14px 9px}.siap-sidebar nav.siap-nav button{font-size:11px!important;padding:10px 8px!important}}
-@media(max-width:680px){.siap-workspace{display:block!important;position:relative;overflow:visible}.siap-sidebar{position:fixed;left:0;top:0;width:275px;max-width:86vw;transform:translateX(-105%);transition:transform .22s ease;height:100dvh;max-height:100dvh;box-shadow:12px 0 30px #0004}.siap-sidebar.siap-sidebar-open{transform:translateX(0)}.siap-sidebar-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;position:relative;z-index:25;margin:8px 0 0 8px;padding:9px 12px;border-radius:10px;color:#fff;background:linear-gradient(110deg,#0b3a68,#176eb5 70%,#a72c3b);border:1px solid #e3bd67;box-shadow:0 5px 14px #082b5022;font-size:12px;font-weight:800}.siap-main{padding:12px 10px 24px}.siap-sidebar-backdrop{display:none;position:fixed;inset:0;background:#061d38a8;z-index:29}.siap-sidebar-backdrop.siap-backdrop-show{display:block}}
-@media print{.siap-sidebar,.siap-sidebar-toggle,.siap-sidebar-backdrop{display:none!important}.siap-workspace{display:block!important}.siap-main{padding:0!important}}
-</style>
-
 </head>
 <body class="bg-blue-50/50 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
@@ -3827,44 +3815,6 @@
       }
       switchView('landing');
     };
-  
-// Sidebar kiri SIAP-DPMD: membungkus tab yang sudah ada, tanpa mengubah ID panel atau API/database.
-(function(){
- const roleConfigs={
-  pjlp:{caption:'Menu Pegawai',navId:'pjlp-tab-btn-',tabs:['profile','hadir','kegiatan','rekap-hadir','rekap-kinerja','arsip']},
-  verifikator:{caption:'Menu Verifikator',navId:'verif-tab-btn-',tabs:['laporan','hadir']},
-  superadmin:{caption:'Menu Super Admin',navId:'admin-tab-btn-',tabs:['registrasi','users','hadir','laporan','arsip']}
- };
- function buildSidebar(viewName){
-  const section=document.getElementById('view-'+viewName),cfg=roleConfigs[viewName];
-  if(!section||!cfg||section.dataset.siapSidebar==='1')return;
-  const firstBtn=document.getElementById(cfg.navId+cfg.tabs[0]);if(!firstBtn)return;
-  const navSource=firstBtn.parentElement;if(!navSource||!section.contains(navSource))return;
-  navSource.classList.add('siap-nav');
-  const wrapper=document.createElement('div');wrapper.className='siap-workspace';
-  const sidebar=document.createElement('aside');sidebar.className='siap-sidebar';sidebar.setAttribute('aria-label',cfg.caption);
-  const brand=document.createElement('div');brand.className='siap-brand';brand.innerHTML='<div class="siap-brand-mark"><i class="fa-solid fa-landmark"></i></div><div><div class="siap-brand-title">SIAP-DPMD</div><div class="siap-brand-sub">DPMD Kabupaten Tanah Laut<br>Sistem Informasi & Aktivitas PJLP</div></div>';
-  const caption=document.createElement('div');caption.className='siap-sidebar-caption';caption.textContent=cfg.caption;
-  const footer=document.createElement('div');footer.className='siap-sidebar-footer';footer.innerHTML='<div style="color:#f0cf83;font-weight:800">DPMD TANAH LAUT</div><div>Pelayanan yang tertib, transparan, dan akuntabel.</div>';
-  sidebar.append(brand,caption,navSource,footer);
-  const main=document.createElement('div');main.className='siap-main';
-  const nodes=Array.from(section.childNodes);nodes.forEach(n=>{if(n!==navSource)main.appendChild(n)});
-  wrapper.append(sidebar,main);section.appendChild(wrapper);
-  section.classList.remove('max-w-7xl','mx-auto','px-3','sm:px-6','lg:px-8','px-4','py-5','sm:py-8','py-8','space-y-6','space-y-8');
-  const toggle=document.createElement('button');toggle.type='button';toggle.className='siap-sidebar-toggle';toggle.innerHTML='<i class="fa-solid fa-bars"></i> Menu';toggle.setAttribute('aria-label','Buka menu navigasi');section.insertBefore(toggle,wrapper);
-  const backdrop=document.createElement('div');backdrop.className='siap-sidebar-backdrop';section.appendChild(backdrop);
-  function close(){sidebar.classList.remove('siap-sidebar-open');backdrop.classList.remove('siap-backdrop-show')}
-  toggle.addEventListener('click',()=>{sidebar.classList.toggle('siap-sidebar-open');backdrop.classList.toggle('siap-backdrop-show')});backdrop.addEventListener('click',close);
-  navSource.querySelectorAll('button').forEach(btn=>{btn.addEventListener('click',()=>{navSource.querySelectorAll('button').forEach(b=>b.classList.remove('siap-nav-active'));btn.classList.add('siap-nav-active');close()});btn.setAttribute('title',(btn.textContent||'').trim())});
-  const active=navSource.querySelector('.bg-blue-600, .bg-indigo-600');if(active)active.classList.add('siap-nav-active');else if(navSource.querySelector('button'))navSource.querySelector('button').classList.add('siap-nav-active');
-  section.dataset.siapSidebar='1';
- }
- const originalSwitchView=window.switchView;
- if(typeof originalSwitchView==='function')window.switchView=function(viewName){originalSwitchView.apply(this,arguments);if(roleConfigs[viewName])buildSidebar(viewName)};
- // Build when each authenticated role view is first opened; no extra data request at login.
- window.siapBuildSidebar=buildSidebar;
-})();
-
-</script>
+  </script>
 </body>
 </html>
