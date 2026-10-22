@@ -145,6 +145,31 @@
     }
   </style>
 
+
+<style id="siap-responsive-autoscroll-v2">
+  html { scroll-behavior:smooth; scroll-padding-top:18px; }
+  #view-pjlp,#view-verifikator,#view-superadmin { width:100%; max-width:1280px; margin-left:auto; margin-right:auto; box-sizing:border-box; }
+  #view-pjlp *,#view-verifikator *,#view-superadmin * { min-width:0; }
+  #view-pjlp .overflow-x-auto,#view-verifikator .overflow-x-auto,#view-superadmin .overflow-x-auto { max-width:100%; -webkit-overflow-scrolling:touch; }
+  #view-pjlp table,#view-verifikator table,#view-superadmin table { min-width:640px; }
+  @media(max-width:767px){
+    body { overflow-x:hidden; }
+    #view-pjlp,#view-verifikator,#view-superadmin { padding-left:12px!important; padding-right:12px!important; padding-top:16px!important; gap:16px!important; }
+    #view-pjlp .rounded-3xl,#view-pjlp .rounded-2xl,#view-verifikator .rounded-3xl,#view-verifikator .rounded-2xl,#view-superadmin .rounded-3xl,#view-superadmin .rounded-2xl { max-width:100%; }
+    #view-pjlp > .bg-white.flex,#view-verifikator > .bg-white.flex,#view-superadmin > .bg-white.flex { display:flex; flex-wrap:nowrap; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; padding:6px!important; gap:6px!important; scroll-snap-type:x proximity; }
+    #view-pjlp > .bg-white.flex > button,#view-verifikator > .bg-white.flex > button,#view-superadmin > .bg-white.flex > button { flex:0 0 auto; max-width:85vw; white-space:nowrap; scroll-snap-align:start; font-size:11px!important; padding:10px 12px!important; }
+    #view-pjlp .p-6,#view-verifikator .p-6,#view-superadmin .p-6 { padding:14px!important; }
+    #view-pjlp .p-8,#view-verifikator .p-8,#view-superadmin .p-8 { padding:14px!important; }
+    #view-pjlp input:not([type=file]),#view-pjlp select,#view-pjlp textarea,#view-verifikator input,#view-verifikator select,#view-verifikator textarea,#view-superadmin input,#view-superadmin select,#view-superadmin textarea { max-width:100%; font-size:16px; box-sizing:border-box; }
+    #view-pjlp .grid.grid-cols-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    #view-pjlp .grid,#view-verifikator .grid,#view-superadmin .grid { min-width:0; }
+    #view-pjlp .flex.items-center.justify-between,#view-verifikator .flex.items-center.justify-between { flex-wrap:wrap; }
+    #view-pjlp h2,#view-verifikator h2,#view-superadmin h2 { overflow-wrap:anywhere; line-height:1.25; }
+    .app-footer-fixed { z-index:45; }
+  }
+  @media(min-width:768px) and (max-width:1100px){ #view-pjlp,#view-verifikator,#view-superadmin { padding-left:20px!important;padding-right:20px!important; } }
+</style>
+
 </head>
 <body class="bg-blue-50/50 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
@@ -981,9 +1006,6 @@
         <button id="verif-tab-btn-hadir" onclick="switchVerifTab('hadir')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-calendar-user"></i> Presensi Staf Bidang
         </button>
-        <button id="verif-tab-btn-rekap" onclick="switchVerifTab('rekap')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
-          <i class="fa-solid fa-chart-column"></i> Rekapitulasi Verifikasi
-        </button>
       </div>
 
       <!-- TAB 1 VERIFIKASI LAPORAN -->
@@ -1005,7 +1027,7 @@
               <option value="Pending">Perlu Diperiksa (Pending)</option>
               <option value="Disetujui">Disetujui</option>
             </select>
-            <button id="verif-approve-all-btn" type="button" onclick="verifikasiSemuaLaporan()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm"><i class="fa-solid fa-check-double mr-1"></i> Verifikasi Semua Pending</button>
+            <button type="button" onclick="verifikasiSemuaPending()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm"><i class="fa-solid fa-check-double mr-1"></i> Verifikasi Semua</button>
           </div>
         </div>
 
@@ -1064,20 +1086,6 @@
             </tbody>
           </table>
         </div>
-      </div>
-
-      <!-- TAB 3 REKAPITULASI VERIFIKASI -->
-      <div id="verif-tab-rekap" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
-        <div class="border-b border-slate-100 pb-4">
-          <h3 class="font-black text-slate-900 text-lg">Rekapitulasi Verifikasi Laporan</h3>
-          <p class="text-xs text-slate-500">Ringkasan status laporan kegiatan staf PJLP dalam ruang lingkup bidang/sub bagian Anda.</p>
-        </div>
-        <div class="grid sm:grid-cols-3 gap-4">
-          <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5"><p class="text-xs font-bold text-amber-800">Menunggu Verifikasi</p><p id="verif-rekap-pending" class="mt-2 text-3xl font-black text-amber-900">0</p></div>
-          <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p class="text-xs font-bold text-emerald-800">Sudah Disetujui</p><p id="verif-rekap-approved" class="mt-2 text-3xl font-black text-emerald-900">0</p></div>
-          <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5"><p class="text-xs font-bold text-blue-800">Total Laporan</p><p id="verif-rekap-total" class="mt-2 text-3xl font-black text-blue-900">0</p></div>
-        </div>
-        <p class="text-xs text-slate-500">Angka diperbarui otomatis berdasarkan data laporan yang tersedia saat dashboard dimuat atau diperbarui.</p>
       </div>
 
     </section>
@@ -2611,20 +2619,13 @@
         let timing = '—';
         if (a.status === 'Hadir' && a.sesi === 'Masuk') {
           let late = Number(a.lateBySeconds || 0);
-          if (!Number.isFinite(late) || late <= 0) {
-            const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/);
-            if (hm) late = Math.max(0, Number(hm[1]) * 3600 + Number(hm[2]) * 60 - 8 * 3600);
-          }
+          if (!Number.isFinite(late) || late <= 0) { const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/); if (hm) late = Math.max(0, Number(hm[1]) * 3600 + Number(hm[2]) * 60 - 8 * 3600); }
           timing = late > 0 ? 'Terlambat' : 'Tepat Waktu';
         } else if (a.status === 'Hadir' && a.sesi === 'Pulang') {
-          const date = new Date(String(dateKeyISO(a.tanggal)) + 'T12:00:00+08:00');
-          const isFriday = date.getDay() === 5;
-          const cutoff = (isFriday ? 11 : 16) * 3600 + (isFriday ? 30 : 30) * 60;
+          const dateKey = dateKeyISO(a.tanggal); const parts = dateKey.split('-').map(Number); const weekday = parts.length === 3 ? new Date(parts[0], parts[1]-1, parts[2]).getDay() : -1;
+          const cutoff = weekday === 5 ? 11*60+30 : (weekday >= 1 && weekday <= 4 ? 16*60+30 : null);
           const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/);
-          if (hm) {
-            const recorded = Number(hm[1]) * 3600 + Number(hm[2]) * 60;
-            if (recorded >= cutoff && recorded <= cutoff + 7200) timing = 'Tepat Waktu';
-          }
+          if (cutoff !== null && hm) { const mins = Number(hm[1])*60+Number(hm[2]); timing = mins >= cutoff && mins <= cutoff+120 ? 'Tepat Waktu' : (mins < cutoff ? 'Terlalu Cepat' : 'Terlambat'); }
         }
         return `<tr><td class="p-3">${escapeHTML(formatDateDisplay(a.tanggal))}</td><td class="p-3">${escapeHTML(a.sesi||'')}</td><td class="p-3">${escapeHTML(formatTimeDisplay(a.jam||''))}</td><td class="p-3">${escapeHTML(a.status||'')}</td><td class="p-3 font-bold ${timing === 'Terlambat' ? 'text-rose-600' : timing === 'Tepat Waktu' ? 'text-emerald-700' : ''}">${escapeHTML(timing)}</td><td class="p-3">${escapeHTML(a.catatan||'')}</td></tr>`;
       }).join('') : '<tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr>';
@@ -3219,10 +3220,8 @@
       } finally { lapPhotoProcessing = false; }
     }
 
-    let lapSaveInFlight = false;
     async function handleSaveLaporan(e) {
       e.preventDefault();
-      if (lapSaveInFlight) { notify('Laporan sedang dikirim. Jangan klik tombol kirim berulang kali.'); return; }
       const form = e.currentTarget || document.getElementById('form-laporan');
       const submitBtn = form && form.querySelector('button[type="submit"]');
       if (submitBtn && submitBtn.disabled) return;
@@ -3233,7 +3232,9 @@
       if (lapPhotoProcessing) { notify('Foto sedang dioptimalkan. Tunggu sampai pratinjau foto muncul, lalu kirim kembali.'); return; }
       if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi, termasuk foto yang sudah selesai dioptimalkan!'); return; }
       if (jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai.'); return; }
-      lapSaveInFlight = true;
+      const todayKey = document.getElementById('lap-tanggal')?.value || '';
+      const duplicateTime = (dbLaporan || []).some(r => String(r.userId)===String(currentUser?.id) && dateKeyISO(r.tanggal)===todayKey && String(r.jamMulai||'')===jamMulai);
+      if (duplicateTime) { notify('Jam mulai tersebut sudah digunakan pada laporan Anda hari ini. Pilih jam mulai yang berbeda.'); return; }
       if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.innerHTML; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…'; }
 
       try {
@@ -3254,7 +3255,6 @@
       } catch (err) {
         notify('Kegiatan harian gagal disimpan: ' + err.message);
       } finally {
-        lapSaveInFlight = false;
         if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = submitBtn.dataset.originalText || 'Kirim Kegiatan'; }
       }
     }
@@ -3360,6 +3360,16 @@
       }
     }
 
+    // Auto-scroll ke panel/menu yang dipilih di layar kecil; desktop tetap mempertahankan posisi normal.
+    function scrollToActivePanel(panelId, buttonId) {
+      if (window.matchMedia && window.matchMedia('(max-width: 767px)').matches) {
+        const target = document.getElementById(panelId);
+        if (target) window.setTimeout(() => target.scrollIntoView({behavior:'smooth', block:'start', inline:'nearest'}), 80);
+        const button = document.getElementById(buttonId);
+        if (button && button.scrollIntoView) button.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+      }
+    }
+
     // Super Admin & Verifikator Tabs
     function switchAdminTab(tabName) {
       ['registrasi', 'users', 'hadir', 'laporan', 'arsip'].forEach(t => {
@@ -3376,6 +3386,7 @@
       if (tabName === 'hadir') renderAdminAbsensiTable();
       if (tabName === 'laporan') renderAdminLaporanTable();
       if (tabName === 'arsip') renderAdminArsipTable();
+      scrollToActivePanel(`admin-tab-${tabName}`, `admin-tab-btn-${tabName}`);
     }
 
     function switchPjlpTab(tabName) {
@@ -3405,19 +3416,18 @@
       activePanel.classList.remove('hidden');
       activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
       if (tabName === 'hadir') { locationVerified = false; lastGpsPosition = null; checkUserLocation({silent:true}); }
+      scrollToActivePanel(`pjlp-tab-${tabName}`, `pjlp-tab-btn-${tabName}`);
     }
 
     function switchVerifTab(tabName) {
-      ['laporan', 'hadir', 'rekap'].forEach(t => {
-        const panel = document.getElementById(`verif-tab-${t}`);
-        const button = document.getElementById(`verif-tab-btn-${t}`);
-        if (panel) panel.classList.add('hidden');
-        if (button) button.className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
+      document.getElementById('verif-tab-laporan').classList.add('hidden');
+      document.getElementById('verif-tab-hadir').classList.add('hidden');
+      ['laporan', 'hadir'].forEach(t => {
+        document.getElementById(`verif-tab-btn-${t}`).className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
       });
-      const activePanel = document.getElementById(`verif-tab-${tabName}`);
-      const activeButton = document.getElementById(`verif-tab-btn-${tabName}`);
-      if (activePanel) activePanel.classList.remove('hidden');
-      if (activeButton) activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
+      document.getElementById(`verif-tab-${tabName}`).classList.remove('hidden');
+      document.getElementById(`verif-tab-btn-${tabName}`).className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
+      scrollToActivePanel(`verif-tab-${tabName}`, `verif-tab-btn-${tabName}`);
     }
 
     // Menu khusus Super Admin untuk menyetujui atau menolak akun baru.
@@ -3630,10 +3640,6 @@
       const statPending = document.getElementById('verif-stat-pending');
       if (statStaf) statStaf.innerText = divisionStaf.length;
       if (statPending) statPending.innerText = divisionLaporan.filter(l => l.status === 'Pending').length;
-      const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = String(value); };
-      setText('verif-rekap-pending', divisionLaporan.filter(l => l.status === 'Pending').length);
-      setText('verif-rekap-approved', divisionLaporan.filter(l => l.status === 'Disetujui').length);
-      setText('verif-rekap-total', divisionLaporan.length);
       populateVerifikatorFilters();
       renderVerifikatorTable();
       renderVerifikatorHadirTable();
@@ -3674,7 +3680,7 @@
           <td class="py-3.5 px-4 font-bold text-blue-700">${escapeHTML(l.output || '')}</td>
           <td class="py-3.5 px-4 text-center">${l.foto || l.fotoFileId ? `<button type="button" onclick="openReportPhotoById(${safeJsArg(l.id)})" class="text-blue-700 underline text-xs font-semibold">Buka foto</button>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
           <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status || 'Pending')}</span></td>
-          <td class="py-3.5 px-4 text-center"><div class="inline-flex flex-wrap justify-center gap-1">${l.status === 'Pending' ? `<button type="button" onclick="approveLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold">Setujui</button>` : '<span class="text-xs text-blue-600 font-bold px-1 py-1">Selesai</span>'}<button type="button" onclick="hapusLaporanVerifikator(${safeJsArg(l.id)})" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold"><i class="fa-solid fa-trash mr-1"></i>Hapus</button></div></td>
+          <td class="py-3.5 px-4 text-center"><div class="inline-flex flex-wrap justify-center gap-1">${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold">Setujui</button>` : '<span class="text-xs text-blue-600 font-bold">Selesai</span>'}<button type="button" onclick="hapusLaporanBawahan(${safeJsArg(l.id)})" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold">Hapus</button></div></td>
         </tr>`;
       }).join('');
     }
@@ -3729,43 +3735,27 @@
       }).join('');
     }
 
-    async function verifikasiSemuaLaporan() {
-      if (!currentUser || !['Verifikator','SuperAdmin'].includes(currentUser.role)) { notify('Akses verifikasi tidak diizinkan.'); return; }
+    async function verifikasiSemuaPending() {
+      if (!currentUser || currentUser.role !== 'Verifikator') { notify('Fitur ini hanya untuk akun Verifikator.'); return; }
       const status = document.getElementById('verif-filter-status')?.value || 'Semua';
-      const filterPegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
-      const filterBulan = document.getElementById('verif-filter-bulan')?.value || 'Semua';
-      const selectedDate = document.getElementById('verif-filter-tanggal')?.value || '';
-      const candidates = (dbLaporan || []).filter(l => {
-        const owner = (dbUsers || []).find(u => String(u.id) === String(l.userId));
-        if (!owner || (currentUser.role === 'Verifikator' && String(owner.bidang || '').trim() !== String(currentUser.bidang || '').trim())) return false;
-        if (l.status !== 'Pending') return false;
-        if (selectedDate && dateKeyISO(l.tanggal) !== selectedDate) return false;
-        if (filterPegawai !== 'Semua' && String(l.userId) !== filterPegawai) return false;
-        if (filterBulan !== 'Semua' && verifMonthKey(l.tanggal) !== filterBulan) return false;
-        return status === 'Semua' || status === 'Pending';
-      });
-      if (!candidates.length) { notify('Tidak ada laporan Pending yang sesuai dengan filter saat ini.'); return; }
-      if (!confirm(`Setujui ${candidates.length} laporan Pending sesuai filter saat ini?`)) return;
-      const btn = document.getElementById('verif-approve-all-btn');
-      if (btn) { btn.disabled = true; btn.dataset.oldText = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Memproses…'; }
-      try {
-        const result = await gasCall('bulkApproveReports', { reportIds: candidates.map(l => l.id) });
-        await refreshServerData();
-        renderVerifikatorDashboard();
-        notify(`Verifikasi massal selesai: ${result.approved || 0} laporan disetujui.`);
-      } catch (err) { notify('Verifikasi massal gagal: ' + err.message); }
-      finally { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.oldText || '<i class="fa-solid fa-check-double mr-1"></i> Verifikasi Semua Pending'; } }
+      const pegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
+      const bulan = document.getElementById('verif-filter-bulan')?.value || 'Semua';
+      const tanggal = document.getElementById('verif-filter-tanggal')?.value || '';
+      const bidang = String(currentUser.bidang || '').trim();
+      const pending = (dbLaporan || []).filter(l => { const owner = (dbUsers||[]).find(u => String(u.id)===String(l.userId)); return owner && String(owner.bidang||'').trim()===bidang && l.status==='Pending' && (!tanggal || dateKeyISO(l.tanggal)===tanggal) && (pegawai==='Semua' || String(l.userId)===pegawai) && (bulan==='Semua' || verifMonthKey(l.tanggal)===bulan) && (status==='Semua' || l.status===status); });
+      if (!pending.length) { notify('Tidak ada laporan Pending yang sesuai filter.'); return; }
+      if (!confirm(`Setujui ${pending.length} laporan Pending sesuai filter yang aktif?`)) return;
+      let ok=0, failed=0;
+      for (const row of pending) { try { await gasCall('approveReport', {reportId:row.id}); ok++; } catch (e) { failed++; } }
+      await refreshServerData(); renderVerifikatorDashboard();
+      notify(`Verifikasi massal selesai: ${ok} disetujui${failed ? `, ${failed} gagal` : ''}.`);
     }
 
-    async function hapusLaporanVerifikator(lapId) {
-      if (!currentUser || !['Verifikator','SuperAdmin'].includes(currentUser.role)) { notify('Akses penghapusan tidak diizinkan.'); return; }
-      if (!confirm('Hapus laporan harian staf PJLP ini secara permanen? Tindakan ini tidak dapat dibatalkan.')) return;
-      try {
-        await gasCall('deleteReportByVerifier', { reportId: lapId });
-        await refreshServerData();
-        renderVerifikatorDashboard();
-        notify('Laporan berhasil dihapus.');
-      } catch (err) { notify('Laporan gagal dihapus: ' + err.message); }
+    async function hapusLaporanBawahan(lapId) {
+      if (!currentUser || !['Verifikator','SuperAdmin'].includes(currentUser.role)) { notify('Anda tidak berwenang menghapus laporan.'); return; }
+      if (!confirm('Hapus laporan harian staf ini secara permanen? Tindakan tidak dapat dibatalkan.')) return;
+      try { await gasCall('deleteReport', {recordId:lapId}); await refreshServerData(); if (currentUser.role==='Verifikator') renderVerifikatorDashboard(); else renderAdminLaporanTable(); notify('Laporan berhasil dihapus.'); }
+      catch (err) { notify('Laporan gagal dihapus: ' + (err.message || err)); }
     }
 
     function approveLaporan(lapId) {
