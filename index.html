@@ -145,31 +145,6 @@
     }
   </style>
 
-
-<style id="siap-responsive-autoscroll-v2">
-  html { scroll-behavior:smooth; scroll-padding-top:18px; }
-  #view-pjlp,#view-verifikator,#view-superadmin { width:100%; max-width:1280px; margin-left:auto; margin-right:auto; box-sizing:border-box; }
-  #view-pjlp *,#view-verifikator *,#view-superadmin * { min-width:0; }
-  #view-pjlp .overflow-x-auto,#view-verifikator .overflow-x-auto,#view-superadmin .overflow-x-auto { max-width:100%; -webkit-overflow-scrolling:touch; }
-  #view-pjlp table,#view-verifikator table,#view-superadmin table { min-width:640px; }
-  @media(max-width:767px){
-    body { overflow-x:hidden; }
-    #view-pjlp,#view-verifikator,#view-superadmin { padding-left:12px!important; padding-right:12px!important; padding-top:16px!important; gap:16px!important; }
-    #view-pjlp .rounded-3xl,#view-pjlp .rounded-2xl,#view-verifikator .rounded-3xl,#view-verifikator .rounded-2xl,#view-superadmin .rounded-3xl,#view-superadmin .rounded-2xl { max-width:100%; }
-    #view-pjlp > .bg-white.flex,#view-verifikator > .bg-white.flex,#view-superadmin > .bg-white.flex { display:flex; flex-wrap:nowrap; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; padding:6px!important; gap:6px!important; scroll-snap-type:x proximity; }
-    #view-pjlp > .bg-white.flex > button,#view-verifikator > .bg-white.flex > button,#view-superadmin > .bg-white.flex > button { flex:0 0 auto; max-width:85vw; white-space:nowrap; scroll-snap-align:start; font-size:11px!important; padding:10px 12px!important; }
-    #view-pjlp .p-6,#view-verifikator .p-6,#view-superadmin .p-6 { padding:14px!important; }
-    #view-pjlp .p-8,#view-verifikator .p-8,#view-superadmin .p-8 { padding:14px!important; }
-    #view-pjlp input:not([type=file]),#view-pjlp select,#view-pjlp textarea,#view-verifikator input,#view-verifikator select,#view-verifikator textarea,#view-superadmin input,#view-superadmin select,#view-superadmin textarea { max-width:100%; font-size:16px; box-sizing:border-box; }
-    #view-pjlp .grid.grid-cols-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
-    #view-pjlp .grid,#view-verifikator .grid,#view-superadmin .grid { min-width:0; }
-    #view-pjlp .flex.items-center.justify-between,#view-verifikator .flex.items-center.justify-between { flex-wrap:wrap; }
-    #view-pjlp h2,#view-verifikator h2,#view-superadmin h2 { overflow-wrap:anywhere; line-height:1.25; }
-    .app-footer-fixed { z-index:45; }
-  }
-  @media(min-width:768px) and (max-width:1100px){ #view-pjlp,#view-verifikator,#view-superadmin { padding-left:20px!important;padding-right:20px!important; } }
-</style>
-
 </head>
 <body class="bg-blue-50/50 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
@@ -966,6 +941,7 @@
         </div>
       </div>
 
+
     </section>
 
     <!-- ================= VIEW 3: DASHBOARD VERIFIKATOR (4 BIDANG) ================= -->
@@ -1026,8 +1002,10 @@
               <option value="Semua">Semua Status</option>
               <option value="Pending">Perlu Diperiksa (Pending)</option>
               <option value="Disetujui">Disetujui</option>
+              <option value="Ditolak">Ditolak</option>
             </select>
-            <button type="button" onclick="verifikasiSemuaPending()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm"><i class="fa-solid fa-check-double mr-1"></i> Verifikasi Semua</button>
+            <input id="verif-search-laporan" type="search" oninput="renderVerifikatorTable()" placeholder="Cari nama/uraian…" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white outline-none w-full sm:w-44" aria-label="Cari laporan" />
+            <button type="button" onclick="approveAllFilteredReports()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold"><i class="fa-solid fa-check-double mr-1"></i>Verifikasi Semua Pending</button>
           </div>
         </div>
 
@@ -1131,6 +1109,9 @@
         </button>
         <button id="admin-tab-btn-arsip" onclick="switchAdminTab('arsip')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-folder-tree"></i> Semua Arsip Berkas Pegawai
+        </button>
+        <button id="admin-tab-btn-audit" onclick="switchAdminTab('audit')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
+          <i class="fa-solid fa-shield-halved"></i> Riwayat Aktivitas
         </button>
       </div>
 
@@ -1316,6 +1297,14 @@
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div id="admin-tab-audit-panel" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
+          <div><h3 class="font-black text-slate-900 text-lg">Riwayat Aktivitas Sistem</h3><p class="text-xs text-slate-500">100 aktivitas terbaru. Data dimuat hanya saat menu ini dibuka.</p></div>
+          <button onclick="loadAuditLog()" class="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200"><i class="fa-solid fa-rotate mr-1"></i>Muat Ulang</button>
+        </div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead><tr class="bg-slate-50 text-slate-600 uppercase text-[10px]"><th class="p-3">Waktu</th><th class="p-3">Pengguna</th><th class="p-3">Aksi</th><th class="p-3">Data</th><th class="p-3">Rincian</th></tr></thead><tbody id="admin-audit-table-body"><tr><td colspan="5" class="p-5 text-center text-slate-400">Buka menu Riwayat Aktivitas untuk memuat data.</td></tr></tbody></table></div>
       </div>
 
     </section>
@@ -2617,15 +2606,13 @@
       const abBody = document.getElementById('rekap-hadir-month-body');
       if (abBody) abBody.innerHTML = attendanceRows.length ? attendanceRows.map(a => {
         let timing = '—';
-        if (a.status === 'Hadir' && a.sesi === 'Masuk') {
+        if (a.sesi === 'Masuk' && a.status === 'Hadir') {
           let late = Number(a.lateBySeconds || 0);
-          if (!Number.isFinite(late) || late <= 0) { const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/); if (hm) late = Math.max(0, Number(hm[1]) * 3600 + Number(hm[2]) * 60 - 8 * 3600); }
+          if (!Number.isFinite(late) || late <= 0) {
+            const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/);
+            if (hm) late = Math.max(0, Number(hm[1]) * 3600 + Number(hm[2]) * 60 - 8 * 3600);
+          }
           timing = late > 0 ? 'Terlambat' : 'Tepat Waktu';
-        } else if (a.status === 'Hadir' && a.sesi === 'Pulang') {
-          const dateKey = dateKeyISO(a.tanggal); const parts = dateKey.split('-').map(Number); const weekday = parts.length === 3 ? new Date(parts[0], parts[1]-1, parts[2]).getDay() : -1;
-          const cutoff = weekday === 5 ? 11*60+30 : (weekday >= 1 && weekday <= 4 ? 16*60+30 : null);
-          const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/);
-          if (cutoff !== null && hm) { const mins = Number(hm[1])*60+Number(hm[2]); timing = mins >= cutoff && mins <= cutoff+120 ? 'Tepat Waktu' : (mins < cutoff ? 'Terlalu Cepat' : 'Terlambat'); }
         }
         return `<tr><td class="p-3">${escapeHTML(formatDateDisplay(a.tanggal))}</td><td class="p-3">${escapeHTML(a.sesi||'')}</td><td class="p-3">${escapeHTML(formatTimeDisplay(a.jam||''))}</td><td class="p-3">${escapeHTML(a.status||'')}</td><td class="p-3 font-bold ${timing === 'Terlambat' ? 'text-rose-600' : timing === 'Tepat Waktu' ? 'text-emerald-700' : ''}">${escapeHTML(timing)}</td><td class="p-3">${escapeHTML(a.catatan||'')}</td></tr>`;
       }).join('') : '<tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr>';
@@ -3232,9 +3219,6 @@
       if (lapPhotoProcessing) { notify('Foto sedang dioptimalkan. Tunggu sampai pratinjau foto muncul, lalu kirim kembali.'); return; }
       if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi, termasuk foto yang sudah selesai dioptimalkan!'); return; }
       if (jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai.'); return; }
-      const todayKey = document.getElementById('lap-tanggal')?.value || '';
-      const duplicateTime = (dbLaporan || []).some(r => String(r.userId)===String(currentUser?.id) && dateKeyISO(r.tanggal)===todayKey && String(r.jamMulai||'')===jamMulai);
-      if (duplicateTime) { notify('Jam mulai tersebut sudah digunakan pada laporan Anda hari ini. Pilih jam mulai yang berbeda.'); return; }
       if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.innerHTML; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…'; }
 
       try {
@@ -3360,25 +3344,16 @@
       }
     }
 
-    // Auto-scroll ke panel/menu yang dipilih di layar kecil; desktop tetap mempertahankan posisi normal.
-    function scrollToActivePanel(panelId, buttonId) {
-      if (window.matchMedia && window.matchMedia('(max-width: 767px)').matches) {
-        const target = document.getElementById(panelId);
-        if (target) window.setTimeout(() => target.scrollIntoView({behavior:'smooth', block:'start', inline:'nearest'}), 80);
-        const button = document.getElementById(buttonId);
-        if (button && button.scrollIntoView) button.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
-      }
-    }
-
     // Super Admin & Verifikator Tabs
     function switchAdminTab(tabName) {
-      ['registrasi', 'users', 'hadir', 'laporan', 'arsip'].forEach(t => {
-        const tabEl = document.getElementById(`admin-tab-${t}`);
+      ['registrasi', 'users', 'hadir', 'laporan', 'arsip', 'audit'].forEach(t => {
+        const tabEl = document.getElementById(t === 'audit' ? 'admin-tab-audit-panel' : `admin-tab-${t}`);
         const btnEl = document.getElementById(`admin-tab-btn-${t}`);
         if (tabEl) tabEl.classList.add('hidden');
         if (btnEl) btnEl.className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
       });
-      document.getElementById(`admin-tab-${tabName}`).classList.remove('hidden');
+      const activeAdminPanel = document.getElementById(tabName === 'audit' ? 'admin-tab-audit-panel' : `admin-tab-${tabName}`);
+      if (activeAdminPanel) activeAdminPanel.classList.remove('hidden');
       document.getElementById(`admin-tab-btn-${tabName}`).className = "px-4 py-2.5 rounded-xl bg-indigo-600 text-white flex items-center gap-2 transition shadow-sm";
 
       if (tabName === 'registrasi') renderPendingRegistrations();
@@ -3386,7 +3361,7 @@
       if (tabName === 'hadir') renderAdminAbsensiTable();
       if (tabName === 'laporan') renderAdminLaporanTable();
       if (tabName === 'arsip') renderAdminArsipTable();
-      scrollToActivePanel(`admin-tab-${tabName}`, `admin-tab-btn-${tabName}`);
+      if (tabName === 'audit') loadAuditLog();
     }
 
     function switchPjlpTab(tabName) {
@@ -3416,7 +3391,6 @@
       activePanel.classList.remove('hidden');
       activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
       if (tabName === 'hadir') { locationVerified = false; lastGpsPosition = null; checkUserLocation({silent:true}); }
-      scrollToActivePanel(`pjlp-tab-${tabName}`, `pjlp-tab-btn-${tabName}`);
     }
 
     function switchVerifTab(tabName) {
@@ -3427,7 +3401,6 @@
       });
       document.getElementById(`verif-tab-${tabName}`).classList.remove('hidden');
       document.getElementById(`verif-tab-btn-${tabName}`).className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
-      scrollToActivePanel(`verif-tab-${tabName}`, `verif-tab-btn-${tabName}`);
     }
 
     // Menu khusus Super Admin untuk menyetujui atau menolak akun baru.
@@ -3653,6 +3626,7 @@
       const filterStatus = document.getElementById('verif-filter-status')?.value || 'Semua';
       const filterPegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
       const filterBulan = document.getElementById('verif-filter-bulan')?.value || 'Semua';
+      const searchKey = String(document.getElementById('verif-search-laporan')?.value || '').trim().toLowerCase();
       const selectedDate = document.getElementById('verif-filter-tanggal')?.value || '';
       const tbody = document.getElementById('verifikator-table-body');
       if (!tbody) return;
@@ -3664,6 +3638,7 @@
         if (filterPegawai !== 'Semua' && String(l.userId) !== filterPegawai) return false;
         if (filterBulan !== 'Semua' && verifMonthKey(l.tanggal) !== filterBulan) return false;
         if (filterStatus !== 'Semua' && l.status !== filterStatus) return false;
+        if (searchKey && !String(l.kegiatan || '').toLowerCase().includes(searchKey) && !String(l.output || '').toLowerCase().includes(searchKey) && !String(owner.nama || '').toLowerCase().includes(searchKey)) return false;
         return true;
       }).sort((a,b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')));
       if (!rows.length) {
@@ -3680,7 +3655,7 @@
           <td class="py-3.5 px-4 font-bold text-blue-700">${escapeHTML(l.output || '')}</td>
           <td class="py-3.5 px-4 text-center">${l.foto || l.fotoFileId ? `<button type="button" onclick="openReportPhotoById(${safeJsArg(l.id)})" class="text-blue-700 underline text-xs font-semibold">Buka foto</button>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
           <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status || 'Pending')}</span></td>
-          <td class="py-3.5 px-4 text-center"><div class="inline-flex flex-wrap justify-center gap-1">${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold">Setujui</button>` : '<span class="text-xs text-blue-600 font-bold">Selesai</span>'}<button type="button" onclick="hapusLaporanBawahan(${safeJsArg(l.id)})" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold">Hapus</button></div></td>
+          <td class="py-3.5 px-4 text-center"><div class="flex flex-wrap justify-center gap-1">${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold">Setujui</button><button onclick="rejectLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-amber-600 text-white rounded-lg text-[10px] font-bold">Tolak</button>` : `<span class="text-xs font-bold ${l.status==='Ditolak'?'text-rose-600':'text-blue-600'}">${escapeHTML(l.status || 'Selesai')}</span>`}<button onclick="deleteVerifierReport(${safeJsArg(l.id)})" class="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-bold border border-rose-200">Hapus</button></div></td>
         </tr>`;
       }).join('');
     }
@@ -3735,27 +3710,61 @@
       }).join('');
     }
 
-    async function verifikasiSemuaPending() {
-      if (!currentUser || currentUser.role !== 'Verifikator') { notify('Fitur ini hanya untuk akun Verifikator.'); return; }
+    async function approveAllFilteredReports() {
+      if (!currentUser || !['Verifikator','SuperAdmin'].includes(currentUser.role)) { notify('Akses ditolak.'); return; }
       const status = document.getElementById('verif-filter-status')?.value || 'Semua';
+      if (status !== 'Pending' && status !== 'Semua') { notify('Pilih status Pending atau Semua agar laporan yang diproses jelas.'); return; }
+      const bidang = String(currentUser.bidang || '').trim();
       const pegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
       const bulan = document.getElementById('verif-filter-bulan')?.value || 'Semua';
       const tanggal = document.getElementById('verif-filter-tanggal')?.value || '';
-      const bidang = String(currentUser.bidang || '').trim();
-      const pending = (dbLaporan || []).filter(l => { const owner = (dbUsers||[]).find(u => String(u.id)===String(l.userId)); return owner && String(owner.bidang||'').trim()===bidang && l.status==='Pending' && (!tanggal || dateKeyISO(l.tanggal)===tanggal) && (pegawai==='Semua' || String(l.userId)===pegawai) && (bulan==='Semua' || verifMonthKey(l.tanggal)===bulan) && (status==='Semua' || l.status===status); });
-      if (!pending.length) { notify('Tidak ada laporan Pending yang sesuai filter.'); return; }
-      if (!confirm(`Setujui ${pending.length} laporan Pending sesuai filter yang aktif?`)) return;
-      let ok=0, failed=0;
-      for (const row of pending) { try { await gasCall('approveReport', {reportId:row.id}); ok++; } catch (e) { failed++; } }
-      await refreshServerData(); renderVerifikatorDashboard();
-      notify(`Verifikasi massal selesai: ${ok} disetujui${failed ? `, ${failed} gagal` : ''}.`);
+      const search = String(document.getElementById('verif-search-laporan')?.value || '').trim().toLowerCase();
+      const ids = dbLaporan.filter(l => {
+        if (l.status !== 'Pending') return false;
+        const owner = dbUsers.find(u => String(u.id) === String(l.userId));
+        if (!owner || (currentUser.role === 'Verifikator' && String(owner.bidang || '').trim() !== bidang)) return false;
+        if (pegawai !== 'Semua' && String(l.userId) !== pegawai) return false;
+        if (bulan !== 'Semua' && verifMonthKey(l.tanggal) !== bulan) return false;
+        if (tanggal && dateKeyISO(l.tanggal) !== tanggal) return false;
+        if (search && !String(l.kegiatan || '').toLowerCase().includes(search) && !String(l.output || '').toLowerCase().includes(search) && !String(owner.nama || '').toLowerCase().includes(search)) return false;
+        return true;
+      }).map(l => String(l.id));
+      if (!ids.length) { notify('Tidak ada laporan Pending sesuai filter.'); return; }
+      if (!confirm(`Setujui ${ids.length} laporan Pending sesuai filter yang aktif?`)) return;
+      try {
+        const result = await gasCall('bulkApproveReports', {reportIds:ids});
+        await refreshServerData();
+        if (currentUser.role === 'Verifikator') renderVerifikatorDashboard(); else renderAdminLaporanTable();
+        notify(`Berhasil menyetujui ${result.approved || 0} laporan. Dilewati: ${result.skipped || 0}.`);
+      } catch (err) { notify('Verifikasi massal gagal: ' + err.message); }
     }
-
-    async function hapusLaporanBawahan(lapId) {
-      if (!currentUser || !['Verifikator','SuperAdmin'].includes(currentUser.role)) { notify('Anda tidak berwenang menghapus laporan.'); return; }
-      if (!confirm('Hapus laporan harian staf ini secara permanen? Tindakan tidak dapat dibatalkan.')) return;
-      try { await gasCall('deleteReport', {recordId:lapId}); await refreshServerData(); if (currentUser.role==='Verifikator') renderVerifikatorDashboard(); else renderAdminLaporanTable(); notify('Laporan berhasil dihapus.'); }
-      catch (err) { notify('Laporan gagal dihapus: ' + (err.message || err)); }
+    async function rejectLaporan(lapId) {
+      const reason = prompt('Masukkan alasan penolakan laporan:');
+      if (reason === null) return;
+      if (reason.trim().length < 3) { notify('Alasan penolakan wajib diisi minimal 3 karakter.'); return; }
+      try {
+        await gasCall('rejectReport', {reportId:lapId, reason:reason.trim()});
+        await refreshServerData(); renderVerifikatorDashboard();
+        notify('Laporan ditolak dan alasan tercatat pada riwayat aktivitas.');
+      } catch (err) { notify('Penolakan gagal: ' + err.message); }
+    }
+    async function deleteVerifierReport(lapId) {
+      if (!confirm('Hapus laporan staf ini? Tindakan akan dicatat dalam riwayat aktivitas.')) return;
+      try {
+        await gasCall('deleteReportAsVerifier', {reportId:lapId});
+        await refreshServerData(); renderVerifikatorDashboard();
+        notify('Laporan berhasil dihapus.');
+      } catch (err) { notify('Penghapusan gagal: ' + err.message); }
+    }
+    async function loadAuditLog() {
+      const tbody = document.getElementById('admin-audit-table-body');
+      if (!tbody || !currentUser || currentUser.role !== 'SuperAdmin') return;
+      tbody.innerHTML = '<tr><td colspan="5" class="p-5 text-center text-slate-400">Memuat riwayat…</td></tr>';
+      try {
+        const result = await gasCall('getAuditLog', {limit:100});
+        const logs = result.logs || [];
+        tbody.innerHTML = logs.length ? logs.map(x => `<tr class="border-b border-slate-100 align-top"><td class="p-3 whitespace-nowrap">${escapeHTML(x.createdAt || '')}</td><td class="p-3">${escapeHTML(x.actorName || '')}</td><td class="p-3 font-bold">${escapeHTML(x.action || '')}</td><td class="p-3">${escapeHTML(x.entity || '')}<br><span class="text-slate-400">${escapeHTML(x.entityId || '')}</span></td><td class="p-3">${escapeHTML(x.details || '')}</td></tr>`).join('') : '<tr><td colspan="5" class="p-5 text-center text-slate-400">Belum ada riwayat aktivitas.</td></tr>';
+      } catch (err) { tbody.innerHTML = `<tr><td colspan="5" class="p-5 text-center text-rose-600">Gagal memuat riwayat: ${escapeHTML(err.message)}</td></tr>`; }
     }
 
     function approveLaporan(lapId) {
