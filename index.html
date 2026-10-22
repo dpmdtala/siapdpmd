@@ -2733,7 +2733,7 @@
               <td class="py-3 px-3">${escapeHTML(l.kegiatan)}</td>
               <td class="py-3 px-3 font-bold">${escapeHTML(l.output)}</td>
               <td class="py-3 px-3 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
-              <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status)}</span></td>
+              <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':(l.status==='Ditolak'?'bg-rose-100 text-rose-800':'bg-amber-100 text-amber-800')}">${escapeHTML(l.status)}</span></td>
             </tr>
           `;
         });
@@ -3525,7 +3525,7 @@
             <td class="py-3.5 px-4">${escapeHTML(l.kegiatan)}</td>
             <td class="py-3.5 px-4 font-bold text-blue-700">${escapeHTML(l.output)}</td>
             <td class="py-3.5 px-4 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
-            <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status)}</span></td>
+            <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':(l.status==='Ditolak'?'bg-rose-100 text-rose-800':'bg-amber-100 text-amber-800')}">${escapeHTML(l.status)}</span></td>
             <td class="py-3.5 px-4 text-center space-x-1">
               ${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)})" class="px-2.5 py-1 bg-blue-600 text-white rounded text-[10px] font-bold">Setujui</button>` : `<span class="text-xs text-blue-600 font-bold">Disetujui</span>`}
               <button onclick="deleteServerRecord('deleteReport',${safeJsArg(l.id)})" class="px-2 py-1 bg-rose-50 text-rose-600 rounded text-[10px] font-bold">Hapus</button>
@@ -3621,7 +3621,6 @@
     function renderVerifikatorTable() {
       if (!currentUser) return;
       ensureHistoryDateFilter('verifikator-table-body','verif-filter-tanggal','Tanggal laporan',renderVerifikatorTable);
-      ensureHistoryDateFilter('verifikator-table-body','verif-filter-tanggal','Tanggal laporan',renderVerifikatorTable);
       const userBidang = String(currentUser.bidang || '').trim();
       const filterStatus = document.getElementById('verif-filter-status')?.value || 'Semua';
       const filterPegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
@@ -3633,7 +3632,6 @@
       const rows = dbLaporan.filter(l => {
         const owner = dbUsers.find(u => String(u.id) === String(l.userId));
         if (!owner || String(owner.bidang || '').trim() !== userBidang) return false;
-        if (selectedDate && dateKeyISO(l.tanggal) !== selectedDate) return false;
         if (selectedDate && dateKeyISO(l.tanggal) !== selectedDate) return false;
         if (filterPegawai !== 'Semua' && String(l.userId) !== filterPegawai) return false;
         if (filterBulan !== 'Semua' && verifMonthKey(l.tanggal) !== filterBulan) return false;
@@ -3654,7 +3652,7 @@
           <td class="py-3.5 px-4">${escapeHTML(l.kegiatan || '')}</td>
           <td class="py-3.5 px-4 font-bold text-blue-700">${escapeHTML(l.output || '')}</td>
           <td class="py-3.5 px-4 text-center">${l.foto || l.fotoFileId ? `<button type="button" onclick="openReportPhotoById(${safeJsArg(l.id)})" class="text-blue-700 underline text-xs font-semibold">Buka foto</button>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
-          <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status || 'Pending')}</span></td>
+          <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':(l.status==='Ditolak'?'bg-rose-100 text-rose-800':'bg-amber-100 text-amber-800')}">${escapeHTML(l.status || 'Pending')}</span></td>
           <td class="py-3.5 px-4 text-center"><div class="flex flex-wrap justify-center gap-1">${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold">Setujui</button><button onclick="rejectLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-amber-600 text-white rounded-lg text-[10px] font-bold">Tolak</button>` : `<span class="text-xs font-bold ${l.status==='Ditolak'?'text-rose-600':'text-blue-600'}">${escapeHTML(l.status || 'Selesai')}</span>`}<button onclick="deleteVerifierReport(${safeJsArg(l.id)})" class="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-bold border border-rose-200">Hapus</button></div></td>
         </tr>`;
       }).join('');
@@ -3676,7 +3674,6 @@
 
     function renderVerifikatorHadirTable() {
       if (!currentUser) return;
-      ensureHistoryDateFilter('verifikator-hadir-table-body','verif-hadir-filter-tanggal','Tanggal presensi',renderVerifikatorHadirTable);
       ensureHistoryDateFilter('verifikator-hadir-table-body','verif-hadir-filter-tanggal','Tanggal presensi',renderVerifikatorHadirTable);
       const tbody = document.getElementById('verifikator-hadir-table-body');
       if (!tbody) return;
