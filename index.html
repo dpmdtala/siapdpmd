@@ -970,7 +970,7 @@
           <div class="inline-flex items-center gap-2 bg-blue-500/30 border border-blue-400/40 px-3 py-1 rounded-full text-xs text-sky-200 font-bold mb-2 backdrop-blur-md">
             <i class="fa-solid fa-sitemap"></i> <span id="verif-scope-badge">Ruang Lingkup: Sekretariat</span>
           </div>
-          <h2 class="text-2xl sm:text-3xl font-black">Panel Verifikasi Laporan Bidang</h2>
+          <h2 class="text-2xl sm:text-3xl font-black">Panel Verifikasi Laporan Bidang / Sub Bagian</h2>
           <p id="verif-scope-desc" class="text-xs sm:text-sm text-sky-100/90 mt-1">Anda memiliki kewenangan meninjau & memverifikasi laporan kinerja harian pegawai PJLP di bidang ini.</p>
         </div>
 
@@ -1003,6 +1003,7 @@
             <p class="text-xs text-slate-500">Tinjau uraian kegiatan, volume output, dan foto bukti pelaksanaan pekerjaan</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
+            <button type="button" id="verif-approve-all-btn" onclick="approveAllFilteredReports(this)" class="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-blue-700 text-white text-xs font-extrabold shadow-sm"><i class="fa-solid fa-check-double mr-1"></i> Verifikasi Semua Pending</button>
             <select id="verif-filter-pegawai" onchange="renderVerifikatorTable()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white outline-none" aria-label="Filter pegawai laporan">
               <option value="Semua">Semua Pegawai</option>
             </select>
@@ -2603,13 +2604,21 @@
       const abBody = document.getElementById('rekap-hadir-month-body');
       if (abBody) abBody.innerHTML = attendanceRows.length ? attendanceRows.map(a => {
         let timing = '—';
-        if (a.sesi === 'Masuk' && a.status === 'Hadir') {
+        if (a.status === 'Hadir' && a.sesi === 'Masuk') {
           let late = Number(a.lateBySeconds || 0);
           if (!Number.isFinite(late) || late <= 0) {
             const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/);
             if (hm) late = Math.max(0, Number(hm[1]) * 3600 + Number(hm[2]) * 60 - 8 * 3600);
           }
           timing = late > 0 ? 'Terlambat' : 'Tepat Waktu';
+        } else if (a.status === 'Hadir' && a.sesi === 'Pulang') {
+          const hm = String(a.jam || '').match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+          if (hm) {
+            const clock = Number(hm[1])*3600 + Number(hm[2])*60 + Number(hm[3] || 0);
+            const day = new Date(String(a.tanggal || '').slice(0,10) + 'T12:00:00+08:00').getDay();
+            const scheduled = day === 5 ? 11*3600+30*60 : 16*3600+30*60;
+            timing = clock >= scheduled && clock <= scheduled + 2*3600 ? 'Tepat Waktu' : (clock < scheduled ? 'Sebelum Jam Pulang' : 'Di Luar Batas 2 Jam');
+          }
         }
         return `<tr><td class="p-3">${escapeHTML(formatDateDisplay(a.tanggal))}</td><td class="p-3">${escapeHTML(a.sesi||'')}</td><td class="p-3">${escapeHTML(formatTimeDisplay(a.jam||''))}</td><td class="p-3">${escapeHTML(a.status||'')}</td><td class="p-3 font-bold ${timing === 'Terlambat' ? 'text-rose-600' : timing === 'Tepat Waktu' ? 'text-emerald-700' : ''}">${escapeHTML(timing)}</td><td class="p-3">${escapeHTML(a.catatan||'')}</td></tr>`;
       }).join('') : '<tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr>';
@@ -3616,7 +3625,6 @@
     function renderVerifikatorTable() {
       if (!currentUser) return;
       ensureHistoryDateFilter('verifikator-table-body','verif-filter-tanggal','Tanggal laporan',renderVerifikatorTable);
-      ensureHistoryDateFilter('verifikator-table-body','verif-filter-tanggal','Tanggal laporan',renderVerifikatorTable);
       const userBidang = String(currentUser.bidang || '').trim();
       const filterStatus = document.getElementById('verif-filter-status')?.value || 'Semua';
       const filterPegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
@@ -3648,7 +3656,7 @@
           <td class="py-3.5 px-4 font-bold text-blue-700">${escapeHTML(l.output || '')}</td>
           <td class="py-3.5 px-4 text-center">${l.foto || l.fotoFileId ? `<button type="button" onclick="openReportPhotoById(${safeJsArg(l.id)})" class="text-blue-700 underline text-xs font-semibold">Buka foto</button>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
           <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status || 'Pending')}</span></td>
-          <td class="py-3.5 px-4 text-center">${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold">Setujui</button>` : '<span class="text-xs text-blue-600 font-bold">Selesai</span>'}</td>
+          <td class="py-3.5 px-4 text-center"><div class="inline-flex flex-wrap justify-center gap-1">${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)}, this)" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold">Setujui</button>` : '<span class="text-xs text-blue-600 font-bold">Selesai</span>'}<button type="button" onclick="deleteVerifikatorReport(${safeJsArg(l.id)}, this)" class="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold">Hapus</button></div></td>
         </tr>`;
       }).join('');
     }
@@ -3703,13 +3711,54 @@
       }).join('');
     }
 
-    function approveLaporan(lapId) {
-      gasCall('approveReport', { reportId: lapId }).then(async () => {
+    async function approveLaporan(lapId, button) {
+      if (button && button.disabled) return;
+      if (button) { button.disabled = true; button.dataset.oldText = button.innerHTML; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try {
+        await gasCall('approveReport', { reportId: lapId });
         await refreshServerData();
         notify('Laporan harian berhasil disetujui dan tercatat.');
-        if (currentUser.role === 'SuperAdmin') renderAdminLaporanTable();
-        else renderVerifikatorDashboard();
-      }).catch(err => notify('Verifikasi gagal: ' + err.message));
+        if (currentUser.role === 'SuperAdmin') renderAdminLaporanTable(); else renderVerifikatorDashboard();
+      } catch (err) { notify('Verifikasi gagal: ' + err.message); }
+      finally { if (button) { button.disabled = false; button.innerHTML = button.dataset.oldText || 'Setujui'; } }
+    }
+
+    async function approveAllFilteredReports(button) {
+      if (!currentUser || currentUser.role !== 'Verifikator') { notify('Fitur ini hanya tersedia untuk Verifikator.'); return; }
+      const status = document.getElementById('verif-filter-status')?.value || 'Semua';
+      const pegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
+      const bulan = document.getElementById('verif-filter-bulan')?.value || 'Semua';
+      const tanggal = document.getElementById('verif-filter-tanggal')?.value || '';
+      const scope = String(currentUser.bidang || '').trim();
+      const pending = dbLaporan.filter(l => {
+        const owner = dbUsers.find(u => String(u.id) === String(l.userId));
+        return owner && String(owner.bidang || '').trim() === scope && (!l.status || l.status === 'Pending') &&
+          (pegawai === 'Semua' || String(l.userId) === pegawai) &&
+          (bulan === 'Semua' || verifMonthKey(l.tanggal) === bulan) &&
+          (!tanggal || dateKeyISO(l.tanggal) === tanggal) && (status === 'Semua' || l.status === status);
+      });
+      if (!pending.length) { notify('Tidak ada laporan pending pada filter yang dipilih.'); return; }
+      if (!confirm(`Setujui ${pending.length} laporan pending pada filter yang dipilih? Tindakan ini akan tercatat di audit log.`)) return;
+      if (button) { button.disabled = true; button.dataset.oldText = button.innerHTML; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses…'; }
+      try {
+        const result = await gasCall('approveReportsBulk', { reportIds: pending.map(x => x.id) });
+        await refreshServerData(); renderVerifikatorDashboard();
+        notify(`Verifikasi massal selesai: ${result.approved || pending.length} laporan disetujui.`);
+      } catch (err) { notify('Verifikasi massal gagal: ' + err.message); }
+      finally { if (button) { button.disabled = false; button.innerHTML = button.dataset.oldText || 'Verifikasi Semua Pending'; } }
+    }
+
+    async function deleteVerifikatorReport(reportId, button) {
+      const row = dbLaporan.find(x => String(x.id) === String(reportId));
+      if (!row) { notify('Laporan tidak ditemukan. Muat ulang data.'); return; }
+      if (!confirm(`Hapus laporan kegiatan milik ${row.nama || 'staf'} tanggal ${formatDateDisplay(row.tanggal)}? Data yang dihapus tidak dapat dipulihkan.`)) return;
+      if (button) { button.disabled = true; button.dataset.oldText = button.innerHTML; button.innerHTML = 'Menghapus…'; }
+      try {
+        await gasCall('deleteReportByVerifier', { reportId });
+        await refreshServerData(); renderVerifikatorDashboard();
+        notify('Laporan berhasil dihapus.');
+      } catch (err) { notify('Gagal menghapus laporan: ' + err.message); }
+      finally { if (button) { button.disabled = false; button.innerHTML = button.dataset.oldText || 'Hapus'; } }
     }
 
     function openChangePasswordModal() {
