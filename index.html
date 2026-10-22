@@ -145,18 +145,6 @@
     }
   </style>
 
-
-<style id="siap-sidebar-theme">
-:root{--siap-navy:#082b50;--siap-blue:#1266b1;--siap-blue2:#287ed0;--siap-gold:#e3bd67;--siap-red:#b92e3b}
-.siap-workspace{display:grid!important;grid-template-columns:258px minmax(0,1fr);gap:0!important;width:100%;min-height:calc(100vh - 20px);align-items:stretch;background:linear-gradient(135deg,#f3f7fc 0%,#fff 60%,#fff8ed 100%);border-radius:18px;overflow:clip}
-.siap-sidebar{position:sticky;top:0;height:100vh;max-height:100vh;overflow-y:auto;padding:18px 12px 15px;color:#fff;background:linear-gradient(160deg,#061d38 0%,#0b3c6d 48%,#1768a8 78%,#8c2938 125%);border-right:3px solid var(--siap-gold);box-shadow:8px 0 26px rgba(8,43,80,.12);z-index:30;display:flex;flex-direction:column;gap:14px}
-.siap-brand{display:flex;align-items:center;gap:10px;padding:8px 8px 16px;border-bottom:1px solid #ffffff30}.siap-brand-mark{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#092e55;background:linear-gradient(145deg,#fff,#f1d18b);box-shadow:0 4px 12px #0003;font-size:20px;flex:none}.siap-brand-title{font-size:15px;font-weight:900;letter-spacing:.3px}.siap-brand-sub{font-size:10px;color:#d7e7f7;margin-top:3px;line-height:1.4}.siap-sidebar-caption{font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#f0cf83;padding:3px 11px 0}
-.siap-sidebar nav.siap-nav{display:flex;flex-direction:column;gap:5px;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}.siap-sidebar nav.siap-nav button{width:100%;justify-content:flex-start!important;text-align:left;padding:11px 10px!important;border:1px solid transparent;border-radius:11px!important;color:#eaf3fc!important;background:transparent!important;font-size:12px!important;font-weight:700!important;line-height:1.35;box-shadow:none!important;white-space:normal}.siap-sidebar nav.siap-nav button:hover{background:linear-gradient(100deg,#ffffff20,#ffffff09)!important;border-color:#ffffff22}.siap-sidebar nav.siap-nav button.siap-nav-active{background:linear-gradient(110deg,#f4d78e,#d8a94f)!important;color:#09294a!important;border-color:#ffe8a9!important;box-shadow:0 5px 13px #0002!important}.siap-sidebar nav.siap-nav button i{width:18px;text-align:center;flex:none}.siap-sidebar-footer{margin-top:auto;border-top:1px solid #ffffff2b;padding:13px 10px 0;color:#c8d9ea;font-size:10px;line-height:1.5}.siap-main{min-width:0;padding:20px clamp(12px,2vw,30px) 30px;overflow:hidden}.siap-main button:focus-visible{outline:3px solid #e3bd67;outline-offset:2px}.siap-sidebar-toggle{display:none}
-@media(max-width:900px){.siap-workspace{grid-template-columns:220px minmax(0,1fr)}.siap-main{padding:15px 11px 24px}.siap-sidebar{padding:14px 9px}.siap-sidebar nav.siap-nav button{font-size:11px!important;padding:10px 8px!important}}
-@media(max-width:680px){.siap-workspace{display:block!important;position:relative;overflow:visible}.siap-sidebar{position:fixed;left:0;top:0;width:275px;max-width:86vw;transform:translateX(-105%);transition:transform .22s ease;height:100dvh;max-height:100dvh;box-shadow:12px 0 30px #0004}.siap-sidebar.siap-sidebar-open{transform:translateX(0)}.siap-sidebar-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;position:relative;z-index:25;margin:8px 0 0 8px;padding:9px 12px;border-radius:10px;color:#fff;background:linear-gradient(110deg,#0b3a68,#176eb5 70%,#a72c3b);border:1px solid #e3bd67;box-shadow:0 5px 14px #082b5022;font-size:12px;font-weight:800}.siap-main{padding:12px 10px 24px}.siap-sidebar-backdrop{display:none;position:fixed;inset:0;background:#061d38a8;z-index:29}.siap-sidebar-backdrop.siap-backdrop-show{display:block}}
-@media print{.siap-sidebar,.siap-sidebar-toggle,.siap-sidebar-backdrop{display:none!important}.siap-workspace{display:block!important}.siap-main{padding:0!important}}
-</style>
-
 </head>
 <body class="bg-blue-50/50 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
@@ -993,6 +981,9 @@
         <button id="verif-tab-btn-hadir" onclick="switchVerifTab('hadir')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-calendar-user"></i> Presensi Staf Bidang
         </button>
+        <button id="verif-tab-btn-rekap" onclick="switchVerifTab('rekap')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
+          <i class="fa-solid fa-chart-column"></i> Rekapitulasi Verifikasi
+        </button>
       </div>
 
       <!-- TAB 1 VERIFIKASI LAPORAN -->
@@ -1003,7 +994,6 @@
             <p class="text-xs text-slate-500">Tinjau uraian kegiatan, volume output, dan foto bukti pelaksanaan pekerjaan</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <button type="button" id="verif-approve-all-btn" onclick="approveAllFilteredReports(this)" class="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-blue-700 text-white text-xs font-extrabold shadow-sm"><i class="fa-solid fa-check-double mr-1"></i> Verifikasi Semua Pending</button>
             <select id="verif-filter-pegawai" onchange="renderVerifikatorTable()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white outline-none" aria-label="Filter pegawai laporan">
               <option value="Semua">Semua Pegawai</option>
             </select>
@@ -1015,6 +1005,7 @@
               <option value="Pending">Perlu Diperiksa (Pending)</option>
               <option value="Disetujui">Disetujui</option>
             </select>
+            <button id="verif-approve-all-btn" type="button" onclick="verifikasiSemuaLaporan()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm"><i class="fa-solid fa-check-double mr-1"></i> Verifikasi Semua Pending</button>
           </div>
         </div>
 
@@ -1073,6 +1064,20 @@
             </tbody>
           </table>
         </div>
+      </div>
+
+      <!-- TAB 3 REKAPITULASI VERIFIKASI -->
+      <div id="verif-tab-rekap" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
+        <div class="border-b border-slate-100 pb-4">
+          <h3 class="font-black text-slate-900 text-lg">Rekapitulasi Verifikasi Laporan</h3>
+          <p class="text-xs text-slate-500">Ringkasan status laporan kegiatan staf PJLP dalam ruang lingkup bidang/sub bagian Anda.</p>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5"><p class="text-xs font-bold text-amber-800">Menunggu Verifikasi</p><p id="verif-rekap-pending" class="mt-2 text-3xl font-black text-amber-900">0</p></div>
+          <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p class="text-xs font-bold text-emerald-800">Sudah Disetujui</p><p id="verif-rekap-approved" class="mt-2 text-3xl font-black text-emerald-900">0</p></div>
+          <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5"><p class="text-xs font-bold text-blue-800">Total Laporan</p><p id="verif-rekap-total" class="mt-2 text-3xl font-black text-blue-900">0</p></div>
+        </div>
+        <p class="text-xs text-slate-500">Angka diperbarui otomatis berdasarkan data laporan yang tersedia saat dashboard dimuat atau diperbarui.</p>
       </div>
 
     </section>
@@ -2612,12 +2617,13 @@
           }
           timing = late > 0 ? 'Terlambat' : 'Tepat Waktu';
         } else if (a.status === 'Hadir' && a.sesi === 'Pulang') {
-          const hm = String(a.jam || '').match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+          const date = new Date(String(dateKeyISO(a.tanggal)) + 'T12:00:00+08:00');
+          const isFriday = date.getDay() === 5;
+          const cutoff = (isFriday ? 11 : 16) * 3600 + (isFriday ? 30 : 30) * 60;
+          const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/);
           if (hm) {
-            const clock = Number(hm[1])*3600 + Number(hm[2])*60 + Number(hm[3] || 0);
-            const day = new Date(String(a.tanggal || '').slice(0,10) + 'T12:00:00+08:00').getDay();
-            const scheduled = day === 5 ? 11*3600+30*60 : 16*3600+30*60;
-            timing = clock >= scheduled && clock <= scheduled + 2*3600 ? 'Tepat Waktu' : (clock < scheduled ? 'Sebelum Jam Pulang' : 'Di Luar Batas 2 Jam');
+            const recorded = Number(hm[1]) * 3600 + Number(hm[2]) * 60;
+            if (recorded >= cutoff && recorded <= cutoff + 7200) timing = 'Tepat Waktu';
           }
         }
         return `<tr><td class="p-3">${escapeHTML(formatDateDisplay(a.tanggal))}</td><td class="p-3">${escapeHTML(a.sesi||'')}</td><td class="p-3">${escapeHTML(formatTimeDisplay(a.jam||''))}</td><td class="p-3">${escapeHTML(a.status||'')}</td><td class="p-3 font-bold ${timing === 'Terlambat' ? 'text-rose-600' : timing === 'Tepat Waktu' ? 'text-emerald-700' : ''}">${escapeHTML(timing)}</td><td class="p-3">${escapeHTML(a.catatan||'')}</td></tr>`;
@@ -3213,8 +3219,10 @@
       } finally { lapPhotoProcessing = false; }
     }
 
+    let lapSaveInFlight = false;
     async function handleSaveLaporan(e) {
       e.preventDefault();
+      if (lapSaveInFlight) { notify('Laporan sedang dikirim. Jangan klik tombol kirim berulang kali.'); return; }
       const form = e.currentTarget || document.getElementById('form-laporan');
       const submitBtn = form && form.querySelector('button[type="submit"]');
       if (submitBtn && submitBtn.disabled) return;
@@ -3225,6 +3233,7 @@
       if (lapPhotoProcessing) { notify('Foto sedang dioptimalkan. Tunggu sampai pratinjau foto muncul, lalu kirim kembali.'); return; }
       if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi, termasuk foto yang sudah selesai dioptimalkan!'); return; }
       if (jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai.'); return; }
+      lapSaveInFlight = true;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.innerHTML; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…'; }
 
       try {
@@ -3245,6 +3254,7 @@
       } catch (err) {
         notify('Kegiatan harian gagal disimpan: ' + err.message);
       } finally {
+        lapSaveInFlight = false;
         if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = submitBtn.dataset.originalText || 'Kirim Kegiatan'; }
       }
     }
@@ -3398,13 +3408,16 @@
     }
 
     function switchVerifTab(tabName) {
-      document.getElementById('verif-tab-laporan').classList.add('hidden');
-      document.getElementById('verif-tab-hadir').classList.add('hidden');
-      ['laporan', 'hadir'].forEach(t => {
-        document.getElementById(`verif-tab-btn-${t}`).className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
+      ['laporan', 'hadir', 'rekap'].forEach(t => {
+        const panel = document.getElementById(`verif-tab-${t}`);
+        const button = document.getElementById(`verif-tab-btn-${t}`);
+        if (panel) panel.classList.add('hidden');
+        if (button) button.className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
       });
-      document.getElementById(`verif-tab-${tabName}`).classList.remove('hidden');
-      document.getElementById(`verif-tab-btn-${tabName}`).className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
+      const activePanel = document.getElementById(`verif-tab-${tabName}`);
+      const activeButton = document.getElementById(`verif-tab-btn-${tabName}`);
+      if (activePanel) activePanel.classList.remove('hidden');
+      if (activeButton) activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
     }
 
     // Menu khusus Super Admin untuk menyetujui atau menolak akun baru.
@@ -3617,6 +3630,10 @@
       const statPending = document.getElementById('verif-stat-pending');
       if (statStaf) statStaf.innerText = divisionStaf.length;
       if (statPending) statPending.innerText = divisionLaporan.filter(l => l.status === 'Pending').length;
+      const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = String(value); };
+      setText('verif-rekap-pending', divisionLaporan.filter(l => l.status === 'Pending').length);
+      setText('verif-rekap-approved', divisionLaporan.filter(l => l.status === 'Disetujui').length);
+      setText('verif-rekap-total', divisionLaporan.length);
       populateVerifikatorFilters();
       renderVerifikatorTable();
       renderVerifikatorHadirTable();
@@ -3624,6 +3641,7 @@
 
     function renderVerifikatorTable() {
       if (!currentUser) return;
+      ensureHistoryDateFilter('verifikator-table-body','verif-filter-tanggal','Tanggal laporan',renderVerifikatorTable);
       ensureHistoryDateFilter('verifikator-table-body','verif-filter-tanggal','Tanggal laporan',renderVerifikatorTable);
       const userBidang = String(currentUser.bidang || '').trim();
       const filterStatus = document.getElementById('verif-filter-status')?.value || 'Semua';
@@ -3656,7 +3674,7 @@
           <td class="py-3.5 px-4 font-bold text-blue-700">${escapeHTML(l.output || '')}</td>
           <td class="py-3.5 px-4 text-center">${l.foto || l.fotoFileId ? `<button type="button" onclick="openReportPhotoById(${safeJsArg(l.id)})" class="text-blue-700 underline text-xs font-semibold">Buka foto</button>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
           <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status || 'Pending')}</span></td>
-          <td class="py-3.5 px-4 text-center"><div class="inline-flex flex-wrap justify-center gap-1">${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)}, this)" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold">Setujui</button>` : '<span class="text-xs text-blue-600 font-bold">Selesai</span>'}<button type="button" onclick="deleteVerifikatorReport(${safeJsArg(l.id)}, this)" class="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold">Hapus</button></div></td>
+          <td class="py-3.5 px-4 text-center"><div class="inline-flex flex-wrap justify-center gap-1">${l.status === 'Pending' ? `<button type="button" onclick="approveLaporan(${safeJsArg(l.id)})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold">Setujui</button>` : '<span class="text-xs text-blue-600 font-bold px-1 py-1">Selesai</span>'}<button type="button" onclick="hapusLaporanVerifikator(${safeJsArg(l.id)})" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold"><i class="fa-solid fa-trash mr-1"></i>Hapus</button></div></td>
         </tr>`;
       }).join('');
     }
@@ -3711,54 +3729,52 @@
       }).join('');
     }
 
-    async function approveLaporan(lapId, button) {
-      if (button && button.disabled) return;
-      if (button) { button.disabled = true; button.dataset.oldText = button.innerHTML; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+    async function verifikasiSemuaLaporan() {
+      if (!currentUser || !['Verifikator','SuperAdmin'].includes(currentUser.role)) { notify('Akses verifikasi tidak diizinkan.'); return; }
+      const status = document.getElementById('verif-filter-status')?.value || 'Semua';
+      const filterPegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
+      const filterBulan = document.getElementById('verif-filter-bulan')?.value || 'Semua';
+      const selectedDate = document.getElementById('verif-filter-tanggal')?.value || '';
+      const candidates = (dbLaporan || []).filter(l => {
+        const owner = (dbUsers || []).find(u => String(u.id) === String(l.userId));
+        if (!owner || (currentUser.role === 'Verifikator' && String(owner.bidang || '').trim() !== String(currentUser.bidang || '').trim())) return false;
+        if (l.status !== 'Pending') return false;
+        if (selectedDate && dateKeyISO(l.tanggal) !== selectedDate) return false;
+        if (filterPegawai !== 'Semua' && String(l.userId) !== filterPegawai) return false;
+        if (filterBulan !== 'Semua' && verifMonthKey(l.tanggal) !== filterBulan) return false;
+        return status === 'Semua' || status === 'Pending';
+      });
+      if (!candidates.length) { notify('Tidak ada laporan Pending yang sesuai dengan filter saat ini.'); return; }
+      if (!confirm(`Setujui ${candidates.length} laporan Pending sesuai filter saat ini?`)) return;
+      const btn = document.getElementById('verif-approve-all-btn');
+      if (btn) { btn.disabled = true; btn.dataset.oldText = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Memproses…'; }
       try {
-        await gasCall('approveReport', { reportId: lapId });
+        const result = await gasCall('bulkApproveReports', { reportIds: candidates.map(l => l.id) });
+        await refreshServerData();
+        renderVerifikatorDashboard();
+        notify(`Verifikasi massal selesai: ${result.approved || 0} laporan disetujui.`);
+      } catch (err) { notify('Verifikasi massal gagal: ' + err.message); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.oldText || '<i class="fa-solid fa-check-double mr-1"></i> Verifikasi Semua Pending'; } }
+    }
+
+    async function hapusLaporanVerifikator(lapId) {
+      if (!currentUser || !['Verifikator','SuperAdmin'].includes(currentUser.role)) { notify('Akses penghapusan tidak diizinkan.'); return; }
+      if (!confirm('Hapus laporan harian staf PJLP ini secara permanen? Tindakan ini tidak dapat dibatalkan.')) return;
+      try {
+        await gasCall('deleteReportByVerifier', { reportId: lapId });
+        await refreshServerData();
+        renderVerifikatorDashboard();
+        notify('Laporan berhasil dihapus.');
+      } catch (err) { notify('Laporan gagal dihapus: ' + err.message); }
+    }
+
+    function approveLaporan(lapId) {
+      gasCall('approveReport', { reportId: lapId }).then(async () => {
         await refreshServerData();
         notify('Laporan harian berhasil disetujui dan tercatat.');
-        if (currentUser.role === 'SuperAdmin') renderAdminLaporanTable(); else renderVerifikatorDashboard();
-      } catch (err) { notify('Verifikasi gagal: ' + err.message); }
-      finally { if (button) { button.disabled = false; button.innerHTML = button.dataset.oldText || 'Setujui'; } }
-    }
-
-    async function approveAllFilteredReports(button) {
-      if (!currentUser || currentUser.role !== 'Verifikator') { notify('Fitur ini hanya tersedia untuk Verifikator.'); return; }
-      const status = document.getElementById('verif-filter-status')?.value || 'Semua';
-      const pegawai = document.getElementById('verif-filter-pegawai')?.value || 'Semua';
-      const bulan = document.getElementById('verif-filter-bulan')?.value || 'Semua';
-      const tanggal = document.getElementById('verif-filter-tanggal')?.value || '';
-      const scope = String(currentUser.bidang || '').trim();
-      const pending = dbLaporan.filter(l => {
-        const owner = dbUsers.find(u => String(u.id) === String(l.userId));
-        return owner && String(owner.bidang || '').trim() === scope && (!l.status || l.status === 'Pending') &&
-          (pegawai === 'Semua' || String(l.userId) === pegawai) &&
-          (bulan === 'Semua' || verifMonthKey(l.tanggal) === bulan) &&
-          (!tanggal || dateKeyISO(l.tanggal) === tanggal) && (status === 'Semua' || l.status === status);
-      });
-      if (!pending.length) { notify('Tidak ada laporan pending pada filter yang dipilih.'); return; }
-      if (!confirm(`Setujui ${pending.length} laporan pending pada filter yang dipilih? Tindakan ini akan tercatat di audit log.`)) return;
-      if (button) { button.disabled = true; button.dataset.oldText = button.innerHTML; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses…'; }
-      try {
-        const result = await gasCall('approveReportsBulk', { reportIds: pending.map(x => x.id) });
-        await refreshServerData(); renderVerifikatorDashboard();
-        notify(`Verifikasi massal selesai: ${result.approved || pending.length} laporan disetujui.`);
-      } catch (err) { notify('Verifikasi massal gagal: ' + err.message); }
-      finally { if (button) { button.disabled = false; button.innerHTML = button.dataset.oldText || 'Verifikasi Semua Pending'; } }
-    }
-
-    async function deleteVerifikatorReport(reportId, button) {
-      const row = dbLaporan.find(x => String(x.id) === String(reportId));
-      if (!row) { notify('Laporan tidak ditemukan. Muat ulang data.'); return; }
-      if (!confirm(`Hapus laporan kegiatan milik ${row.nama || 'staf'} tanggal ${formatDateDisplay(row.tanggal)}? Data yang dihapus tidak dapat dipulihkan.`)) return;
-      if (button) { button.disabled = true; button.dataset.oldText = button.innerHTML; button.innerHTML = 'Menghapus…'; }
-      try {
-        await gasCall('deleteReportByVerifier', { reportId });
-        await refreshServerData(); renderVerifikatorDashboard();
-        notify('Laporan berhasil dihapus.');
-      } catch (err) { notify('Gagal menghapus laporan: ' + err.message); }
-      finally { if (button) { button.disabled = false; button.innerHTML = button.dataset.oldText || 'Hapus'; } }
+        if (currentUser.role === 'SuperAdmin') renderAdminLaporanTable();
+        else renderVerifikatorDashboard();
+      }).catch(err => notify('Verifikasi gagal: ' + err.message));
     }
 
     function openChangePasswordModal() {
@@ -3876,44 +3892,6 @@
       }
       switchView('landing');
     };
-  
-// Sidebar kiri SIAP-DPMD: membungkus tab yang sudah ada, tanpa mengubah ID panel atau API/database.
-(function(){
- const roleConfigs={
-  pjlp:{caption:'Menu Pegawai',navId:'pjlp-tab-btn-',tabs:['profile','hadir','kegiatan','rekap-hadir','rekap-kinerja','arsip']},
-  verifikator:{caption:'Menu Verifikator',navId:'verif-tab-btn-',tabs:['laporan','hadir']},
-  superadmin:{caption:'Menu Super Admin',navId:'admin-tab-btn-',tabs:['registrasi','users','hadir','laporan','arsip']}
- };
- function buildSidebar(viewName){
-  const section=document.getElementById('view-'+viewName),cfg=roleConfigs[viewName];
-  if(!section||!cfg||section.dataset.siapSidebar==='1')return;
-  const firstBtn=document.getElementById(cfg.navId+cfg.tabs[0]);if(!firstBtn)return;
-  const navSource=firstBtn.parentElement;if(!navSource||!section.contains(navSource))return;
-  navSource.classList.add('siap-nav');
-  const wrapper=document.createElement('div');wrapper.className='siap-workspace';
-  const sidebar=document.createElement('aside');sidebar.className='siap-sidebar';sidebar.setAttribute('aria-label',cfg.caption);
-  const brand=document.createElement('div');brand.className='siap-brand';brand.innerHTML='<div class="siap-brand-mark"><i class="fa-solid fa-landmark"></i></div><div><div class="siap-brand-title">SIAP-DPMD</div><div class="siap-brand-sub">DPMD Kabupaten Tanah Laut<br>Sistem Informasi & Aktivitas PJLP</div></div>';
-  const caption=document.createElement('div');caption.className='siap-sidebar-caption';caption.textContent=cfg.caption;
-  const footer=document.createElement('div');footer.className='siap-sidebar-footer';footer.innerHTML='<div style="color:#f0cf83;font-weight:800">DPMD TANAH LAUT</div><div>Pelayanan yang tertib, transparan, dan akuntabel.</div>';
-  sidebar.append(brand,caption,navSource,footer);
-  const main=document.createElement('div');main.className='siap-main';
-  const nodes=Array.from(section.childNodes);nodes.forEach(n=>{if(n!==navSource)main.appendChild(n)});
-  wrapper.append(sidebar,main);section.appendChild(wrapper);
-  section.classList.remove('max-w-7xl','mx-auto','px-3','sm:px-6','lg:px-8','px-4','py-5','sm:py-8','py-8','space-y-6','space-y-8');
-  const toggle=document.createElement('button');toggle.type='button';toggle.className='siap-sidebar-toggle';toggle.innerHTML='<i class="fa-solid fa-bars"></i> Menu';toggle.setAttribute('aria-label','Buka menu navigasi');section.insertBefore(toggle,wrapper);
-  const backdrop=document.createElement('div');backdrop.className='siap-sidebar-backdrop';section.appendChild(backdrop);
-  function close(){sidebar.classList.remove('siap-sidebar-open');backdrop.classList.remove('siap-backdrop-show')}
-  toggle.addEventListener('click',()=>{sidebar.classList.toggle('siap-sidebar-open');backdrop.classList.toggle('siap-backdrop-show')});backdrop.addEventListener('click',close);
-  navSource.querySelectorAll('button').forEach(btn=>{btn.addEventListener('click',()=>{navSource.querySelectorAll('button').forEach(b=>b.classList.remove('siap-nav-active'));btn.classList.add('siap-nav-active');close()});btn.setAttribute('title',(btn.textContent||'').trim())});
-  const active=navSource.querySelector('.bg-blue-600, .bg-indigo-600');if(active)active.classList.add('siap-nav-active');else if(navSource.querySelector('button'))navSource.querySelector('button').classList.add('siap-nav-active');
-  section.dataset.siapSidebar='1';
- }
- const originalSwitchView=window.switchView;
- if(typeof originalSwitchView==='function')window.switchView=function(viewName){originalSwitchView.apply(this,arguments);if(roleConfigs[viewName])buildSidebar(viewName)};
- // Build when each authenticated role view is first opened; no extra data request at login.
- window.siapBuildSidebar=buildSidebar;
-})();
-
-</script>
+  </script>
 </body>
 </html>
