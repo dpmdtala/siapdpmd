@@ -575,9 +575,16 @@
               </div>
 
               <div class="bg-blue-50 p-4 rounded-2xl border border-blue-200 text-center space-y-1">
-                <p class="text-[10px] font-bold uppercase text-blue-800">Waktu Server WIB/WITA</p>
+                <p class="text-[10px] font-bold uppercase text-blue-800">Waktu Server WITA GMT +8</p>
                 <p id="clock-realtime" class="text-2xl font-black text-blue-950">12:24:23 WITA</p>
                 <p id="date-realtime" class="text-xs font-semibold text-blue-700">Jumat, 16 Oktober 2026</p>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="attendance-monthly-info-cards">
+                <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3"><p class="text-[10px] font-bold uppercase text-emerald-700">Jumlah Hari Hadir</p><p id="absen-stat-hadir" class="mt-1 text-xl font-black text-emerald-800">0</p></div>
+                <div class="rounded-xl border border-sky-100 bg-sky-50 p-3"><p class="text-[10px] font-bold uppercase text-sky-700">Jumlah Dinas Luar</p><p id="absen-stat-dinas-luar" class="mt-1 text-xl font-black text-sky-800">0</p></div>
+                <div class="rounded-xl border border-rose-100 bg-rose-50 p-3"><p class="text-[10px] font-bold uppercase text-rose-700">Jumlah Sakit</p><p id="absen-stat-sakit" class="mt-1 text-xl font-black text-rose-800">0</p></div>
+                <div class="rounded-xl border border-amber-100 bg-amber-50 p-3"><p class="text-[10px] font-bold uppercase text-amber-700">Jumlah Izin</p><p id="absen-stat-izin" class="mt-1 text-xl font-black text-amber-800">0</p></div>
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-600">Jumlah Absen</p><p id="absen-stat-absen" class="mt-1 text-xl font-black text-slate-800">0</p></div>
               </div>
 <form onsubmit="handleSaveAbsen(event)" class="space-y-4">
                 <div>
@@ -849,8 +856,8 @@
           </div>
           <div class="overflow-x-auto border border-slate-200 rounded-xl">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="p-3">Sesi</th><th class="p-3">Jam</th><th class="p-3">Status</th><th class="p-3">Keterangan Waktu</th><th class="p-3">Catatan</th></tr></thead>
-              <tbody id="rekap-hadir-month-body" class="divide-y divide-slate-100"><tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr></tbody>
+              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="p-3">Hari</th><th class="p-3">Presensi Masuk</th><th class="p-3">Presensi Pulang</th></tr></thead>
+              <tbody id="rekap-hadir-month-body" class="divide-y divide-slate-100"><tr><td colspan="4" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -914,7 +921,7 @@
           </div>
           <div class="overflow-x-auto border border-slate-200 rounded-xl">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="py-3 px-3">Waktu</th><th class="p-3">Kegiatan</th><th class="p-3">Output</th><th class="p-3">Status</th></tr></thead>
+              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="py-3 px-3">Waktu</th><th class="p-3">Kegiatan</th><th class="p-3">Output</th><th class="p-3">Foto Dokumentasi</th></tr></thead>
               <tbody id="rekap-kinerja-month-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr></tbody>
             </table>
           </div>
@@ -2607,28 +2614,41 @@
         statusPill.className = `inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${attendanceRows.length ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`;
       }
       const abBody = document.getElementById('rekap-hadir-month-body');
-      if (abBody) abBody.innerHTML = attendanceRows.length ? attendanceRows.map(a => {
-        let timing = '—';
-        if (a.status === 'Hadir' && a.sesi === 'Masuk') {
-          let late = Number(a.lateBySeconds || 0);
-          if (!Number.isFinite(late) || late <= 0) {
-            const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/);
-            if (hm) late = Math.max(0, Number(hm[1]) * 3600 + Number(hm[2]) * 60 - 8 * 3600);
-          }
-          timing = late > 0 ? 'Terlambat' : 'Tepat Waktu';
-        } else if (a.status === 'Hadir' && a.sesi === 'Pulang') {
-          const date = new Date(String(dateKeyISO(a.tanggal)) + 'T12:00:00+08:00');
-          const weekday = Number(new Intl.DateTimeFormat('en-US',{weekday:'short',timeZone:'Asia/Makassar'}).format(date) === 'Fri' ? 5 : new Intl.DateTimeFormat('en-US',{weekday:'short',timeZone:'Asia/Makassar'}).format(date) === 'Sat' ? 6 : new Intl.DateTimeFormat('en-US',{weekday:'short',timeZone:'Asia/Makassar'}).format(date) === 'Sun' ? 7 : 1);
-          const hm = String(a.jam || '').match(/^(\d{1,2}):(\d{2})/);
-          if (hm) {
-            const seconds = Number(hm[1])*3600 + Number(hm[2])*60;
-            const dayName = new Intl.DateTimeFormat('en-US',{weekday:'short',timeZone:'Asia/Makassar'}).format(date);
-            const end = dayName === 'Fri' ? 11*3600+30*60 : 16*3600+30*60;
-            timing = (dayName !== 'Sat' && dayName !== 'Sun' && seconds >= end && seconds <= end + 7200) ? 'Tepat Waktu' : (seconds > end + 7200 ? 'Di luar batas waktu' : '—');
-          }
+      if (abBody) {
+        const [attYear, attMonth] = monthAttendance.split('-').map(Number);
+        const daysInSelectedMonth = new Date(attYear, attMonth, 0).getDate();
+        const recordsByDate = {};
+        attendanceRows.forEach(a => {
+          const key = dateKeyISO(a.tanggal);
+          if (!key) return;
+          recordsByDate[key] = recordsByDate[key] || {};
+          recordsByDate[key][String(a.sesi || '').toLowerCase() === 'masuk' ? 'masuk' : 'pulang'] = a;
+        });
+        const nowWita = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Makassar'}));
+        const selectedIsCurrentMonth = monthAttendance === `${nowWita.getFullYear()}-${String(nowWita.getMonth()+1).padStart(2,'0')}`;
+        const holidayMap = holidayDates || {};
+        const sessionCell = (record, isDayOff) => {
+          if (!record) return `<span class="inline-block rounded-md px-2 py-1 text-[10px] font-bold ${isDayOff?'bg-amber-50 text-amber-700':'bg-rose-50 text-rose-700'}">${isDayOff?'Libur':'Absen / Tidak melakukan presensi'}</span>`;
+          const time = `<span class="font-bold">${escapeHTML(formatTimeDisplay(record.jam || ''))}</span>`;
+          const status = `<span class="ml-1 text-[10px] font-semibold text-slate-600">${escapeHTML(record.status || 'Tercatat')}</span>`;
+          const note = record.catatan ? `<div class="text-[10px] text-slate-500 mt-1">${escapeHTML(record.catatan)}</div>` : '';
+          return `${time}${status}${note}`;
+        };
+        const recapRows = [];
+        for (let d=1; d<=daysInSelectedMonth; d++) {
+          const date = new Date(attYear,attMonth-1,d);
+          if (selectedIsCurrentMonth && date > nowWita) continue;
+          const key = `${attYear}-${String(attMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          const weekend = date.getDay() === 0 || date.getDay() === 6;
+          const holiday = holidayMap[key];
+          const dayOff = weekend || !!holiday;
+          const dayLabel = date.toLocaleDateString('id-ID',{weekday:'long'});
+          const dateLabel = date.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+          const rec = recordsByDate[key] || {};
+          recapRows.push(`<tr class="${dayOff?'bg-amber-50/40':'hover:bg-slate-50'}"><td class="p-3 whitespace-nowrap font-semibold">${escapeHTML(dateLabel)}</td><td class="p-3 capitalize">${escapeHTML(dayLabel)}${holiday?`<div class="text-[9px] text-amber-700">${escapeHTML(holiday)}</div>`:weekend?'<div class="text-[9px] text-amber-700">Akhir pekan</div>':''}</td><td class="p-3">${sessionCell(rec.masuk,dayOff)}</td><td class="p-3">${sessionCell(rec.pulang,dayOff)}</td></tr>`);
         }
-        return `<tr><td class="p-3">${escapeHTML(formatDateDisplay(a.tanggal))}</td><td class="p-3">${escapeHTML(a.sesi||'')}</td><td class="p-3">${escapeHTML(formatTimeDisplay(a.jam||''))}</td><td class="p-3">${escapeHTML(a.status||'')}</td><td class="p-3 font-bold ${timing === 'Terlambat' ? 'text-rose-600' : timing === 'Tepat Waktu' ? 'text-emerald-700' : ''}">${escapeHTML(timing)}</td><td class="p-3">${escapeHTML(a.catatan||'')}</td></tr>`;
-      }).join('') : '<tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr>';
+        abBody.innerHTML = recapRows.join('') || '<tr><td colspan="4" class="p-3 text-center text-slate-400">Belum ada data pada periode ini.</td></tr>';
+      }
       const approved = reportRows.filter(r => r.status === 'Disetujui').length;
       const approvedEl = document.getElementById('rekap-disetujui-count');
       if (approvedEl) approvedEl.textContent = `${approved} dari ${reportRows.length} Laporan`;
@@ -2641,7 +2661,7 @@
         badge.className = `inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${allApproved ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`;
       }
       const reportBody = document.getElementById('rekap-kinerja-month-body');
-      if (reportBody) reportBody.innerHTML = reportRows.length ? reportRows.map(r => `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td class="p-3">${escapeHTML(r.status||'Pending')}</td></tr>`).join('') : '<tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
+      if (reportBody) reportBody.innerHTML = reportRows.length ? reportRows.map(r => `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td class="p-3">${r.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(r.id)});return false" class="text-blue-700 underline text-xs font-semibold">Lihat foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`).join('') : '<tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
     }
 
     function parseBirthDateFromTtl(ttl) {
@@ -2693,6 +2713,26 @@
 
       const nowForStats = new Date(new Date().toLocaleString('en-US', {timeZone:'Asia/Makassar'}));
       const thisMonthKey = `${nowForStats.getFullYear()}-${String(nowForStats.getMonth()+1).padStart(2,'0')}`;
+      const monthAttendanceRecords = allMyAbsensi.filter(a => dateKeyISO(a.tanggal).slice(0,7) === thisMonthKey);
+      const countDistinctDays = status => new Set(monthAttendanceRecords.filter(a => String(a.status||'').toLowerCase() === status.toLowerCase()).map(a => dateKeyISO(a.tanggal)).filter(Boolean)).size;
+      const countEl = (id, value) => { const el=document.getElementById(id); if(el) el.textContent=String(value); };
+      countEl('absen-stat-hadir', countDistinctDays('Hadir'));
+      countEl('absen-stat-dinas-luar', countDistinctDays('Dinas Luar'));
+      countEl('absen-stat-sakit', countDistinctDays('Sakit'));
+      countEl('absen-stat-izin', countDistinctDays('Izin'));
+      const daysWithAttendance = new Set(monthAttendanceRecords.map(a=>dateKeyISO(a.tanggal)).filter(Boolean));
+      const todayForAttendance = new Date(nowForStats.getFullYear(),nowForStats.getMonth(),nowForStats.getDate());
+      const totalElapsedDays = todayForAttendance.getDate();
+      const holidayMapForStats = holidayDates || {};
+      let effectiveWorkdaysElapsed = 0;
+      for (let d=1; d<=totalElapsedDays; d++) {
+        const dayDate = new Date(nowForStats.getFullYear(),nowForStats.getMonth(),d);
+        const key = `${nowForStats.getFullYear()}-${String(nowForStats.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const wd = dayDate.getDay();
+        if (wd !== 0 && wd !== 6 && !holidayMapForStats[key]) effectiveWorkdaysElapsed++;
+      }
+      const daysWithAnyRecord = daysWithAttendance.size;
+      countEl('absen-stat-absen', Math.max(0,effectiveWorkdaysElapsed - daysWithAnyRecord));
       const laporanMonthSelect = document.getElementById('filter-riwayat-laporan-bulan');
       const reportMonthKeys = Array.from(new Set(allMyLaporan.map(l => dateKeyISO(l.tanggal).slice(0,7)).filter(k => /^\d{4}-\d{2}$/.test(k)))).sort();
       if (laporanMonthSelect) {
@@ -2953,7 +2993,7 @@
             await Promise.all(bodyRows.map(async row => {
               if (row.cells.length === 1 && Number(row.cells[0].colSpan || 1) > 1) return;
               const link = row.querySelector('a[onclick*="openReportPhotoById"]');
-              const photoCell = link ? link.closest('td') : (row.cells.length >= 6 ? row.cells[4] : null);
+              const photoCell = link ? link.closest('td') : (row.cells.length >= 6 ? row.cells[4] : (row.cells.length >= 5 ? row.cells[4] : null));
               if (!photoCell) return;
               if (!link) { photoCell.textContent = photoCell.textContent.trim() || '—'; return; }
               const match = String(link.getAttribute('onclick') || '').match(/openReportPhotoById\((.*?)\)/);
