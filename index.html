@@ -1422,6 +1422,17 @@
           </div>
         </div>
 
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Bidang / Subbagian Kerja</label>
+            <input type="text" id="edit-prof-bidang" required maxlength="150" placeholder="Masukkan bidang / subbagian kerja" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tugas / Jabatan Kontrak</label>
+            <input type="text" id="edit-prof-jabatan" required maxlength="150" placeholder="Masukkan tugas / jabatan kontrak" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none">
+          </div>
+        </div>
+
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Pendidikan Terakhir</label>
           <select id="edit-prof-pendidikan" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-blue-600 outline-none">
@@ -2342,6 +2353,8 @@
       document.getElementById('edit-prof-tempat-lahir').value = ttlParts.length > 1 ? ttlParts.slice(0, -1).join(',').trim() : (target.ttl ? ttlParts[0].trim() : '');
       const birthDateInput = document.getElementById('edit-prof-tanggal-lahir');
       if (birthDateInput) { birthDateInput.max = new Date().toISOString().slice(0,10); birthDateInput.value = birthDate ? `${birthDate.getFullYear()}-${String(birthDate.getMonth()+1).padStart(2,'0')}-${String(birthDate.getDate()).padStart(2,'0')}` : ''; }
+      document.getElementById('edit-prof-bidang').value = target.bidang || '';
+      document.getElementById('edit-prof-jabatan').value = target.jabatan || '';
       document.getElementById('edit-prof-pendidikan').value = target.pendidikanTerakhir || '';
       document.getElementById('edit-prof-tmt').value = dateKeyISO(target.tmt) || '2024-01-02';
       document.getElementById('edit-prof-hp').value = target.hp || '';
@@ -2430,6 +2443,8 @@
             const dateText = new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(parsed);
             return `${place}, ${dateText}`;
           })(),
+          bidang: document.getElementById('edit-prof-bidang').value.trim(),
+          jabatan: document.getElementById('edit-prof-jabatan').value.trim(),
           pendidikanTerakhir: document.getElementById('edit-prof-pendidikan').value,
           tmt: document.getElementById('edit-prof-tmt').value.trim(),
           hp: document.getElementById('edit-prof-hp').value.trim(),
@@ -2661,7 +2676,26 @@
         badge.className = `inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${allApproved ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`;
       }
       const reportBody = document.getElementById('rekap-kinerja-month-body');
-      if (reportBody) reportBody.innerHTML = reportRows.length ? reportRows.map(r => `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td class="p-3">${r.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(r.id)});return false" class="text-blue-700 underline text-xs font-semibold">Lihat foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`).join('') : '<tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
+      if (reportBody) {
+        reportBody.innerHTML = reportRows.length ? reportRows.map(r => `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td class="p-2 text-center align-middle">${r.foto ? `<img data-report-photo-id="${escapeHTML(String(r.id))}" alt="Foto dokumentasi kegiatan" class="inline-block w-20 h-14 object-contain rounded border border-slate-200 bg-slate-50" style="max-width:80px;max-height:56px" loading="lazy">` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`).join('') : '<tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
+        loadRekapKinerjaPhotos(reportBody);
+      }
+    }
+
+    async function loadRekapKinerjaPhotos(container) {
+      if (!container) return;
+      const images = [...container.querySelectorAll('img[data-report-photo-id]')];
+      await Promise.all(images.map(async img => {
+        try {
+          const result = await gasCall('getReportPhoto', {reportId: img.dataset.reportPhotoId});
+          const src = String(result?.foto || '');
+          if (!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(src)) throw new Error('Foto tidak valid');
+          img.src = src;
+          img.title = 'Foto dokumentasi kegiatan';
+        } catch (_) {
+          img.replaceWith(Object.assign(document.createElement('span'), {className:'text-slate-400 text-[10px]', textContent:'Foto tidak dapat dimuat'}));
+        }
+      }));
     }
 
     function parseBirthDateFromTtl(ttl) {
@@ -3010,6 +3044,16 @@
           }
         }
         if (elementId === 'printable-rekap-kinerja-container') {
+          const photoImages = [...clone.querySelectorAll('img[data-report-photo-id]')];
+          await Promise.all(photoImages.map(async img => {
+            try {
+              const result = await gasCall('getReportPhoto', {reportId: img.dataset.reportPhotoId});
+              const src = String(result?.foto || '');
+              if (!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(src)) throw new Error('Foto tidak valid');
+              img.src = src;
+              img.style.cssText = 'width:80px;height:56px;max-width:80px;max-height:56px;object-fit:contain;border:1px solid #aaa;display:block;margin:auto';
+            } catch (_) { img.replaceWith(document.createTextNode('Foto tidak dapat dimuat')); }
+          }));
           const previewHeader = clone.querySelector(':scope > .flex.flex-col');
           if (previewHeader) previewHeader.remove();
           const repeatedSummary = clone.querySelector(':scope > .bg-slate-50');
