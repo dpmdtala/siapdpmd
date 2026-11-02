@@ -1183,11 +1183,8 @@
               <option value="Bidang Bina Pemberdayaan Masyarakat">Bidang Bina Pemberdayaan Masyarakat</option>
               <option value="Bidang Bina Perencanaan, Keuangan, Aset, Evaluasi dan Data Desa">Bidang Bina Perencanaan, Keuangan, Aset, Evaluasi dan Data Desa</option>
             </select>
-            <select id="admin-filter-hadir-bulan" onchange="renderAdminAbsensiTable()" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 outline-none">
-              <option value="Semua">Semua Bulan</option>
-              <option value="10-2026" selected>Oktober 2026</option>
-              <option value="09-2026">September 2026</option>
-              <option value="08-2026">Agustus 2026</option>
+            <select id="admin-filter-hadir-bulan" onchange="renderAdminAbsensiTable()" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 outline-none" aria-label="Filter bulan kehadiran">
+              <option value="">Memuat bulan…</option>
             </select>
             <select id="admin-filter-hadir-status" onchange="renderAdminAbsensiTable()" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 outline-none">
               <option value="Semua">Semua Status</option>
@@ -1227,6 +1224,9 @@
             <p class="text-xs text-slate-500">Tinjau, verifikasi (setujui), atau kelola seluruh laporan harian pegawai lintas bidang</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
+            <button id="admin-approve-all-pending-btn" type="button" onclick="approveAllAdminPendingReports()" class="px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm">
+              <i class="fa-solid fa-check-double mr-1"></i> Setujui Semua Pending <span id="admin-pending-total" class="ml-1 rounded-full bg-white/20 px-1.5 py-0.5">0</span>
+            </button>
             <select id="admin-filter-lap-bidang" onchange="renderAdminLaporanTable()" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 outline-none">
               <option value="Semua">Semua Bidang</option>
               <option value="Sekretariat">Sekretariat</option>
@@ -1234,11 +1234,8 @@
               <option value="Bidang Bina Pemberdayaan Masyarakat">Bidang Bina Pemberdayaan Masyarakat</option>
               <option value="Bidang Bina Perencanaan, Keuangan, Aset, Evaluasi dan Data Desa">Bidang Bina Perencanaan, Keuangan, Aset, Evaluasi dan Data Desa</option>
             </select>
-            <select id="admin-filter-lap-bulan" onchange="renderAdminLaporanTable()" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 outline-none">
-              <option value="Semua">Semua Bulan</option>
-              <option value="10-2026" selected>Oktober 2026</option>
-              <option value="09-2026">September 2026</option>
-              <option value="08-2026">Agustus 2026</option>
+            <select id="admin-filter-lap-bulan" onchange="renderAdminLaporanTable()" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 outline-none" aria-label="Filter bulan laporan">
+              <option value="">Memuat bulan…</option>
             </select>
             <select id="admin-filter-lap-status" onchange="renderAdminLaporanTable()" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 outline-none">
               <option value="Semua">Semua Status Laporan</option>
@@ -3626,16 +3623,59 @@
       wrap.querySelector('input').addEventListener('change',rerender); wrap.querySelector('button').addEventListener('click',()=>{wrap.querySelector('input').value='';rerender();}); host.insertBefore(wrap,table);
     }
 
+    function adminCurrentMonthKeys() {
+      const parts = new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Makassar', year:'numeric', month:'2-digit'}).formatToParts(new Date());
+      const year = Number(parts.find(p => p.type === 'year').value);
+      const month = Number(parts.find(p => p.type === 'month').value);
+      const current = `${year}-${String(month).padStart(2,'0')}`;
+      const previousDate = new Date(Date.UTC(year, month - 2, 1));
+      const previous = `${previousDate.getUTCFullYear()}-${String(previousDate.getUTCMonth()+1).padStart(2,'0')}`;
+      return [current, previous];
+    }
+
+    function populateAdminMonthFilter(selectId) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      const keys = adminCurrentMonthKeys();
+      const oldValue = select.value;
+      const signature = keys.join('|');
+      const labels = keys.map(key => {
+        const [y,m] = key.split('-').map(Number);
+        const label = new Intl.DateTimeFormat('id-ID', {month:'long', year:'numeric', timeZone:'UTC'}).format(new Date(Date.UTC(y,m-1,1)));
+        return {key, label};
+      });
+      if (select.dataset.monthKeys !== signature) {
+        select.innerHTML = labels.map((item, index) => `<option value="${item.key}">${index === 0 ? 'Bulan Berjalan — ' : 'Bulan Lalu — '}${item.label}</option>`).join('');
+        select.dataset.monthKeys = signature;
+        select.value = keys[0];
+      } else {
+        select.value = keys.includes(oldValue) ? oldValue : keys[0];
+      }
+    }
+
+    function updateAdminPendingCount() {
+      const pending = (dbLaporan || []).filter(l => String(l.status || 'Pending') === 'Pending').length;
+      const count = document.getElementById('admin-pending-total');
+      const button = document.getElementById('admin-approve-all-pending-btn');
+      if (count) count.textContent = String(pending);
+      if (button) button.disabled = pending === 0;
+      if (button) button.classList.toggle('opacity-50', pending === 0);
+      if (button) button.classList.toggle('cursor-not-allowed', pending === 0);
+    }
+
     function renderAdminAbsensiTable() {
+      populateAdminMonthFilter('admin-filter-hadir-bulan');
       ensureHistoryDateFilter('admin-hadir-table-body','admin-hadir-filter-tanggal','Tanggal presensi',renderAdminAbsensiTable);
       const tbody = document.getElementById('admin-hadir-table-body');
       tbody.innerHTML = "";
       const bidangFilter = document.getElementById('admin-filter-hadir-bidang')?.value || 'Semua';
       const statusFilter = document.getElementById('admin-filter-hadir-status')?.value || 'Semua';
+      const monthFilter = document.getElementById('admin-filter-hadir-bulan')?.value || adminCurrentMonthKeys()[0];
       const searchKey = (document.getElementById('admin-search-hadir')?.value || '').toLowerCase();
       const selectedDate = document.getElementById('admin-hadir-filter-tanggal')?.value || '';
 
       dbAbsensi.filter(a => {
+        if (monthFilter && dateKeyISO(a.tanggal).slice(0,7) !== monthFilter) return false;
         if (selectedDate && dateKeyISO(a.tanggal) !== selectedDate) return false;
         const owner = dbUsers.find(u => u.id === a.userId);
         if (bidangFilter !== 'Semua' && owner && owner.bidang !== bidangFilter) return false;
@@ -3658,15 +3698,19 @@
     }
 
     function renderAdminLaporanTable() {
+      populateAdminMonthFilter('admin-filter-lap-bulan');
+      updateAdminPendingCount();
       ensureHistoryDateFilter('admin-laporan-table-body','admin-laporan-filter-tanggal','Tanggal laporan',renderAdminLaporanTable);
       const tbody = document.getElementById('admin-laporan-table-body');
       tbody.innerHTML = "";
       const bidangFilter = document.getElementById('admin-filter-lap-bidang')?.value || 'Semua';
       const statusFilter = document.getElementById('admin-filter-lap-status')?.value || 'Semua';
+      const monthFilter = document.getElementById('admin-filter-lap-bulan')?.value || adminCurrentMonthKeys()[0];
       const searchKey = (document.getElementById('admin-search-lap')?.value || '').toLowerCase();
       const selectedDate = document.getElementById('admin-laporan-filter-tanggal')?.value || '';
 
       dbLaporan.filter(l => {
+        if (monthFilter && dateKeyISO(l.tanggal).slice(0,7) !== monthFilter) return false;
         if (selectedDate && dateKeyISO(l.tanggal) !== selectedDate) return false;
         const owner = dbUsers.find(u => u.id === l.userId);
         if (bidangFilter !== 'Semua' && owner && owner.bidang !== bidangFilter) return false;
@@ -3691,6 +3735,27 @@
           </tr>
         `;
       });
+    }
+
+    async function approveAllAdminPendingReports() {
+      if (!currentUser || currentUser.role !== 'SuperAdmin') { notify('Fitur ini hanya dapat digunakan oleh Super Admin.'); return; }
+      const pendingCount = (dbLaporan || []).filter(l => String(l.status || 'Pending') === 'Pending').length;
+      if (!pendingCount) { notify('Tidak ada laporan Pending yang perlu disetujui.'); return; }
+      const confirmed = confirm(`Anda akan menyetujui SEMUA ${pendingCount} laporan kinerja berstatus Pending dari seluruh pegawai dan seluruh periode. Laporan yang sudah disetujui atau ditolak tidak akan diubah. Lanjutkan?`);
+      if (!confirmed) return;
+      const button = document.getElementById('admin-approve-all-pending-btn');
+      if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Memproses persetujuan…'; }
+      try {
+        const result = await gasCall('bulkApproveAllPendingReports', {});
+        await refreshServerData();
+        renderAdminLaporanTable();
+        notify(`Selesai. ${result.approved || 0} laporan Pending berhasil disetujui${result.skipped ? `; ${result.skipped} dilewati` : ''}.`);
+      } catch (err) {
+        notify('Persetujuan massal gagal: ' + err.message);
+      } finally {
+        if (button) { button.innerHTML = '<i class="fa-solid fa-check-double mr-1"></i> Setujui Semua Pending <span id="admin-pending-total" class="ml-1 rounded-full bg-white/20 px-1.5 py-0.5">0</span>'; }
+        updateAdminPendingCount();
+      }
     }
 
     function renderAdminArsipTable() {
