@@ -7,14 +7,15 @@
 const APP = {
   TZ: 'Asia/Makassar',
   SHEETS: {
-    Users: ['id','nama','nik','hp','email','passwordHash','bidang','jabatan','role','status','ttl','tmt','avatar','rekening','kawin','alamat','jenisKelamin','pendidikanTerakhir','createdAt','updatedAt'],
-    Attendance: ['id','userId','tanggal','jam','status','sesi','catatan','latitude','longitude','distanceMeters','lateBySeconds','lateByText','selfieFileId','signatureFileId','createdAt'],
+    Users: ['id','nama','nik','hp','email','passwordHash','bidang','jabatan','role','status','ttl','tmt','avatar','rekening','kawin','alamat','jenisKelamin','pendidikanTerakhir','createdAt','updatedAt','username'],
+    Attendance: ['id','userId','tanggal','jam','status','sesi','catatan','latitude','longitude','distanceMeters','lateBySeconds','lateByText','selfieFileId','signatureFileId','suratFileId','suratNama','createdAt'],
     Reports: ['id','userId','nama','bidang','tanggal','jamMulai','jamSelesai','kegiatan','output','fotoFileId','status','verifiedBy','verifiedAt','createdAt'],
     Archives: ['id','userId','jenis','nama','driveFileId','tanggal','status','createdAt'],
     AuditLog: ['id','actorId','action','entity','entityId','details','createdAt']
   },
   SESSION_TTL_SECONDS: 21600,
   MAX_UPLOAD_BYTES: 5 * 1024 * 1024,
+  MAX_REPORT_PHOTO_BYTES: 3 * 1024 * 1024,
   MAX_ARCHIVE_BYTES: 1 * 1024 * 1024
 };
 
@@ -23,6 +24,23 @@ function doGet() {
     .setTitle('SIAP-DPMD | DPMD Kabupaten Tanah Laut')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/** API JSON untuk frontend GitHub Pages. Tetap gunakan spreadsheet yang sudah dikonfigurasi. */
+function doPost(e) {
+  try {
+    const raw = e && e.postData && e.postData.contents ? e.postData.contents : '{}';
+    const body = JSON.parse(raw);
+    const action = String(body.action || '');
+    const payload = body.payload || {};
+    // Endpoint server-to-server LINTAS. Tidak mengubah alur presensi atau sesi pengguna.
+    const result = action === 'integrationSaveReport'
+      ? integrationSaveReport_(payload)
+      : api(action, payload, String(body.token || ''));
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ok:false, message:(err && err.message) ? err.message : 'Permintaan gagal.'})).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 /** Jalankan satu kali dari editor Apps Script untuk membuat spreadsheet dan sheet. */
@@ -144,11 +162,19 @@ function api(action, payload, token) {
   if (action === 'register') return register_(payload);
   if (action === 'logout') { if (token) CacheService.getScriptCache().remove('sess:' + token); return {ok:true}; }
 
+  // Jalur antaraplikasi LINTAS DPMD. Rahasia hanya dikirim server-ke-server,
+  // tidak boleh ditanam di HTML/browser. Semua aksi pengguna tetap memakai sesi biasa.
+  if (action === 'integrationSaveReport') return integrationSaveReport_(payload);
+
   const user = requireSession_(token);
   switch (action) {
-    case 'getAppData': return getAppData_(user, payload);
-    case 'getDataPage': return getDataPage_(user, payload);
-    case 'reviewRegistration': requireRole_(user, ['SuperAdmin']); return reviewRegistration_(user, payload);
+    case 'getCurrentUser': return {ok:true, user:user, verifikatorNama:getVerifierName_(user)};
+    case 'getMonthlyProductivity': return getMonthlyProductivity_(user);
+    case 'getAppData': return getAppData_(user);
+    case 'getAuditLog': requireRole_(user, ['SuperAdmin']); return getAuditLog_(payload);
+    case 'rejectReport': requireRole_(user, ['SuperAdmin','Verifikator']); return rejectReport_(user, payload.reportId, payload.reason);
+    case 'deleteReportAsVerifier': requireRole_(user, ['Verifikator']); return deleteReportAsVerifier_(user, payload.reportId);
+    case 'bulkApproveReports': requireRole_(user, ['SuperAdmin','Verifikator']); return bulkApproveReports_(user, payload.reportIds);
     case 'getReportPhoto': return getReportPhoto_(user, payload.reportId);
     case 'updateProfile': return updateProfile_(user, payload);
     case 'changePassword': return changePassword_(user, payload);
@@ -158,6 +184,7 @@ function api(action, payload, token) {
     case 'deleteReport': requireRole_(user, ['SuperAdmin']); return deleteRecord_('Reports', payload.recordId, user);
     case 'deleteArchive': requireRole_(user, ['SuperAdmin']); return deleteRecord_('Archives', payload.recordId, user);
     case 'downloadArchive': return downloadArchive_(user, payload.archiveId);
+    case 'downloadAttendanceEvidence': return downloadAttendanceEvidence_(user, payload.attendanceId);
     case 'saveAttendance': requireRole_(user, ['PJLP']); return saveAttendance_(user, payload);
     case 'saveReport': requireRole_(user, ['PJLP']); return saveReport_(user, payload);
     case 'saveArchive': requireRole_(user, ['PJLP']); return saveArchive_(user, payload);
@@ -170,16 +197,16 @@ function api(action, payload, token) {
 function login_(p) {
   const identifier = String(p.identifier || '').trim().toLowerCase();
   const password = String(p.password || '');
-  if (!identifier || !password) throw new Error('Email/NIK dan kata sandi wajib diisi.');
+  if (!identifier || !password) throw new Error('Username, email, NIK, dan kata sandi wajib diisi.');
   const cache = CacheService.getScriptCache();
   const throttleKey = 'loginfail:' + sha256Hex_(identifier);
   const failCount = Number(cache.get(throttleKey) || 0);
   if (failCount >= 8) throw new Error('Terlalu banyak percobaan masuk. Coba kembali setelah 15 menit.');
   const users = readRows_('Users');
-  const user = users.find(u => String(u.email || '').toLowerCase() === identifier || String(u.nik || '').toLowerCase() === identifier);
+  const user = users.find(u => String(u.email || '').trim().toLowerCase() === identifier || String(u.nik || '').trim().toLowerCase() === identifier || String(u.username || '').trim().toLowerCase() === identifier);
   if (!user || user.status !== 'Aktif' || !verifyPassword_(password, user.passwordHash)) {
     cache.put(throttleKey, String(failCount + 1), 900);
-    throw new Error('Email/NIK atau kata sandi salah, atau akun tidak aktif.');
+    throw new Error('Username/email/NIK atau kata sandi salah, atau akun tidak aktif.');
   }
   // Migrate old unsalted SHA-256 hashes transparently after successful authentication.
   if (!String(user.passwordHash || '').startsWith('pbkdf2-sha256$')) {
@@ -189,130 +216,167 @@ function login_(p) {
   const token = Utilities.getUuid() + Utilities.getUuid();
   CacheService.getScriptCache().put('sess:' + token, JSON.stringify({id:user.id, role:user.role, bidang:user.bidang, createdAt:Date.now()}), APP.SESSION_TTL_SECONDS);
   audit_(user.id, 'LOGIN', 'Users', user.id, 'Login berhasil');
-  return {ok:true, token, user:safeUser_(user, false)};
+  return {ok:true, token, user:safeUser_(user), verifikatorNama:getVerifierName_(user, users)};
 }
 
 function register_(p) {
-  ensureSheetColumns_('Users', ['pendidikanTerakhir']);
   const nama = required_(p.nama, 'Nama');
   const nik = required_(p.nik, 'NIK');
-  const email = required_(p.email, 'Email').toLowerCase();
+  const email = required_(p.email, 'Email').trim().toLowerCase();
+  const username = required_(p.username, 'Username').trim().toLowerCase();
   const password = String(p.password || '');
+  const bidang = required_(p.bidang, 'Bidang');
+  const jabatan = required_(p.jabatan, 'Jabatan');
+  const hp = required_(p.hp, 'Nomor WhatsApp').trim();
+  const ttl = required_(p.ttl, 'Tempat dan tanggal lahir');
+  const tmt = required_(p.tmt, 'TMT Kerja');
+  const jenisKelamin = required_(p.jenisKelamin, 'Jenis kelamin');
+  const pendidikanTerakhir = required_(p.pendidikanTerakhir, 'Pendidikan terakhir');
+  const kawin = required_(p.kawin, 'Status perkawinan');
+  const rekening = String(p.rekening || '').replace(/\D/g, '');
+  const alamat = required_(p.alamat, 'Alamat domisili');
   if (password.length < 10) throw new Error('Kata sandi minimal 10 karakter.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Format email tidak valid.');
+  if (!/^[a-z0-9._-]{3,64}$/.test(username)) throw new Error('Username harus 3–64 karakter dan hanya boleh berisi huruf, angka, titik, garis bawah, atau tanda hubung.');
+  if (!/^\d{5,30}$/.test(rekening)) throw new Error('Nomor rekening BANK KALSEL harus 5–30 digit.');
+  if (!['Laki-laki','Perempuan'].includes(jenisKelamin)) throw new Error('Jenis kelamin tidak valid.');
+  if (!['Belum Kawin','Kawin','Cerai'].includes(kawin)) throw new Error('Status perkawinan tidak valid.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tmt) || tmt > Utilities.formatDate(new Date(), APP.TZ, 'yyyy-MM-dd')) throw new Error('TMT Kerja tidak valid.');
+  if (ttl.length > 160) throw new Error('Tempat dan tanggal lahir tidak valid.');
+  ensureSheetColumns_('Users', ['username','pendidikanTerakhir']);
   const users = readRows_('Users');
-  if (users.some(u => String(u.email).toLowerCase() === email || String(u.nik) === nik)) throw new Error('Email atau NIK sudah terdaftar.');
-  const obj = makeUser_({id:'usr-' + Utilities.getUuid(), nama, nik, hp:String(p.hp||''), email, password, bidang:required_(p.bidang,'Bidang'), jabatan:required_(p.jabatan,'Jabatan'), role:'PJLP', status:'Menunggu Persetujuan', pendidikanTerakhir:String(p.pendidikanTerakhir || '')}, new Date().toISOString());
+  const duplicate = users.some(u => {
+    const values = [u.email, u.nik, u.username].map(v => String(v||'').trim().toLowerCase());
+    return values.includes(email) || values.includes(nik.toLowerCase()) || values.includes(username);
+  });
+  if (duplicate) throw new Error('Email, NIK, atau username sudah digunakan akun lain.');
+  const now = new Date().toISOString();
+  const obj = makeUser_({
+    id:'usr-' + Utilities.getUuid(), nama, nik, username, hp, email, password,
+    bidang, jabatan, role:'PJLP', status:'Aktif', ttl, tmt, jenisKelamin,
+    pendidikanTerakhir, kawin, rekening, alamat
+  }, now);
+  obj.pendidikanTerakhir = pendidikanTerakhir;
   appendObjects_('Users', [obj]);
-  audit_(obj.id, 'REGISTER', 'Users', obj.id, 'Pendaftaran akun PJLP menunggu persetujuan');
-  return {ok:true, message:'Pendaftaran diterima dan menunggu persetujuan Super Admin.'};
+  audit_(obj.id, 'REGISTER', 'Users', obj.id, 'Pendaftaran akun PJLP dengan biodata lengkap');
+  return {ok:true};
 }
 
-function getAppData_(user, options) {
-  // Filter the user list BEFORE sanitizing it. Only the signed-in user's avatar
-  // is read from Drive; profile images are not needed for every table row.
-  let rawUsers = readRows_('Users');
-  if (user.role === 'PJLP') rawUsers = rawUsers.filter(u => String(u.id) === String(user.id));
-  else if (user.role === 'Verifikator') rawUsers = rawUsers.filter(u => String(u.bidang || '') === String(user.bidang || ''));
-  let users = rawUsers.map(u => safeUser_(u, String(u.id) === String(user.id)));
-
-  const pageSize = Math.min(200, Math.max(10, Number(options && options.pageSize) || 100));
-  const periodDays = Math.min(365, Math.max(1, Number(options && options.periodDays) || 90));
-  const attendancePage = scopedPage_('Attendance', user, rawUsers, 0, pageSize, periodDays);
-  const reportsPage = scopedPage_('Reports', user, rawUsers, 0, pageSize, periodDays);
-  const archivesPage = scopedPage_('Archives', user, rawUsers, 0, pageSize, periodDays);
-  return {ok:true, users, attendance:attendancePage.items, reports:reportsPage.items, archives:archivesPage.items,
-    pagination:{attendance:attendancePage.meta, reports:reportsPage.meta, archives:archivesPage.meta}};
-}
-
-function reviewRegistration_(actor, p) {
-  const id = required_(p.userId, 'ID pendaftar');
-  const decision = String(p.decision || '');
-  if (!['approve','reject'].includes(decision)) throw new Error('Keputusan tidak valid.');
-  const lock = LockService.getScriptLock(); lock.waitLock(10000);
-  try {
-    const target = findById_('Users', id);
-    if (!target || target.role !== 'PJLP' || target.status !== 'Menunggu Persetujuan') throw new Error('Pendaftaran tidak ditemukan atau telah diproses.');
-    const status = decision === 'approve' ? 'Aktif' : 'Ditolak';
-    updateById_('Users', id, {status, updatedAt:new Date().toISOString()});
-    audit_(actor.id, decision === 'approve' ? 'APPROVE_REGISTRATION' : 'REJECT_REGISTRATION', 'Users', id, 'Status: ' + status);
-    return {ok:true, status};
-  } finally { lock.releaseLock(); }
-}
-
-// Membaca rentang dari bagian akhir sheet, bukan seluruh riwayat. Cursor adalah
-// nomor baris terakhir yang belum dibaca; pagination berbasis baris stabil saat append.
-function scopedPage_(name, user, visibleUsers, cursor, pageSize, periodDays) {
-  const sh = sheet_(name), last = sh.getLastRow(), width = sh.getLastColumn();
-  const headers = sh.getRange(1,1,1,width).getValues()[0];
-  const allowedIds = new Set(visibleUsers.map(u => String(u.id)));
-  const cutoff = Date.now() - periodDays * 86400000;
-  let end = cursor > 1 ? Math.min(cursor, last) : last;
-  const items = [];
-  if (user.role === 'Verifikator' && name === 'Archives') return {items:[],meta:{nextCursor:null,hasMore:false,pageSize,periodDays}};
-  while (end >= 2 && items.length < pageSize) {
-    const start = Math.max(2, end - 199), count = end - start + 1;
-    const rows = sh.getRange(start,1,count,width).getValues();
-    for (let i = rows.length - 1; i >= 0 && items.length < pageSize; i--) {
-      const row = rows[i], o = {};
-      headers.forEach((key,j) => { const v=row[j]; o[key]=v instanceof Date ? v.toISOString() : v; });
-      if (!o.id) continue;
-      if (user.role !== 'SuperAdmin' && !allowedIds.has(String(o.userId))) continue;
-      const d = o.tanggal || o.createdAt;
-      if (d) { const ms = new Date(d).getTime(); if (Number.isFinite(ms) && ms < cutoff) continue; }
-      if (name === 'Attendance') {o.latitude=numberOrBlank_(o.latitude);o.longitude=numberOrBlank_(o.longitude);}
-      if (name === 'Reports') {o.foto=o.fotoFileId ? 'available' : '';delete o.fotoFileId;}
-      if (name === 'Archives') delete o.driveFileId;
-      items.push(o);
-    }
-    // On a full page, retain a cursor pointing before the last included row.
-    if (items.length >= pageSize) {
-      const lastItem = items[items.length-1];
-      const idx = rows.findIndex(r => String(r[headers.indexOf('id')]) === String(lastItem.id));
-      end = start + idx - 1;
-      break;
-    }
-    end = start - 1;
+function getAppData_(user) {
+  let users = readRows_('Users').map(safeUser_);
+  let attendance = readRows_('Attendance').map(a => {
+    a.latitude = numberOrBlank_(a.latitude); a.longitude = numberOrBlank_(a.longitude);
+    return a;
+  });
+  let reports = readRows_('Reports').map(r => { r.foto = r.fotoFileId ? driveUrl_(r.fotoFileId) : ''; return r; });
+  let archives = readRows_('Archives').map(a => { delete a.driveFileId; return a; });
+  if (user.role === 'PJLP') {
+    users = users.filter(u => u.id === user.id);
+    attendance = attendance.filter(a => a.userId === user.id);
+    reports = reports.filter(r => r.userId === user.id);
+    archives = archives.filter(a => a.userId === user.id);
+  } else if (user.role === 'Verifikator') {
+    users = users.filter(u => u.bidang === user.bidang);
+    const ids = users.map(u => u.id);
+    attendance = attendance.filter(a => ids.indexOf(a.userId) >= 0);
+    reports = reports.filter(r => ids.indexOf(r.userId) >= 0);
+    archives = [];
   }
-  return {items,meta:{nextCursor:end >= 2 ? end : null,hasMore:end >= 2,pageSize,periodDays}};
+  return {ok:true, users, attendance, reports, archives};
 }
-function getDataPage_(user, p) {
-  const names = {attendance:'Attendance',reports:'Reports',archives:'Archives'};
-  const type = String(p.type || ''), name=names[type];
-  if (!name) throw new Error('Jenis data tidak valid.');
-  const cursor = Number(p.cursor);
-  if (!Number.isInteger(cursor) || cursor < 2) throw new Error('Cursor tidak valid.');
-  let visibleUsers = readRows_('Users');
-  if (user.role === 'PJLP') visibleUsers=visibleUsers.filter(u => String(u.id) === String(user.id));
-  else if (user.role === 'Verifikator') visibleUsers=visibleUsers.filter(u => u.bidang === user.bidang);
-  const page=scopedPage_(name,user,visibleUsers,cursor,Math.min(200,Math.max(10,Number(p.pageSize)||100)),Math.min(365,Math.max(1,Number(p.periodDays)||90)));
-  return {ok:true,type,items:page.items,pagination:page.meta};
+
+function getVerifierName_(user, usersOpt) {
+  // Cache hanya referensi nama verifikator (2 menit). Status akun, sesi, presensi,
+  // laporan, dan keputusan verifikasi tetap dibaca langsung sesuai kebutuhan.
+  if (!usersOpt) {
+    const cache = CacheService.getScriptCache();
+    const bidangKey = String(user.bidang || '').trim().toLowerCase();
+    const cacheKey = 'ref:verifier:' + Utilities.base64EncodeWebSafe(bidangKey).slice(0, 80);
+    const cached = cache.get(cacheKey);
+    if (cached !== null) return cached;
+    const users = readRows_('Users');
+    const verifier = users.find(u => u.role === 'Verifikator' && u.status === 'Aktif' && String(u.bidang || '').trim().toLowerCase() === bidangKey);
+    const admin = users.find(u => u.role === 'SuperAdmin' && u.status === 'Aktif');
+    const name = verifier ? String(verifier.nama || '') : (admin ? String(admin.nama || '') : '');
+    cache.put(cacheKey, name, 120);
+    return name;
+  }
+  const verifier = usersOpt.find(u => u.role === 'Verifikator' && u.status === 'Aktif' && String(u.bidang || '').trim().toLowerCase() === String(user.bidang || '').trim().toLowerCase());
+  if (verifier) return String(verifier.nama || '');
+  const admin = usersOpt.find(u => u.role === 'SuperAdmin' && u.status === 'Aktif');
+  return admin ? String(admin.nama || '') : '';
 }
 
 function getReportPhoto_(user, reportId) {
-  const row = findById_('Reports', String(reportId || ''));
-  if (!row || !row.fotoFileId) throw new Error('Foto laporan tidak ditemukan.');
-  if (user.role === 'PJLP' && String(row.userId) !== String(user.id)) throw new Error('Anda tidak berwenang melihat foto laporan ini.');
-  if (user.role === 'Verifikator') {
-    const owner = findById_('Users', String(row.userId));
-    if (!owner || owner.bidang !== user.bidang) throw new Error('Anda tidak berwenang melihat foto laporan bidang lain.');
+  const report = findById_('Reports', reportId);
+  if (!report) throw new Error('Laporan kegiatan tidak ditemukan.');
+  if (user.role === 'PJLP') {
+    if (String(report.userId) !== String(user.id)) throw new Error('Akses foto ditolak.');
+  } else if (user.role === 'Verifikator') {
+    const owner = findById_('Users', report.userId);
+    if (!owner || String(owner.bidang || '').trim() !== String(user.bidang || '').trim()) throw new Error('Akses foto ditolak untuk bidang ini.');
+  } else if (user.role !== 'SuperAdmin') {
+    throw new Error('Akses foto ditolak.');
   }
-  if (!['PJLP','Verifikator','SuperAdmin'].includes(user.role)) throw new Error('Akses ditolak.');
-  const foto = driveImageDataUrl_(row.fotoFileId);
-  if (!foto) throw new Error('Foto tidak dapat dibaca dari Drive. Periksa file dan izin aplikasi.');
-  return {ok:true, foto};
+  if (!report.fotoFileId) throw new Error('Berkas foto kegiatan tidak tersedia pada database.');
+  const file = DriveApp.getFileById(String(report.fotoFileId));
+  const blob = file.getBlob();
+  const mime = String(blob.getContentType() || '').toLowerCase();
+  if (!/^image\/(jpeg|jpg|png|webp|gif)$/.test(mime)) throw new Error('Jenis berkas foto tidak didukung.');
+  const bytes = blob.getBytes();
+  if (!bytes.length || bytes.length > APP.MAX_UPLOAD_BYTES) throw new Error('Foto terlalu besar untuk ditampilkan. Unggah ulang foto dengan ukuran lebih kecil.');
+  const normalizedMime = mime === 'image/jpg' ? 'image/jpeg' : mime;
+  return {ok:true, reportId:String(report.id), mimeType:normalizedMime, foto:'data:' + normalizedMime + ';base64,' + Utilities.base64Encode(bytes)};
+}
+
+function getMonthlyProductivity_(viewer) {
+  // Return only the single top employee's public display fields; no private contact data.
+  const monthKey = Utilities.formatDate(new Date(), APP.TZ, 'yyyy-MM');
+  const users = readRows_('Users');
+  const byId = {};
+  users.forEach(u => { byId[String(u.id)] = u; });
+  const counts = {};
+  readRows_('Reports').forEach(r => {
+    const dateKey = String(r.tanggal || '').slice(0, 7);
+    if (dateKey !== monthKey || !r.userId) return;
+    const id = String(r.userId);
+    counts[id] = (counts[id] || 0) + 1;
+  });
+  let ranked = Object.keys(counts).map(id => {
+    const u = byId[id];
+    if (!u || u.status !== 'Aktif' || u.role !== 'PJLP') return null;
+    return {id:id, nama:String(u.nama || ''), jabatan:String(u.jabatan || ''), bidang:String(u.bidang || ''), avatar:String(u.avatar || ''), total:counts[id]};
+  }).filter(Boolean);
+  ranked.sort((a,b) => b.total-a.total || a.nama.localeCompare(b.nama, 'id'));
+  const top = ranked.length ? ranked[0] : null;
+  return {ok:true, period:monthKey, employee:top};
 }
 
 function saveAttendance_(user, p) {
   const status = required_(p.status, 'Status');
   const sesi = required_(p.sesi, 'Sesi presensi');
-  const catatan = required_(p.catatan, 'Catatan');
+  let catatan = String(p.catatan || '').trim();
   if (!['Hadir','Dinas Luar','Izin','Sakit'].includes(status)) throw new Error('Status presensi tidak valid.');
   if (!['Masuk','Pulang'].includes(sesi)) throw new Error('Sesi presensi tidak valid.');
+  if (['Dinas Luar','Izin','Sakit'].includes(status) && !catatan) throw new Error('Catatan / Detail Lokasi wajib diisi untuk status ' + status + '.');
+  if (status === 'Hadir') catatan = '';
 
   const now = new Date();
   const policy = getAttendancePolicy_(now, sesi);
   if (!policy.allowed) throw new Error(policy.message);
+
+  const needsEvidence = ['Dinas Luar','Izin','Sakit'].includes(status);
+  let suratFileId = '', suratNama = '', suratData = '';
+  if (needsEvidence) {
+    suratData = required_(p.suratData, 'Surat Tugas / Surat Izin / Surat Sakit wajib diunggah untuk status ' + status + '.');
+    const match = String(suratData).match(/^data:(application\/pdf|image\/(?:jpeg|png));base64,/i);
+    if (!match) throw new Error('Berkas pendukung harus berupa PDF, JPG, atau PNG.');
+    const raw = Utilities.base64Decode(String(suratData).split(',')[1] || '');
+    if (!raw.length || raw.length > APP.MAX_UPLOAD_BYTES) throw new Error('Ukuran surat pendukung maksimal 5 MB.');
+    const mimeType = match[1].toLowerCase();
+    suratNama = sanitizeFilename_(p.suratNama || ('Surat_' + status + '_' + user.id));
+    // Simpan berkas setelah validasi waktu/lokasi dan duplikasi lolos agar tidak meninggalkan file yatim.
+  }
 
   const latitude = Number(p.latitude), longitude = Number(p.longitude);
   const accuracy = Number(p.accuracy);
@@ -320,16 +384,18 @@ function saveAttendance_(user, p) {
       !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
     throw new Error('Koordinat GPS tidak valid. Tekan Cek Lokasi dan izinkan akses lokasi.');
   }
-  if (!Number.isFinite(accuracy) || accuracy <= 0 || accuracy > 30) {
-    throw new Error('Akurasi GPS belum memadai (maksimal toleransi akurasi 30 meter). Aktifkan lokasi presisi dan coba lagi.');
+  if (!Number.isFinite(accuracy) || accuracy <= 0 || (status === 'Hadir' && accuracy > 50)) {
+    throw new Error(status === 'Hadir'
+      ? 'Akurasi GPS belum memadai (maksimal toleransi akurasi 50 meter). Aktifkan lokasi presisi dan coba lagi.'
+      : 'Koordinat GPS tidak valid. Aktifkan lokasi perangkat dan coba lagi.');
   }
 
   // Calculate distance on the server; never trust a browser-supplied distance.
   const office = {lat:-3.7994516, lon:114.7790374};
   const distanceMeters = haversineMeters_(latitude, longitude, office.lat, office.lon);
-  // Untuk status Hadir, server mewajibkan lokasi dalam radius 30 meter.
+  // Samakan validasi server dengan ketentuan radius antarmuka: maksimal 30 meter.
   if (status === 'Hadir' && distanceMeters > 30) {
-    throw new Error('Presensi Hadir ditolak karena di luar radius kantor.');
+    throw new Error('Presensi Hadir ditolak karena lokasi berada di luar radius 30 meter dari kantor.');
   }
 
   const today = Utilities.formatDate(now, APP.TZ, 'yyyy-MM-dd');
@@ -338,17 +404,17 @@ function saveAttendance_(user, p) {
   try {
     const existing = readRows_('Attendance').filter(a =>
       String(a.userId) === String(user.id) &&
-      String(a.tanggal) === today &&
-      String(a.sesi) === sesi
+      normalizeDateKey_(a.tanggal) === today &&
+      String(a.sesi || '').trim().toLowerCase() === sesi.toLowerCase()
     );
-    if (existing.length) {
-      const sesiLain = sesi === 'Masuk' ? 'Pulang' : 'Masuk';
-      const otherDone = readRows_('Attendance').some(a => String(a.userId) === String(user.id) && String(a.tanggal) === today && String(a.sesi) === sesiLain);
-      const detail = otherDone ? ' Presensi Masuk dan Pulang Anda hari ini sudah tercatat lengkap.' : (sesi === 'Masuk' ? ' Presensi Pulang dapat dilakukan sesuai jadwal.' : ' Pastikan presensi Masuk sudah tercatat.');
-      throw new Error('Anda sudah melakukan presensi ' + sesi.toLowerCase() + ' pada ' + today + '. Presensi ganda tidak diperbolehkan.' + detail);
-    }
+    if (existing.length) throw new Error('Anda sudah melakukan presensi ' + sesi + ' hari ini.');
 
-    const selfieFileId = saveDataUrlToDrive_(p.selfie, 'Selfie_' + user.id + '_' + Date.now() + '.jpg', null);
+    if (needsEvidence) {
+      const evidenceMime = String(suratData).match(/^data:([^;,]+);base64,/i)[1].toLowerCase();
+      suratFileId = saveAnyDataUrlToDrive_(suratData, suratNama, evidenceMime, APP.MAX_UPLOAD_BYTES);
+    }
+    // Swafoto tidak lagi menjadi syarat presensi; kolom lama tetap dipertahankan untuk kompatibilitas data historis.
+    const selfieFileId = '';
     const signatureFileId = saveDataUrlToDrive_(p.signature, 'TandaTangan_' + user.id + '_' + Date.now() + '.png', 'image/png');
     const lateBySeconds = sesi === 'Masuk' && status === 'Hadir' ? Math.max(0, policy.lateBySeconds) : 0;
     const row = {
@@ -359,8 +425,9 @@ function saveAttendance_(user, p) {
       latitude, longitude, distanceMeters:Math.round(distanceMeters * 100) / 100,
       lateBySeconds,
       lateByText:lateBySeconds > 0 ? formatDuration_(lateBySeconds) : '',
-      selfieFileId, signatureFileId, createdAt:now.toISOString()
+      selfieFileId, signatureFileId, suratFileId, suratNama, createdAt:now.toISOString()
     };
+    ensureSheetColumns_('Attendance', ['suratFileId','suratNama']);
     appendObjects_('Attendance', [row]);
     audit_(user.id, 'CREATE', 'Attendance', row.id, 'Presensi ' + status + ' / ' + sesi + (lateBySeconds ? ' / Terlambat ' + formatDuration_(lateBySeconds) : ''));
     return {ok:true, id:row.id, lateBySeconds, lateByText:row.lateByText, distanceMeters:row.distanceMeters,
@@ -417,13 +484,82 @@ function saveReport_(user, p) {
     throw new Error('Jam kegiatan harus diisi dengan format HH:MM.');
   }
   if (jamSelesai <= jamMulai) throw new Error('Jam selesai harus setelah jam mulai.');
-  // Ensure new columns exist even if the user has not rerun setupDatabase().
-  ensureSheetColumns_('Reports', ['jamMulai','jamSelesai']);
-  const fotoFileId = saveDataUrlToDrive_(p.foto, 'Dokumentasi_' + user.id + '_' + Date.now(), null);
-  const row = {id:'lap-' + Utilities.getUuid(), userId:user.id, nama:user.nama, bidang:user.bidang, tanggal, jamMulai, jamSelesai, kegiatan, output, fotoFileId, status:'Pending', verifiedBy:'', verifiedAt:'', createdAt:new Date().toISOString()};
-  appendObjects_('Reports', [row]);
-  audit_(user.id, 'CREATE', 'Reports', row.id, 'Laporan harian dibuat (' + jamMulai + '-' + jamSelesai + ')');
-  return {ok:true, id:row.id};
+  const fotoData = required_(p.foto, 'Foto dokumentasi kegiatan');
+  const fotoMatch = fotoData.match(/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=]+)$/i);
+  if (!fotoMatch) throw new Error('Foto dokumentasi harus berupa JPG, PNG, atau WEBP.');
+  const estimatedPhotoBytes = Math.floor(fotoMatch[2].length * 3 / 4) - (fotoMatch[2].endsWith('==') ? 2 : fotoMatch[2].endsWith('=') ? 1 : 0);
+  if (estimatedPhotoBytes <= 0 || estimatedPhotoBytes > APP.MAX_REPORT_PHOTO_BYTES) {
+    throw new Error('Ukuran foto kegiatan setelah kompresi maksimal 3 MB. Silakan pilih atau kompres ulang foto.');
+  }
+
+  ensureSheetColumns_('Reports', ['jamMulai','jamSelesai','integrationId','source']);
+  const integrationId = String(p.integrationId || '').trim();
+  const source = integrationId ? 'LINTAS DPMD' : 'SIAP-DPMD';
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    // Mencegah dua klik/permintaan paralel menyimpan kegiatan identik lebih dari sekali.
+    const allReports = readRows_('Reports');
+    if (integrationId) {
+      const sameIntegration = allReports.find(r => String(r.integrationId || '') === integrationId);
+      if (sameIntegration) return {ok:true, id:sameIntegration.id, duplicate:true, message:'Transaksi integrasi ini sudah tercatat; tidak dibuat ulang.'};
+    }
+    const duplicate = allReports.find(r =>
+      String(r.userId) === String(user.id) &&
+      normalizeDateKey_(r.tanggal) === tanggal &&
+      String(r.jamMulai || '') === jamMulai &&
+      String(r.jamSelesai || '') === jamSelesai
+    );
+    if (duplicate) throw new Error('Anda sudah memiliki laporan pada tanggal dan rentang jam tersebut. Setiap rentang waktu hanya boleh digunakan satu kali per hari.');
+
+    const fotoFileId = saveDataUrlToDrive_(fotoData, 'Dokumentasi_' + user.id + '_' + Date.now(), null);
+    const row = {id:'lap-' + Utilities.getUuid(), userId:user.id, nama:user.nama, bidang:user.bidang, tanggal, jamMulai, jamSelesai, kegiatan, output, fotoFileId, status:'Pending', verifiedBy:'', verifiedAt:'', createdAt:new Date().toISOString(), integrationId, source};
+    appendObjects_('Reports', [row]);
+    audit_(user.id, 'CREATE', 'Reports', row.id, 'Laporan harian dibuat (' + jamMulai + '-' + jamSelesai + ')');
+    return {ok:true, id:row.id};
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Endpoint khusus LINTAS -> SIAP. Konfigurasi Script Properties SIAP:
+ * SIAP_DPMD_LINTAS_SHARED_SECRET (acak minimal 32 karakter)
+ * SIAP_DPMD_LINTAS_USER_ID (ID akun PJLP khusus Front Office yang aktif)
+ * Rahasia tidak boleh ditempatkan pada frontend/browser atau URL.
+ */
+function integrationSaveReport_(p) {
+  const props = PropertiesService.getScriptProperties();
+  const expectedSecret = String(props.getProperty('SIAP_DPMD_LINTAS_SHARED_SECRET') || '');
+  const suppliedSecret = String(p.integrationSecret || '');
+  if (expectedSecret.length < 32) {
+    throw new Error('Konfigurasi SIAP belum memiliki SIAP_DPMD_LINTAS_SHARED_SECRET yang valid (minimal 32 karakter).');
+  }
+  if (!constantTimeEqual_(expectedSecret, suppliedSecret)) {
+    throw new Error('Rahasia integrasi tidak cocok. Pastikan nilai SIAP_DPMD_LINTAS_SHARED_SECRET di SIAP sama persis dengan LINTAS_SIAP_SHARED_SECRET di LINTAS; tanpa spasi tambahan.');
+  }
+
+  const integrationId = required_(p.integrationId, 'ID transaksi integrasi');
+  if (!/^[A-Za-z0-9._:-]{12,160}$/.test(integrationId)) throw new Error('ID transaksi integrasi tidak valid.');
+  const configuredUserId = String(props.getProperty('SIAP_DPMD_LINTAS_USER_ID') || '').trim();
+  if (!configuredUserId) throw new Error('Akun pelapor Front Office belum dikonfigurasi di Script Properties SIAP.');
+  const rawUser = findById_('Users', configuredUserId);
+  if (!rawUser || rawUser.status !== 'Aktif' || rawUser.role !== 'PJLP') {
+    throw new Error('Akun khusus Front Office tidak ditemukan, tidak aktif, atau bukan akun PJLP.');
+  }
+
+  // Bukti foto tetap wajib dan divalidasi oleh saveReport_ yang sama dengan alur normal.
+  const result = saveReport_(safeUser_(rawUser), {
+    integrationId,
+    tanggal: p.tanggal,
+    jamMulai: p.jamMulai,
+    jamSelesai: p.jamSelesai,
+    kegiatan: p.kegiatan,
+    output: p.output,
+    foto: p.foto
+  });
+  audit_(rawUser.id, 'INTEGRATION_CREATE', 'Reports', result.id, 'Laporan dikirim dari LINTAS DPMD; transactionId=' + integrationId);
+  return {ok:true, id:result.id, duplicate:!!result.duplicate, message:result.duplicate ? 'Transaksi sudah pernah diterima.' : 'Laporan integrasi tersimpan dengan status Pending.'};
 }
 
 function ensureSheetColumns_(sheetName, requiredHeaders) {
@@ -470,6 +606,30 @@ function downloadArchive_(user, archiveId) {
   return {ok:true, name:row.nama, mimeType:blob.getContentType(), base64:Utilities.base64Encode(bytes)};
 }
 
+function downloadAttendanceEvidence_(user, attendanceId) {
+  const row = findById_('Attendance', attendanceId);
+  if (!row) throw new Error('Data presensi tidak ditemukan.');
+  if (user.role === 'PJLP' && String(row.userId) !== String(user.id)) throw new Error('Akses berkas ditolak.');
+  if (user.role === 'Verifikator') {
+    const owner = findById_('Users', row.userId);
+    if (!owner || String(owner.bidang || '') !== String(user.bidang || '')) throw new Error('Akses berkas ditolak.');
+  }
+  if (user.role !== 'PJLP' && user.role !== 'Verifikator' && user.role !== 'SuperAdmin') throw new Error('Akses berkas ditolak.');
+  if (!row.suratFileId) throw new Error('Surat pendukung tidak ditemukan.');
+  const file = DriveApp.getFileById(String(row.suratFileId));
+  const blob = file.getBlob(); const bytes = blob.getBytes();
+  if (bytes.length > APP.MAX_UPLOAD_BYTES) throw new Error('Berkas terlalu besar untuk ditampilkan.');
+  return {ok:true, name:String(row.suratNama || file.getName()), mimeType:blob.getContentType(), base64:Utilities.base64Encode(bytes)};
+}
+
+function ensureSheetColumns_(name, columns) {
+  const sh = sheet_(name);
+  const lastCol = Math.max(1, sh.getLastColumn());
+  const headers = sh.getRange(1,1,1,lastCol).getValues()[0].map(String);
+  const missing = columns.filter(c => headers.indexOf(c) < 0);
+  if (missing.length) sh.getRange(1,lastCol+1,1,missing.length).setValues([missing]);
+}
+
 function deleteRecord_(sheetName, recordId, actor) {
   const row = findById_(sheetName, recordId);
   if (!row) throw new Error('Data tidak ditemukan.');
@@ -502,30 +662,94 @@ function saveAnyDataUrlToDrive_(dataUrl, filename, expectedMime, maxBytes) {
   return file.getId();
 }
 
-function approveReport_(user, reportId) {
-  const row = findById_('Reports', reportId);
+function getAuditLog_(p) {
+  const limit = Math.min(200, Math.max(1, Number(p.limit) || 100));
+  const rows = readRows_('AuditLog').sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).slice(0, limit);
+  const users = readRows_('Users');
+  return {ok:true, logs:rows.map(r => ({id:r.id, actorName:(users.find(u => String(u.id) === String(r.actorId)) || {}).nama || 'Pengguna', actorId:r.actorId, action:r.action, entity:r.entity, entityId:r.entityId, details:r.details, createdAt:r.createdAt}))};
+}
+function ensureReportScope_(user, row) {
   if (!row) throw new Error('Laporan tidak ditemukan.');
   if (user.role === 'Verifikator') {
     const owner = findById_('Users', row.userId);
-    if (!owner || owner.bidang !== user.bidang) throw new Error('Anda tidak berwenang memverifikasi laporan bidang lain.');
+    if (!owner || String(owner.bidang || '').trim() !== String(user.bidang || '').trim()) throw new Error('Anda tidak berwenang mengakses laporan bidang lain.');
+  } else if (user.role !== 'SuperAdmin') throw new Error('Akses ditolak.');
+  return row;
+}
+function rejectReport_(user, reportId, reason) {
+  const row = ensureReportScope_(user, findById_('Reports', reportId));
+  const why = String(reason || '').trim();
+  if (why.length < 3) throw new Error('Alasan penolakan wajib diisi (minimal 3 karakter).');
+  if (row.status !== 'Pending') throw new Error('Hanya laporan berstatus Pending yang dapat ditolak.');
+  ensureSheetColumns_('Reports', ['rejectionReason']);
+  updateById_('Reports', reportId, {status:'Ditolak', rejectionReason:why.slice(0,500), verifiedBy:user.id, verifiedAt:new Date().toISOString()});
+  audit_(user.id, 'REJECT', 'Reports', reportId, JSON.stringify({before:{status:row.status},after:{status:'Ditolak',rejectionReason:why.slice(0,500)}}));
+  return {ok:true};
+}
+function deleteReportAsVerifier_(user, reportId) {
+  const row = ensureReportScope_(user, findById_('Reports', reportId));
+  // Verifikator hanya boleh menghapus laporan staf di bidangnya sendiri.
+  const sh = sheet_('Reports'), values = sh.getDataRange().getValues(), headers = values[0].map(String), idCol = headers.indexOf('id');
+  for (let r=1; r<values.length; r++) {
+    if (String(values[r][idCol]) === String(reportId)) {
+      sh.deleteRow(r+1);
+      [row.fotoFileId, row.foto, row.driveFileId].filter(Boolean).forEach(fileId => { try { if (/^[A-Za-z0-9_-]{20,}$/.test(String(fileId))) DriveApp.getFileById(String(fileId)).setTrashed(true); } catch (_) {} });
+      audit_(user.id, 'DELETE', 'Reports', reportId, JSON.stringify({before:{userId:row.userId,nama:row.nama,tanggal:row.tanggal,jamMulai:row.jamMulai,jamSelesai:row.jamSelesai,kegiatan:row.kegiatan,output:row.output,status:row.status},actorBidang:String(user.bidang||'')}));
+      return {ok:true};
+    }
   }
-  updateById_('Reports', reportId, {status:'Disetujui', verifiedBy:user.id, verifiedAt:new Date().toISOString()});
-  audit_(user.id, 'APPROVE', 'Reports', reportId, 'Laporan disetujui');
+  throw new Error('Laporan tidak ditemukan.');
+}
+function bulkApproveReports_(user, reportIds) {
+  const ids = Array.isArray(reportIds) ? [...new Set(reportIds.map(x => String(x || '')).filter(Boolean))].slice(0,200) : [];
+  if (!ids.length) throw new Error('Tidak ada laporan Pending yang dipilih dari filter saat ini.');
+  ensureSheetColumns_('Reports', ['rejectionReason']);
+  let approved = 0, skipped = 0;
+  ids.forEach(id => {
+    const row = findById_('Reports', id);
+    if (!row || row.status !== 'Pending') { skipped++; return; }
+    try {
+      ensureReportScope_(user, row);
+      updateById_('Reports', id, {status:'Disetujui', rejectionReason:'', verifiedBy:user.id, verifiedAt:new Date().toISOString()});
+      audit_(user.id, 'APPROVE', 'Reports', id, JSON.stringify({before:{status:row.status},after:{status:'Disetujui'},method:'Verifikasi Semua'}));
+      approved++;
+    } catch (e) { skipped++; }
+  });
+  return {ok:true, approved, skipped};
+}
+
+function approveReport_(user, reportId) {
+  const row = ensureReportScope_(user, findById_('Reports', reportId));
+  if (row.status !== 'Pending') throw new Error('Hanya laporan berstatus Pending yang dapat disetujui.');
+  updateById_('Reports', reportId, {status:'Disetujui', rejectionReason:'', verifiedBy:user.id, verifiedAt:new Date().toISOString()});
+  audit_(user.id, 'APPROVE', 'Reports', reportId, JSON.stringify({before:{status:row.status},after:{status:'Disetujui'}}));
   return {ok:true};
 }
 
 function updateProfile_(user, p) {
-  ensureSheetColumns_('Users', ['pendidikanTerakhir']);
   const targetId = String(p.userId || user.id);
   if (user.role !== 'SuperAdmin' && targetId !== user.id) throw new Error('Tidak boleh mengubah profil pengguna lain.');
   if (!findById_('Users', targetId)) throw new Error('Pengguna tidak ditemukan.');
   const patch = {};
-  ['ttl','tmt','hp','rekening','kawin','alamat','pendidikanTerakhir'].forEach(k => { if (p[k] !== undefined) patch[k] = String(p[k]); });
+  ['ttl','tmt','hp','rekening','kawin','alamat','bidang','jabatan'].forEach(k => { if (p[k] !== undefined) patch[k] = String(p[k]).trim(); });
+  const existingUsers = readRows_('Users');
   if (p.nik !== undefined) {
-    const nik = required_(p.nik, 'NIK');
-    const duplicate = readRows_('Users').some(u => String(u.id) !== targetId && String(u.nik || '').trim() === nik);
-    if (duplicate) throw new Error('NIK sudah digunakan oleh akun lain.');
+    const nik = String(p.nik || '').trim();
+    if (!nik) throw new Error('NIK wajib diisi.');
+    if (existingUsers.some(u => String(u.id) !== targetId && [u.nik, u.username, u.email].some(v => String(v||'').trim().toLowerCase() === nik.toLowerCase()))) throw new Error('NIK sudah digunakan sebagai NIK, username, atau email akun lain.');
     patch.nik = nik;
+  }
+  if (p.email !== undefined) {
+    const email = String(p.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Format email tidak valid.');
+    if (existingUsers.some(u => String(u.id) !== targetId && [u.email, u.username, u.nik].some(v => String(v||'').trim().toLowerCase() === email))) throw new Error('Email sudah digunakan sebagai email, username, atau NIK akun lain.');
+    patch.email = email;
+  }
+  if (p.username !== undefined) {
+    const username = String(p.username || '').trim().toLowerCase();
+    if (!/^[a-z0-9._-]{3,64}$/.test(username)) throw new Error('Username harus 3–64 karakter dan hanya boleh berisi huruf, angka, titik, garis bawah, atau tanda hubung.');
+    if (existingUsers.some(u => String(u.id) !== targetId && [u.username, u.nik, u.email].some(v => String(v||'').trim().toLowerCase() === username))) throw new Error('Username sudah digunakan sebagai username, NIK, atau email akun lain.');
+    patch.username = username;
   }
   if (p.jenisKelamin !== undefined) {
     const jk = String(p.jenisKelamin || '');
@@ -534,9 +758,9 @@ function updateProfile_(user, p) {
   }
   if (user.role === 'SuperAdmin' && p.nama) patch.nama = String(p.nama);
   if (p.avatar && String(p.avatar).startsWith('data:image/')) {
-    const avatarFileId = saveDataUrlToDrive_(p.avatar, 'FotoProfil_' + targetId + '_' + Date.now(), null);
-    patch.avatar = 'drive:' + avatarFileId;
+    patch.avatar = p.avatar; // avatar data URL retained in sheet; consider Drive for large deployments.
   }
+  if (patch.username !== undefined) ensureSheetColumns_('Users', ['username']);
   patch.updatedAt = new Date().toISOString();
   updateById_('Users', targetId, patch);
   audit_(user.id, 'UPDATE', 'Users', targetId, 'Profil diperbarui');
@@ -544,17 +768,18 @@ function updateProfile_(user, p) {
 }
 
 function adminCreateUser_(p, actor) {
-  ensureSheetColumns_('Users', ['pendidikanTerakhir']);
   const password = String(p.password || '');
   if (password.length < 10) throw new Error('Kata sandi minimal 10 karakter.');
   const email = required_(p.email,'Email').toLowerCase();
   const nik = required_(p.nik,'NIK');
+  ensureSheetColumns_('Users', ['username']);
   const users = readRows_('Users');
-  if (users.some(u => String(u.email).toLowerCase() === email || String(u.nik) === nik)) throw new Error('Email atau NIK sudah digunakan.');
+  if (users.some(u => String(u.email||'').trim().toLowerCase() === email || String(u.nik||'').trim().toLowerCase() === nik.toLowerCase())) throw new Error('Email atau NIK sudah digunakan.');
   const allowedRoles = ['PJLP','Verifikator'];
   const requestedRole = String(p.role || 'PJLP');
   if (!allowedRoles.includes(requestedRole)) throw new Error('Peran pengguna tidak valid.');
-  const row = makeUser_({id:'usr-' + Utilities.getUuid(), nama:required_(p.nama,'Nama'), nik, hp:String(p.hp||''), email, password, bidang:required_(p.bidang,'Bidang'), jabatan:required_(p.jabatan,'Jabatan'), role:requestedRole, status:'Aktif', jenisKelamin:String(p.jenisKelamin || ''), pendidikanTerakhir:String(p.pendidikanTerakhir || '')}, new Date().toISOString());
+  const jabatan = requestedRole === 'Verifikator' ? 'Verifikator' : required_(p.jabatan,'Jabatan');
+  const row = makeUser_({id:'usr-' + Utilities.getUuid(), nama:required_(p.nama,'Nama'), nik, hp:String(p.hp||''), email, password, bidang:required_(p.bidang,'Bidang'), jabatan, role:requestedRole, status:'Aktif'}, new Date().toISOString());
   appendObjects_('Users', [row]);
   audit_(actor.id, 'CREATE', 'Users', row.id, 'Akun baru: ' + row.email);
   return {ok:true, id:row.id};
@@ -587,12 +812,10 @@ function changePassword_(user, p) {
 }
 
 function resetPassword_(user, p) {
-  const targetId = String(p.userId || '').trim();
-  if (!targetId || !findById_('Users', targetId)) throw new Error('Akun tujuan tidak ditemukan.');
   const pass = String(p.newPassword || '');
   if (pass.length < 10) throw new Error('Kata sandi baru minimal 10 karakter.');
-  updateById_('Users', targetId, {passwordHash:hashPassword_(pass), updatedAt:new Date().toISOString()});
-  audit_(user.id, 'RESET_PASSWORD', 'Users', targetId, 'Kata sandi direset oleh Super Admin');
+  updateById_('Users', p.userId, {passwordHash:hashPassword_(pass), updatedAt:new Date().toISOString()});
+  audit_(user.id, 'RESET_PASSWORD', 'Users', p.userId, 'Kata sandi direset oleh Super Admin');
   return {ok:true};
 }
 
@@ -607,16 +830,10 @@ function requireSession_(token) {
 }
 function requireRole_(user, roles) { if (roles.indexOf(user.role) < 0) throw new Error('Akses ditolak.'); }
 function makeUser_(p, now) {
-  return {id:p.id, nama:p.nama, nik:p.nik, hp:p.hp||'', email:p.email, passwordHash:hashPassword_(p.password), bidang:p.bidang, jabatan:p.jabatan, role:p.role, status:p.status||'Aktif', ttl:p.ttl||'', tmt:p.tmt||'', avatar:p.avatar||'', rekening:p.rekening||'', kawin:p.kawin||'', alamat:p.alamat||'', jenisKelamin:p.jenisKelamin||'', pendidikanTerakhir:p.pendidikanTerakhir||'', createdAt:now, updatedAt:now};
+  return {id:p.id, nama:p.nama, nik:p.nik, username:String(p.username||p.nik||'').trim().toLowerCase(), hp:p.hp||'', email:p.email, passwordHash:hashPassword_(p.password), bidang:p.bidang, jabatan:p.jabatan, role:p.role, status:p.status||'Aktif', ttl:p.ttl||'', tmt:p.tmt||'', avatar:p.avatar||'', rekening:p.rekening||'', kawin:p.kawin||'', alamat:p.alamat||'', jenisKelamin:p.jenisKelamin||'', pendidikanTerakhir:p.pendidikanTerakhir||'', createdAt:now, updatedAt:now};
 }
-function safeUser_(u, includeAvatarData) {
-  const x = Object.assign({}, u); delete x.passwordHash;
-  // Never read Drive for an avatar on every authenticated API call.
-  // The dashboard payload requests image bytes only for the current user.
-  if (typeof x.avatar === 'string' && x.avatar.indexOf('drive:') === 0) {
-    x.avatar = includeAvatarData ? driveImageDataUrl_(x.avatar.slice(6)) : '';
-  }
-  return x;
+function safeUser_(u) {
+  const x = Object.assign({}, u); delete x.passwordHash; return x;
 }
 // Password storage: PBKDF2-HMAC-SHA256 with unique random salt.
 // Iteration count is deliberately configurable in one place; test login latency on the live GAS runtime.
@@ -685,18 +902,6 @@ function saveDataUrlToDrive_(dataUrl, filename, mimeType) {
   return file.getId();
 }
 
-function driveImageDataUrl_(id) {
-  try {
-    const file = DriveApp.getFileById(String(id));
-    const blob = file.getBlob();
-    const type = blob.getContentType() || 'image/jpeg';
-    if (!/^image\/(png|jpeg|jpg|webp)$/i.test(type)) return '';
-    const bytes = blob.getBytes();
-    if (!bytes.length || bytes.length > APP.MAX_UPLOAD_BYTES) return '';
-    const normalizedType = type === 'image/jpg' ? 'image/jpeg' : type;
-    return 'data:' + normalizedType + ';base64,' + Utilities.base64Encode(bytes);
-  } catch (e) { return ''; }
-}
 function driveUrl_(id) { return 'https://drive.google.com/uc?export=view&id=' + encodeURIComponent(id); }
 function required_(v, label) { const s = String(v == null ? '' : v).trim(); if (!s) throw new Error(label + ' wajib diisi.'); return s; }
 function numberOrBlank_(v) { return v === '' || v == null ? '' : Number(v); }
@@ -709,13 +914,32 @@ function sheet_(name) {
   if (!sh) throw new Error('Sheet database tidak ditemukan: ' + name);
   return sh;
 }
+function normalizeDateKey_(value) {
+  if (value instanceof Date) return Utilities.formatDate(value, APP.TZ, 'yyyy-MM-dd');
+  const raw = String(value == null ? '' : value).trim();
+  const iso = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  const dmy = raw.match(/^(\d{1,2})[\/:.-](\d{1,2})[\/:.-](\d{4})$/);
+  if (dmy) return dmy[3] + '-' + String(dmy[2]).padStart(2,'0') + '-' + String(dmy[1]).padStart(2,'0');
+  return raw;
+}
+
 function readRows_(name) {
   const sh = sheet_(name); const values = sh.getDataRange().getValues();
   if (values.length < 2) return [];
   const headers = values[0];
   return values.slice(1).filter(r => r.some(v => v !== '')).map(r => {
     const o = {};
-    headers.forEach((h,i) => { let v = r[i]; if (v instanceof Date) v = v.toISOString(); o[h] = v; });
+    headers.forEach((h,i) => {
+      let v = r[i];
+      if (v instanceof Date) {
+        if (['tanggal','tmt'].includes(String(h))) v = Utilities.formatDate(v, APP.TZ, 'yyyy-MM-dd');
+        else if (['jam'].includes(String(h))) v = Utilities.formatDate(v, APP.TZ, 'HH:mm:ss');
+        else if (['jamMulai','jamSelesai'].includes(String(h))) v = Utilities.formatDate(v, APP.TZ, 'HH:mm');
+        else v = Utilities.formatDate(v, APP.TZ, "yyyy-MM-dd'T'HH:mm:ss");
+      }
+      o[h] = v;
+    });
     return o;
   });
 }
@@ -740,4 +964,12 @@ function updateById_(name, id, patch) {
 }
 function audit_(actorId, action, entity, entityId, details) {
   try { appendObjects_('AuditLog', [{id:'log-' + Utilities.getUuid(), actorId, action, entity, entityId, details, createdAt:new Date().toISOString()}]); } catch (e) { console.error(e); }
+}
+
+
+/** Hari unik: sesi Masuk dan Pulang pada tanggal yang sama dihitung satu hari. */
+function countAttendanceDays_(rows, monthKey) {
+  const days = new Set();
+  (rows || []).forEach(row => { const key = normalizeDateKey_(row.tanggal); if (key && (!monthKey || key.slice(0,7) === monthKey)) days.add(key); });
+  return days.size;
 }
