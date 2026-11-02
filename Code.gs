@@ -175,6 +175,7 @@ function api(action, payload, token) {
     case 'rejectReport': requireRole_(user, ['SuperAdmin','Verifikator']); return rejectReport_(user, payload.reportId, payload.reason);
     case 'deleteReportAsVerifier': requireRole_(user, ['Verifikator']); return deleteReportAsVerifier_(user, payload.reportId);
     case 'bulkApproveReports': requireRole_(user, ['SuperAdmin','Verifikator']); return bulkApproveReports_(user, payload.reportIds);
+    case 'bulkApproveAllPendingReports': requireRole_(user, ['SuperAdmin']); return bulkApproveAllPendingReports_(user);
     case 'getReportPhoto': return getReportPhoto_(user, payload.reportId);
     case 'updateProfile': return updateProfile_(user, payload);
     case 'changePassword': return changePassword_(user, payload);
@@ -716,6 +717,49 @@ function bulkApproveReports_(user, reportIds) {
     } catch (e) { skipped++; }
   });
   return {ok:true, approved, skipped};
+}
+
+function bulkApproveAllPendingReports_(user) {
+  if (!user || user.role !== 'SuperAdmin') throw new Error('Hanya Super Admin yang dapat menyetujui seluruh laporan Pending.');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('Proses persetujuan lain sedang berjalan. Silakan coba kembali.');
+  try {
+    ensureSheetColumns_('Reports', ['rejectionReason','verifiedBy','verifiedAt']);
+    const sh = sheet_('Reports');
+    const range = sh.getDataRange();
+    const values = range.getValues();
+    if (values.length < 2) return {ok:true, approved:0, skipped:0};
+    const headers = values[0].map(String);
+    const col = {id:headers.indexOf('id'), status:headers.indexOf('status'), rejectionReason:headers.indexOf('rejectionReason'), verifiedBy:headers.indexOf('verifiedBy'), verifiedAt:headers.indexOf('verifiedAt')};
+    if (Object.values(col).some(index => index < 0)) throw new Error('Kolom verifikasi laporan tidak lengkap.');
+    const now = new Date().toISOString();
+    const auditRows = [];
+    let approved = 0, skipped = 0;
+    for (let r=1; r<values.length; r++) {
+      if (String(values[r][col.status] || 'Pending') !== 'Pending') continue;
+      const id = String(values[r][col.id] || '');
+      if (!id) { skipped++; continue; }
+      values[r][col.status] = 'Disetujui';
+      values[r][col.rejectionReason] = '';
+      values[r][col.verifiedBy] = user.id;
+      values[r][col.verifiedAt] = now;
+      auditRows.push({
+        id:'log-' + Utilities.getUuid(), actorId:user.id, action:'APPROVE', entity:'Reports', entityId:id,
+        details:JSON.stringify({before:{status:'Pending'},after:{status:'Disetujui'},method:'Persetujuan Massal Super Admin'}), createdAt:now
+      });
+      approved++;
+    }
+    if (approved) {
+      const dataRowCount = values.length - 1;
+      const writeColumn = index => sh.getRange(2, index + 1, dataRowCount, 1).setValues(values.slice(1).map(row => [row[index]]));
+      // Tulis hanya kolom verifikasi agar kolom data lain tetap tidak tersentuh.
+      [col.status, col.rejectionReason, col.verifiedBy, col.verifiedAt].forEach(writeColumn);
+      appendObjects_('AuditLog', auditRows);
+    }
+    return {ok:true, approved, skipped};
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function approveReport_(user, reportId) {
