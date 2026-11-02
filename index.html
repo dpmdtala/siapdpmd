@@ -471,7 +471,7 @@
             <!-- Quick Metrics Grid -->
             <div class="grid grid-cols-2 gap-3 text-xs font-medium">
               <div class="bg-sky-50/70 p-4 rounded-2xl border border-sky-100 text-sky-900">
-                <p class="text-[10px] uppercase font-bold text-sky-700">Menunggu Verifikasi</p>
+                <p class="text-[10px] uppercase font-bold text-sky-700">Status Belum Disetujui</p>
                 <p id="chart-pending-count" class="text-xl font-black mt-0.5">0 Laporan</p>
               </div>
               <div class="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-100 text-emerald-900">
@@ -1808,7 +1808,7 @@
   <!-- ================= FOOTER ================= -->
   <footer class="app-footer-fixed bg-white border-t border-slate-200 py-3 px-4 text-center text-xs text-slate-500 no-print">
     <p class="footer-brand">SIAP-DPMD Kabupaten Tanah Laut</p>
-    <p class="footer-copy mt-1">TIM IT Sub Bagian Umum dan Kepegawaian © 2026 Dinas Pemberdayaan Masyarakat dan Desa. Seluruh hak cipta dilindungi.</p>
+    <p class="footer-copy mt-1">AANS - TIM IT Sub Bagian Umum dan Kepegawaian © 2026 Dinas Pemberdayaan Masyarakat dan Desa. Seluruh hak cipta dilindungi.</p>
     <nav aria-label="Media sosial Dinas PMD Kabupaten Tanah Laut" class="mt-4 flex flex-wrap items-center justify-center gap-4">
       <a href="https://www.instagram.com/dinaspmdkabtala/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-pink-600 hover:text-pink-800 font-semibold"><i class="fa-brands fa-instagram text-lg" aria-hidden="true"></i><span>Instagram</span></a>
       <a href="https://www.facebook.com/dinaspmd.tanahlaut#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-blue-700 hover:text-blue-900 font-semibold"><i class="fa-brands fa-facebook text-lg" aria-hidden="true"></i><span>Facebook</span></a>
@@ -2667,33 +2667,18 @@
       const warning = document.getElementById('rekap-approval-warning');
       const badge = document.getElementById('rekap-status-badge');
       const allApproved = reportRows.length > 0 && approved === reportRows.length;
+      const hasRejected = reportRows.some(r => r.status === 'Ditolak');
       if (warning) warning.classList.toggle('hidden', allApproved || reportRows.length === 0);
       if (badge) {
-        badge.textContent = allApproved ? 'Disetujui (Siap Cetak)' : reportRows.length ? 'Menunggu Persetujuan' : 'Belum Ada Laporan';
-        badge.className = `inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${allApproved ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`;
+        badge.textContent = allApproved ? 'Disetujui (Siap Cetak)' : hasRejected ? 'Ada Laporan Ditolak' : reportRows.length ? 'Menunggu Persetujuan' : 'Belum Ada Laporan';
+        badge.className = `inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${allApproved ? 'bg-blue-100 text-blue-800' : hasRejected ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`;
       }
       const reportBody = document.getElementById('rekap-kinerja-month-body');
       if (reportBody) {
-        reportBody.innerHTML = reportRows.length ? reportRows.map(r => `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td class="p-2 text-center align-middle">${r.foto ? `<img data-report-photo-id="${escapeHTML(String(r.id))}" alt="Foto dokumentasi kegiatan" class="inline-block w-20 h-14 object-contain rounded border border-slate-200 bg-slate-50" style="max-width:80px;max-height:56px" loading="lazy">` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`).join('') : '<tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
-        loadRekapKinerjaPhotos(reportBody);
+        reportBody.innerHTML = reportRows.length ? reportRows.map(r => `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td class="p-2 text-center align-middle">${r.foto ? `<a href="#" data-report-photo-id="${escapeHTML(String(r.id))}" onclick="openReportPhotoById(${safeJsArg(r.id)});return false" class="inline-flex items-center gap-1 text-blue-700 underline font-semibold"><i class="fa-regular fa-image"></i> Lihat foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`).join('') : '<tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
       }
     }
 
-    async function loadRekapKinerjaPhotos(container) {
-      if (!container) return;
-      const images = [...container.querySelectorAll('img[data-report-photo-id]')];
-      await Promise.all(images.map(async img => {
-        try {
-          const result = await gasCall('getReportPhoto', {reportId: img.dataset.reportPhotoId});
-          const src = String(result?.foto || '');
-          if (!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(src)) throw new Error('Foto tidak valid');
-          img.src = src;
-          img.title = 'Foto dokumentasi kegiatan';
-        } catch (_) {
-          img.replaceWith(Object.assign(document.createElement('span'), {className:'text-slate-400 text-[10px]', textContent:'Foto tidak dapat dimuat'}));
-        }
-      }));
-    }
 
     function parseBirthDateFromTtl(ttl) {
       const raw = String(ttl || '').trim();
@@ -2795,16 +2780,26 @@
       document.getElementById('chart-approved-count').innerText = `${approvedCount} Laporan`;
 
       const perfBadge = document.getElementById('stat-performance-badge');
-      if (percent >= 80) {
+      const rejectedCount = laporanBulanBerjalan.filter(l => l.status === 'Ditolak').length;
+      const pendingCount = laporanBulanBerjalan.filter(l => l.status === 'Pending').length;
+      if (totalLaporan > 0 && approvedCount === totalLaporan) {
         perfBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800";
         perfBadge.innerText = "Sangat Baik";
-      } else if (percent > 0) {
-        perfBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-800";
-        perfBadge.innerText = "Progres Aktif";
-      } else {
+      } else if (totalLaporan > 0 && (approvedCount / totalLaporan) >= 0.75) {
+        perfBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+        perfBadge.innerText = "Baik";
+      } else if (totalLaporan > 0 && (approvedCount / totalLaporan) >= 0.50) {
         perfBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800";
-        perfBadge.innerText = "Belum Ada Disetujui";
+        perfBadge.innerText = "Cukup Baik";
+      } else if (totalLaporan > 0) {
+        perfBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800";
+        perfBadge.innerText = "Perlu Peningkatan";
+      } else {
+        perfBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700";
+        perfBadge.innerText = "Belum Ada Penilaian";
       }
+      const pendingLabel = document.getElementById('chart-pending-count');
+      if (pendingLabel) pendingLabel.innerText = `${pendingCount} Pending · ${rejectedCount} Ditolak`;
 
       document.getElementById('rekap-disetujui-count').innerText = `${approvedCount} Laporan`;
       const warningBanner = document.getElementById('rekap-approval-warning');
@@ -3041,15 +3036,17 @@
           }
         }
         if (elementId === 'printable-rekap-kinerja-container') {
-          const photoImages = [...clone.querySelectorAll('img[data-report-photo-id]')];
-          await Promise.all(photoImages.map(async img => {
+          const photoLinks = [...clone.querySelectorAll('a[data-report-photo-id]')];
+          await Promise.all(photoLinks.map(async link => {
             try {
-              const result = await gasCall('getReportPhoto', {reportId: img.dataset.reportPhotoId});
+              const result = await gasCall('getReportPhoto', {reportId: link.dataset.reportPhotoId});
               const src = String(result?.foto || '');
               if (!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(src)) throw new Error('Foto tidak valid');
-              img.src = src;
+              const img = document.createElement('img');
+              img.src = src; img.alt = 'Foto dokumentasi kegiatan';
               img.style.cssText = 'width:80px;height:56px;max-width:80px;max-height:56px;object-fit:contain;border:1px solid #aaa;display:block;margin:auto';
-            } catch (_) { img.replaceWith(document.createTextNode('Foto tidak dapat dimuat')); }
+              link.replaceWith(img);
+            } catch (_) { link.replaceWith(document.createTextNode('Foto tidak dapat dimuat')); }
           }));
           const previewHeader = clone.querySelector(':scope > .flex.flex-col');
           if (previewHeader) previewHeader.remove();
@@ -3727,9 +3724,9 @@
             <td class="py-3.5 px-4">${escapeHTML(l.kegiatan)}</td>
             <td class="py-3.5 px-4 font-bold text-blue-700">${escapeHTML(l.output)}</td>
             <td class="py-3.5 px-4 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
-            <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status)}</span></td>
+            <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':l.status==='Ditolak'?'bg-rose-100 text-rose-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status)}</span>${l.status==='Ditolak' && l.rejectionReason ? `<div class="mt-1 max-w-48 text-[10px] text-rose-600">${escapeHTML(l.rejectionReason)}</div>` : ''}</td>
             <td class="py-3.5 px-4 text-center space-x-1">
-              ${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)})" class="px-2.5 py-1 bg-blue-600 text-white rounded text-[10px] font-bold">Setujui</button>` : `<span class="text-xs text-blue-600 font-bold">Disetujui</span>`}
+              ${l.status === 'Pending' ? `<button onclick="approveLaporan(${safeJsArg(l.id)})" class="px-2.5 py-1 bg-blue-600 text-white rounded text-[10px] font-bold">Setujui</button><button onclick="rejectLaporan(${safeJsArg(l.id)})" class="px-2.5 py-1 bg-rose-600 text-white rounded text-[10px] font-bold">Tolak</button>` : `<span class="text-xs font-bold ${l.status==='Ditolak'?'text-rose-600':'text-blue-600'}">${escapeHTML(l.status)}</span>`}
               <button onclick="deleteServerRecord('deleteReport',${safeJsArg(l.id)})" class="px-2 py-1 bg-rose-50 text-rose-600 rounded text-[10px] font-bold">Hapus</button>
             </td>
           </tr>
@@ -3963,8 +3960,9 @@
       if (reason.trim().length < 3) { notify('Alasan penolakan wajib diisi minimal 3 karakter.'); return; }
       try {
         await gasCall('rejectReport', {reportId:lapId, reason:reason.trim()});
-        await refreshServerData(); renderVerifikatorDashboard();
-        notify('Laporan ditolak dan alasan tercatat pada riwayat aktivitas.');
+        await refreshServerData();
+        if (currentUser?.role === 'SuperAdmin') renderAdminLaporanTable(); else renderVerifikatorDashboard();
+        notify('Laporan ditolak. Alasan penolakan tercatat dan capaian kinerja pegawai diperbarui.');
       } catch (err) { notify('Penolakan gagal: ' + err.message); }
     }
     async function deleteVerifierReport(lapId) {
