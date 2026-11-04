@@ -739,6 +739,20 @@
         </div>
       </div>
 
+      <!-- MODAL EDIT RHK -->
+      <div id="rhk-edit-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/60 p-4 overflow-y-auto">
+        <div class="max-w-xl mx-auto my-8 bg-white rounded-3xl shadow-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between gap-3"><div><h3 class="font-bold text-lg text-slate-900">Edit Rencana Hasil Kerja</h3><p class="text-xs text-slate-500">Perubahan akan langsung tersimpan pada RHK Anda.</p></div><button type="button" onclick="closeEditRhk()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-600" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button></div>
+          <form id="rhk-edit-form" onsubmit="handleUpdateRhk(event)" class="space-y-3"><input type="hidden" id="rhk-edit-id">
+            <div><label class="block text-xs font-bold mb-1">Uraian Hasil Kerja *</label><textarea id="rhk-edit-uraian" rows="3" maxlength="500" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></textarea></div>
+            <div><label class="block text-xs font-bold mb-1">Target Tahunan *</label><input id="rhk-edit-target" type="number" min="0.01" step="any" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></div>
+            <div><label class="block text-xs font-bold mb-1">Satuan Target *</label><input id="rhk-edit-satuan" maxlength="80" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></div>
+            <div><label class="block text-xs font-bold mb-2">Waktu Pelaksanaan (Bulan) *</label><div id="rhk-edit-waktu" class="grid grid-cols-3 sm:grid-cols-4 gap-2"><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Januari" class="rounded">Januari</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Februari" class="rounded">Februari</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Maret" class="rounded">Maret</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="April" class="rounded">April</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Mei" class="rounded">Mei</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Juni" class="rounded">Juni</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Juli" class="rounded">Juli</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Agustus" class="rounded">Agustus</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="September" class="rounded">September</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Oktober" class="rounded">Oktober</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="November" class="rounded">November</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Desember" class="rounded">Desember</label></div></div>
+            <div class="flex gap-2 pt-2"><button type="button" onclick="closeEditRhk()" class="flex-1 rounded-xl border border-slate-300 text-slate-700 font-bold p-3 text-sm">Batal</button><button type="submit" class="flex-1 rounded-xl bg-blue-600 text-white font-bold p-3 text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Perubahan</button></div>
+          </form>
+        </div>
+      </div>
+
       <!-- TAB 3: INPUT KEGIATAN HARIAN -->
       <div id="pjlp-tab-kegiatan" class="hidden space-y-6">
         <div class="grid lg:grid-cols-12 gap-8">
@@ -3418,8 +3432,30 @@
       const rows=(dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif');
       const count=document.getElementById('rhk-total'); if(count)count.textContent=rows.length+' RHK';
       if(!rows.length){list.innerHTML='<p class="text-sm text-slate-400">Belum ada RHK aktif untuk tahun '+year+'.</p>';populateRhkSelect();return;}
-      list.innerHTML=rows.map(r=>`<div class="border border-slate-200 rounded-2xl p-4 space-y-2"><div class="flex items-start justify-between gap-2"><h4 class="font-bold text-sm">${escapeHTML(r.uraianHasilKerja||'')}</h4><span class="text-[10px] rounded-full bg-emerald-50 text-emerald-700 px-2 py-1 font-bold">Aktif</span></div><div class="grid grid-cols-2 gap-2 text-xs"><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Target tahunan</span><div class="font-bold">${escapeHTML(String(r.targetTahunan))} ${escapeHTML(r.satuanTarget||'')}</div></div><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Waktu pelaksanaan</span><div class="font-bold">${escapeHTML(r.waktuPelaksanaan||'')}</div></div></div></div>`).join('');
+      list.innerHTML=rows.map(r=>`<div class="border border-slate-200 rounded-2xl p-4 space-y-2"><div class="flex items-start justify-between gap-2"><h4 class="font-bold text-sm">${escapeHTML(r.uraianHasilKerja||'')}</h4><span class="text-[10px] rounded-full bg-emerald-50 text-emerald-700 px-2 py-1 font-bold">Aktif</span></div><div class="grid grid-cols-2 gap-2 text-xs"><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Target tahunan</span><div class="font-bold">${escapeHTML(String(r.targetTahunan))} ${escapeHTML(r.satuanTarget||'')}</div></div><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Waktu pelaksanaan</span><div class="font-bold">${escapeHTML(r.waktuPelaksanaan||'')}</div></div></div><div class="flex justify-end pt-1"><button type="button" onclick="openEditRhk('${escapeHTML(r.id)}')" class="rounded-lg border border-blue-200 bg-blue-50 text-blue-700 px-3 py-2 text-xs font-bold hover:bg-blue-100"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit RHK</button></div></div>`).join('');
       populateRhkSelect(); renderRhkPerformance();
+    }
+    function openEditRhk(rhkId){
+      const row=(dbRhk||[]).find(r=>String(r.id)===String(rhkId));
+      if(!row){notify('Data RHK tidak ditemukan. Silakan muat ulang data.');return;}
+      document.getElementById('rhk-edit-id').value=row.id;
+      document.getElementById('rhk-edit-uraian').value=row.uraianHasilKerja||'';
+      document.getElementById('rhk-edit-target').value=row.targetTahunan||'';
+      document.getElementById('rhk-edit-satuan').value=row.satuanTarget||'';
+      const selected=String(row.waktuPelaksanaan||'').split(',').map(x=>x.trim());
+      document.querySelectorAll('input[name="rhk-edit-bulan"]').forEach(x=>x.checked=selected.includes(x.value));
+      document.getElementById('rhk-edit-modal').classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    }
+    function closeEditRhk(){document.getElementById('rhk-edit-modal')?.classList.add('hidden');document.body.classList.remove('overflow-hidden');}
+    async function handleUpdateRhk(e){
+      e.preventDefault();const btn=e.submitter||e.target.querySelector('button[type="submit"]');if(btn?.disabled)return;
+      const months=Array.from(document.querySelectorAll('input[name="rhk-edit-bulan"]:checked')).map(x=>x.value);
+      if(!months.length){notify('Pilih minimal satu bulan pelaksanaan.');return;}
+      if(btn){btn.disabled=true;btn.textContent='Menyimpan…';}
+      try{await gasCall('updateRhk',{rhkId:document.getElementById('rhk-edit-id').value,uraianHasilKerja:document.getElementById('rhk-edit-uraian').value.trim(),targetTahunan:document.getElementById('rhk-edit-target').value,satuanTarget:document.getElementById('rhk-edit-satuan').value.trim(),waktuPelaksanaan:months.join(', ')});await refreshServerData();renderRhkPanel();closeEditRhk();notify('RHK berhasil diperbarui.');}
+      catch(err){notify('RHK gagal diperbarui: '+(err.message||err));}
+      finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Perubahan';}}
     }
     function populateRhkSelect(){
       const el=document.getElementById('lap-rhk-id');if(!el)return;const year=String(new Date().getFullYear());const rows=(dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif');const prev=el.value;
