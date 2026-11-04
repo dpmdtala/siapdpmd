@@ -713,7 +713,22 @@
               <div><label class="block text-xs font-bold mb-1">Uraian Hasil Kerja *</label><textarea id="rhk-uraian" rows="3" maxlength="500" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Tuliskan hasil kerja yang direncanakan"></textarea></div>
               <div><label class="block text-xs font-bold mb-1">Target Tahunan *</label><input id="rhk-target" type="number" min="0.01" step="any" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Contoh: 240"></div>
               <div><label class="block text-xs font-bold mb-1">Satuan Target *</label><input id="rhk-satuan" maxlength="80" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Contoh: Dokumen"></div>
-              <div><label class="block text-xs font-bold mb-1">Waktu Pelaksanaan *</label><input id="rhk-waktu" maxlength="120" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Contoh: Januari–Desember 2026"></div>
+              <div>
+                <label class="block text-xs font-bold mb-2">Waktu Pelaksanaan (Bulan) *</label>
+                <div id="rhk-waktu" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Januari" class="rounded">Januari</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Februari" class="rounded">Februari</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Maret" class="rounded">Maret</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="April" class="rounded">April</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Mei" class="rounded">Mei</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Juni" class="rounded">Juni</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Juli" class="rounded">Juli</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Agustus" class="rounded">Agustus</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="September" class="rounded">September</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Oktober" class="rounded">Oktober</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="November" class="rounded">November</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Desember" class="rounded">Desember</label>
+                </div><p class="text-[10px] text-slate-500 mt-1">Pilih satu atau beberapa bulan pelaksanaan.</p></div>
               <button type="submit" class="w-full rounded-xl bg-blue-600 text-white font-bold p-3 text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Simpan RHK</button>
             </form>
           </div>
@@ -759,9 +774,9 @@
                   <p class="text-[10px] text-slate-500 mt-1">Pilih RHK aktif yang paling sesuai dengan kegiatan hari ini.</p>
                 </div>
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Jumlah Realisasi Output *</label>
-                  <input type="number" id="lap-realisasi-qty" min="0.01" step="any" value="1" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold">
-                  <p class="text-[10px] text-slate-500 mt-1">Isi jumlah hasil sesuai satuan RHK. Realisasi baru dihitung setelah laporan disetujui.</p>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Volume *</label>
+                  <input type="number" id="lap-volume" min="0.01" step="any" required placeholder="Masukkan jumlah volume pekerjaan" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold">
+                  <p id="lap-volume-unit" class="text-[10px] text-slate-500 mt-1">Isi jumlah sesuai satuan target RHK yang dipilih.</p>
                 </div>
 
                 <div>
@@ -771,9 +786,8 @@
                 </div>
 
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Volume / Output Pekerjaan <span class="text-rose-500">*</span></label>
-                  <input type="text" id="lap-output" required placeholder="Contoh: 3 Berkas / 1 Kegiatan / 5 Dokumen" 
-                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 outline-none">
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Output Pekerjaan <span class="text-rose-500">*</span></label>
+                  <textarea id="lap-output" rows="3" required placeholder="Jelaskan hasil nyata pekerjaan yang dihasilkan..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 outline-none"></textarea>
                 </div>
 
                 <div>
@@ -3407,10 +3421,12 @@
     function populateRhkSelect(){
       const el=document.getElementById('lap-rhk-id');if(!el)return;const year=String(new Date().getFullYear());const rows=(dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif');const prev=el.value;
       el.innerHTML='<option value="">Pilih RHK yang relevan</option>'+rows.map(r=>`<option value="${escapeHTML(r.id)}">${escapeHTML(r.uraianHasilKerja)} — Target ${escapeHTML(String(r.targetTahunan))} ${escapeHTML(r.satuanTarget||'')}</option>`).join('');if(rows.some(r=>r.id===prev))el.value=prev;
+      el.onchange=()=>{const chosen=rows.find(r=>String(r.id)===String(el.value));const hint=document.getElementById('lap-volume-unit');if(hint)hint.textContent=chosen?'Isi volume dalam satuan '+(chosen.satuanTarget||'sesuai RHK')+'.':'Isi jumlah sesuai satuan target RHK yang dipilih.';};
+      el.onchange();
     }
     async function handleSaveRhk(e){
       e.preventDefault();const btn=e.submitter||e.target.querySelector('button[type="submit"]');if(btn?.disabled)return;if(btn){btn.disabled=true;btn.textContent='Menyimpan…';}
-      try{await gasCall('saveRhk',{tahun:String(new Date().getFullYear()),uraianHasilKerja:document.getElementById('rhk-uraian').value.trim(),targetTahunan:document.getElementById('rhk-target').value,satuanTarget:document.getElementById('rhk-satuan').value.trim(),waktuPelaksanaan:document.getElementById('rhk-waktu').value.trim()});await refreshServerData();document.getElementById('rhk-uraian').value='';document.getElementById('rhk-target').value='';document.getElementById('rhk-satuan').value='';document.getElementById('rhk-waktu').value='';renderRhkPanel();notify('RHK berhasil disimpan dan langsung aktif.');}
+      try{await gasCall('saveRhk',{tahun:String(new Date().getFullYear()),uraianHasilKerja:document.getElementById('rhk-uraian').value.trim(),targetTahunan:document.getElementById('rhk-target').value,satuanTarget:document.getElementById('rhk-satuan').value.trim(),waktuPelaksanaan:Array.from(document.querySelectorAll('input[name=\"rhk-bulan\"]:checked')).map(x=>x.value).join(', ')});await refreshServerData();document.getElementById('rhk-uraian').value='';document.getElementById('rhk-target').value='';document.getElementById('rhk-satuan').value='';document.querySelectorAll('input[name=\"rhk-bulan\"]:checked').forEach(x=>x.checked=false);renderRhkPanel();notify('RHK berhasil disimpan dan langsung aktif.');}
       catch(err){notify('RHK gagal disimpan: '+err.message);}finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-floppy-disk mr-2"></i>Simpan RHK';}}
     }
     function renderRhkPerformance(){
@@ -3426,11 +3442,11 @@
       const kegiatan = document.getElementById('lap-kegiatan').value.trim();
       const output = document.getElementById('lap-output').value.trim();
       const rhkId = document.getElementById('lap-rhk-id')?.value || '';
-      const realisasiQty = Number(document.getElementById('lap-realisasi-qty')?.value || 0);
+      const volume = Number(document.getElementById('lap-volume')?.value || 0);
       const jamMulai = document.getElementById('lap-jam-mulai').value;
       const jamSelesai = document.getElementById('lap-jam-selesai').value;
       if (lapPhotoProcessing) { notify('Foto sedang dioptimalkan. Tunggu sampai pratinjau foto muncul, lalu kirim kembali.'); return; }
-      if (!rhkId || !Number.isFinite(realisasiQty) || realisasiQty <= 0) { notify('Pilih RHK dan isi jumlah realisasi output terlebih dahulu.'); return; }
+      if (!rhkId || !Number.isFinite(volume) || volume <= 0) { notify('Pilih RHK dan isi volume pekerjaan dengan angka lebih dari nol.'); return; }
       if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi, termasuk foto yang sudah selesai dioptimalkan!'); return; }
       if (jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai.'); return; }
       if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.innerHTML; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…'; }
@@ -3438,12 +3454,13 @@
       try {
         await gasCall('saveReport', {
           tanggal: document.getElementById('lap-tanggal').value,
-          jamMulai, jamSelesai, kegiatan, output, rhkId, realisasiQty, foto: tempLapFotoBase64
+          jamMulai, jamSelesai, kegiatan, output, rhkId, volume, realisasiQty: volume, foto: tempLapFotoBase64
         });
         await refreshServerData();
         notify('Kegiatan harian berhasil disimpan.');
         document.getElementById('lap-kegiatan').value = '';
         document.getElementById('lap-output').value = '';
+        document.getElementById('lap-volume').value = '';
         document.getElementById('lap-jam-mulai').value = '';
         document.getElementById('lap-jam-selesai').value = '';
         document.getElementById('lap-foto-file').value = '';
