@@ -312,7 +312,15 @@ function updateRhk_(user,p) {
   if (!row || String(row.userId)!==String(user.id)) throw new Error('RHK tidak ditemukan atau bukan milik Anda.');
   const linked=readRows_('Reports').some(r=>String(r.rhkId||'')===String(row.id));
   const patch={};
-  ['uraianHasilKerja','satuanTarget','waktuPelaksanaan'].forEach(k=>{if(p[k]!==undefined)patch[k]=required_(p[k],k);});
+  if(p.uraianHasilKerja!==undefined){const v=required_(p.uraianHasilKerja,'Uraian hasil kerja');if(v.length>500)throw new Error('Uraian hasil kerja maksimal 500 karakter.');patch.uraianHasilKerja=v;}
+  if(p.satuanTarget!==undefined){const v=required_(p.satuanTarget,'Satuan target');if(v.length>80)throw new Error('Satuan target maksimal 80 karakter.');patch.satuanTarget=v;}
+  if(p.waktuPelaksanaan!==undefined){
+    const v=required_(p.waktuPelaksanaan,'Waktu pelaksanaan');
+    const allowedMonths=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const months=v.split(',').map(x=>x.trim()).filter(Boolean);
+    if(!months.length||months.some(m=>!allowedMonths.includes(m))||new Set(months).size!==months.length)throw new Error('Waktu pelaksanaan harus berupa pilihan satu atau beberapa bulan yang valid.');
+    patch.waktuPelaksanaan=v;
+  }
   if(p.targetTahunan!==undefined){const n=Number(p.targetTahunan);if(!Number.isFinite(n)||n<=0)throw new Error('Target tahunan harus lebih dari nol.');patch.targetTahunan=n;}
   if(!Object.keys(patch).length)throw new Error('Tidak ada perubahan RHK.');
   const before=JSON.stringify(row); patch.updatedAt=new Date().toISOString(); updateById_('RHK',row.id,patch);
