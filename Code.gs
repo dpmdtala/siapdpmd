@@ -173,6 +173,7 @@ function api(action, payload, token) {
     case 'getAppData': return getAppData_(user);
     case 'saveRhk': requireRole_(user, ['PJLP']); return saveRhk_(user, payload);
     case 'updateRhk': requireRole_(user, ['PJLP']); return updateRhk_(user, payload);
+    case 'deleteRhk': requireRole_(user, ['PJLP']); return deleteRhk_(user, payload);
     case 'getAuditLog': requireRole_(user, ['SuperAdmin']); return getAuditLog_(payload);
     case 'rejectReport': requireRole_(user, ['SuperAdmin','Verifikator']); return rejectReport_(user, payload.reportId, payload.reason);
     case 'deleteReportAsVerifier': requireRole_(user, ['Verifikator']); return deleteReportAsVerifier_(user, payload.reportId);
@@ -271,7 +272,7 @@ function ensureRhkSheets_() {
   if (!id) throw new Error('Konfigurasi database SIAP-DPMD tidak ditemukan.');
   const ss = SpreadsheetApp.openById(id);
   const defs = {
-    RHK:['id','userId','tahun','uraianHasilKerja','targetTahunan','satuanTarget','waktuPelaksanaan','status','createdAt','updatedAt'],
+    RHK:['id','userId','tahun','uraianHasilKerja','targetTahunan','satuanTarget','outputPekerjaan','waktuPelaksanaan','status','createdAt','updatedAt'],
     RHKHistory:['id','rhkId','userId','action','beforeData','afterData','createdAt']
   };
   Object.keys(defs).forEach(name => {
@@ -287,19 +288,20 @@ function saveRhk_(user,p) {
   const uraian = required_(p.uraianHasilKerja,'Uraian hasil kerja');
   const target = Number(p.targetTahunan);
   const satuan = required_(p.satuanTarget,'Satuan target');
+  const outputPekerjaan = required_(p.outputPekerjaan,'Output pekerjaan RHK');
   const waktu = required_(p.waktuPelaksanaan,'Waktu pelaksanaan');
   const allowedMonths = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   const selectedMonths = waktu.split(',').map(x=>x.trim()).filter(Boolean);
   if (!selectedMonths.length || selectedMonths.some(m=>!allowedMonths.includes(m)) || new Set(selectedMonths).size !== selectedMonths.length) throw new Error('Waktu pelaksanaan harus berupa pilihan satu atau beberapa bulan yang valid.');
   if (!/^20\d{2}$/.test(year)) throw new Error('Tahun RHK tidak valid.');
   if (!Number.isFinite(target) || target <= 0) throw new Error('Target tahunan harus berupa angka lebih dari nol.');
-  if (uraian.length > 500 || satuan.length > 80 || waktu.length > 120) throw new Error('Ada isian RHK yang melebihi batas karakter.');
+  if (uraian.length > 500 || satuan.length > 80 || outputPekerjaan.length > 200 || waktu.length > 120) throw new Error('Ada isian RHK yang melebihi batas karakter.');
   const lock=LockService.getScriptLock(); lock.waitLock(10000);
   try {
     const duplicate=readRows_('RHK').some(r=>String(r.userId)===String(user.id)&&String(r.tahun)===year&&String(r.uraianHasilKerja||'').trim().toLowerCase()===uraian.toLowerCase()&&String(r.status||'Aktif')==='Aktif');
     if (duplicate) throw new Error('Uraian RHK yang sama sudah terdaftar pada tahun tersebut.');
     const now=new Date().toISOString();
-    const row={id:'rhk-'+Utilities.getUuid(),userId:user.id,tahun:year,uraianHasilKerja:uraian,targetTahunan:target,satuanTarget:satuan,waktuPelaksanaan:waktu,status:'Aktif',createdAt:now,updatedAt:now};
+    const row={id:'rhk-'+Utilities.getUuid(),userId:user.id,tahun:year,uraianHasilKerja:uraian,targetTahunan:target,satuanTarget:satuan,outputPekerjaan:outputPekerjaan,waktuPelaksanaan:waktu,status:'Aktif',createdAt:now,updatedAt:now};
     appendObjects_('RHK',[row]);
     appendObjects_('RHKHistory',[{id:'rhkh-'+Utilities.getUuid(),rhkId:row.id,userId:user.id,action:'CREATE',beforeData:'',afterData:JSON.stringify(row),createdAt:now}]);
     audit_(user.id,'CREATE','RHK',row.id,'RHK tahunan dibuat');
@@ -314,6 +316,7 @@ function updateRhk_(user,p) {
   const patch={};
   if(p.uraianHasilKerja!==undefined){const v=required_(p.uraianHasilKerja,'Uraian hasil kerja');if(v.length>500)throw new Error('Uraian hasil kerja maksimal 500 karakter.');patch.uraianHasilKerja=v;}
   if(p.satuanTarget!==undefined){const v=required_(p.satuanTarget,'Satuan target');if(v.length>80)throw new Error('Satuan target maksimal 80 karakter.');patch.satuanTarget=v;}
+  if(p.outputPekerjaan!==undefined){const v=required_(p.outputPekerjaan,'Output pekerjaan RHK');if(v.length>200)throw new Error('Output pekerjaan RHK maksimal 200 karakter.');patch.outputPekerjaan=v;}
   if(p.waktuPelaksanaan!==undefined){
     const v=required_(p.waktuPelaksanaan,'Waktu pelaksanaan');
     const allowedMonths=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -330,6 +333,23 @@ function updateRhk_(user,p) {
   return {ok:true};
 }
 
+
+function deleteRhk_(user,p) {
+  ensureRhkSheets_();
+  const row=findById_('RHK',p.rhkId);
+  if (!row || String(row.userId)!==String(user.id)) throw new Error('RHK tidak ditemukan atau bukan milik Anda.');
+  if (String(row.status||'Aktif')==='Dihapus') throw new Error('RHK ini sudah dihapus.');
+  const linked=readRows_('Reports').some(r=>String(r.rhkId||'')===String(row.id));
+  const before=JSON.stringify(row);
+  const now=new Date().toISOString();
+  const patch={status:'Dihapus',deletedAt:now,updatedAt:now};
+  updateById_('RHK',row.id,patch);
+  const after=Object.assign({},row,patch);
+  appendObjects_('RHKHistory',[{id:'rhkh-'+Utilities.getUuid(),rhkId:row.id,userId:user.id,action:linked?'SOFT_DELETE_WITH_LINKED_REPORTS':'SOFT_DELETE',beforeData:before,afterData:JSON.stringify(after),createdAt:now}]);
+  audit_(user.id,'DELETE','RHK',row.id,linked?'RHK dinonaktifkan; laporan terdahulu tetap dipertahankan':'RHK dinonaktifkan');
+  return {ok:true,softDeleted:true,hasLinkedReports:linked};
+}
+
 function getAppData_(user) {
   let users = readRows_('Users').map(safeUser_);
   let attendance = readRows_('Attendance').map(a => {
@@ -339,7 +359,9 @@ function getAppData_(user) {
   let reports = readRows_('Reports').map(r => { r.foto = r.fotoFileId ? driveUrl_(r.fotoFileId) : ''; return r; });
   let archives = readRows_('Archives').map(a => { delete a.driveFileId; return a; });
   let rhks = [];
-  try { ensureRhkSheets_(); rhks = readRows_('RHK').filter(r => String(r.status || 'Aktif') === 'Aktif'); } catch (e) { console.warn('Data RHK belum tersedia:', e.message); }
+  // Sertakan RHK yang dinonaktifkan agar laporan historis tetap dapat menampilkan nama RHK.
+  // Frontend hanya menampilkan status Aktif pada daftar dan pilihan input laporan baru.
+  try { ensureRhkSheets_(); rhks = readRows_('RHK'); } catch (e) { console.warn('Data RHK belum tersedia:', e.message); }
   if (user.role === 'PJLP') {
     users = users.filter(u => u.id === user.id);
     attendance = attendance.filter(a => a.userId === user.id);
@@ -557,6 +579,8 @@ function saveReport_(user, p) {
     linkedRhk = findById_('RHK', rhkId);
     if (!linkedRhk || String(linkedRhk.userId) !== String(user.id) || String(linkedRhk.status || 'Aktif') !== 'Aktif') throw new Error('RHK tidak ditemukan, tidak aktif, atau bukan milik Anda.');
     if (String(linkedRhk.tahun) !== String(String(p.tanggal || '').slice(0,4))) throw new Error('Tanggal kegiatan harus berada dalam tahun RHK yang dipilih.');
+    const expectedOutput=String(linkedRhk.outputPekerjaan||linkedRhk.satuanTarget||'').trim();
+    if(expectedOutput && output !== expectedOutput) throw new Error('Output pekerjaan harus mengikuti Output Pekerjaan yang telah ditetapkan pada RHK: '+expectedOutput+'.');
   }
   const tanggalInput = required_(p.tanggal, 'Tanggal');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggalInput)) throw new Error('Tanggal laporan harus berformat YYYY-MM-DD.');
