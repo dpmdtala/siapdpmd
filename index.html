@@ -713,6 +713,7 @@
               <div><label class="block text-xs font-bold mb-1">Uraian Hasil Kerja *</label><textarea id="rhk-uraian" rows="3" maxlength="500" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Tuliskan hasil kerja yang direncanakan"></textarea></div>
               <div><label class="block text-xs font-bold mb-1">Target Tahunan *</label><input id="rhk-target" type="number" min="0.01" step="any" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Contoh: 240"></div>
               <div><label class="block text-xs font-bold mb-1">Satuan Target *</label><input id="rhk-satuan" maxlength="80" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Contoh: Dokumen"></div>
+              <div><label class="block text-xs font-bold mb-1">Output Pekerjaan *</label><input id="rhk-output" maxlength="200" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Contoh: Berkas"></div>
               <div>
                 <label class="block text-xs font-bold mb-2">Waktu Pelaksanaan (Bulan) *</label>
                 <div id="rhk-waktu" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -747,6 +748,7 @@
             <div><label class="block text-xs font-bold mb-1">Uraian Hasil Kerja *</label><textarea id="rhk-edit-uraian" rows="3" maxlength="500" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></textarea></div>
             <div><label class="block text-xs font-bold mb-1">Target Tahunan *</label><input id="rhk-edit-target" type="number" min="0.01" step="any" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></div>
             <div><label class="block text-xs font-bold mb-1">Satuan Target *</label><input id="rhk-edit-satuan" maxlength="80" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></div>
+            <div><label class="block text-xs font-bold mb-1">Output Pekerjaan *</label><input id="rhk-edit-output" maxlength="200" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></div>
             <div><label class="block text-xs font-bold mb-2">Waktu Pelaksanaan (Bulan) *</label><div id="rhk-edit-waktu" class="grid grid-cols-3 sm:grid-cols-4 gap-2"><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Januari" class="rounded">Januari</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Februari" class="rounded">Februari</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Maret" class="rounded">Maret</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="April" class="rounded">April</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Mei" class="rounded">Mei</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Juni" class="rounded">Juni</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Juli" class="rounded">Juli</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Agustus" class="rounded">Agustus</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="September" class="rounded">September</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Oktober" class="rounded">Oktober</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="November" class="rounded">November</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Desember" class="rounded">Desember</label></div></div>
             <div class="flex gap-2 pt-2"><button type="button" onclick="closeEditRhk()" class="flex-1 rounded-xl border border-slate-300 text-slate-700 font-bold p-3 text-sm">Batal</button><button type="submit" class="flex-1 rounded-xl bg-blue-600 text-white font-bold p-3 text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Perubahan</button></div>
           </form>
@@ -802,8 +804,8 @@
                   </div>
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Output Pekerjaan <span class="text-rose-500">*</span></label>
-                    <input type="text" id="lap-output" required placeholder="Contoh: Berkas" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium">
-                    <p class="text-[10px] text-slate-500 mt-1">Tuliskan hasil secara ringkas.</p>
+                    <input type="text" id="lap-output" required readonly placeholder="Terisi otomatis dari RHK yang dipilih" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium">
+                    <p class="text-[10px] text-slate-500 mt-1">Terisi otomatis berdasarkan Output Pekerjaan pada RHK.</p>
                   </div>
                 </div>
 
@@ -856,7 +858,10 @@
                       <th class="py-3 px-3">Tanggal</th>
                       <th class="py-3 px-3">Waktu</th>
                       <th class="py-3 px-3">Uraian Kegiatan</th>
-                      <th class="py-3 px-3">Output</th>
+                      <th class="py-3 px-3">Rencana Hasil Kerja (RHK)</th>
+                      <th class="py-3 px-3 text-center">Volume</th>
+                      <th class="py-3 px-3">Output Pekerjaan</th>
+                      <th class="py-3 px-3 text-center">Foto Dokumentasi</th>
                       <th class="py-3 px-3 text-center">Status</th>
                     </tr>
                   </thead>
@@ -986,10 +991,15 @@
           </div>
           <div class="overflow-x-auto border border-slate-200 rounded-xl">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="py-3 px-3">Waktu</th><th class="p-3">Kegiatan</th><th class="p-3">Output</th><th class="p-3">Foto Dokumentasi</th></tr></thead>
-              <tbody id="rekap-kinerja-month-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr></tbody>
+              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="py-3 px-3">Waktu</th><th class="p-3">Uraian Kegiatan</th><th class="p-3">Rencana Hasil Kerja (RHK)</th><th class="p-3 text-center">Volume</th><th class="p-3">Output Pekerjaan</th><th class="p-3">Foto Dokumentasi</th></tr></thead>
+              <tbody id="rekap-kinerja-month-body" class="divide-y divide-slate-100"><tr><td colspan="7" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr></tbody>
             </table>
           </div>
+          <section class="border border-slate-200 rounded-xl overflow-hidden" id="rekap-rhk-summary-section">
+            <h4 class="px-4 py-3 bg-slate-50 font-bold text-slate-800 text-xs">Ringkasan Realisasi RHK</h4>
+            <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-white text-slate-600"><tr><th class="p-3">Rencana Hasil Kerja</th><th class="p-3">Output Pekerjaan</th><th class="p-3 text-right">Target Tahunan</th><th class="p-3 text-right">Realisasi Bulan Ini</th><th class="p-3 text-right">Realisasi Kumulatif</th><th class="p-3 text-right">Capaian Tahunan</th></tr></thead><tbody id="rekap-rhk-summary-body"><tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada realisasi RHK.</td></tr></tbody></table></div>
+            <p class="px-3 py-2 text-[10px] text-slate-500">Realisasi dihitung dari laporan harian berstatus Disetujui. Laporan Pending dan Ditolak tidak diperhitungkan.</p>
+          </section>
         </div>
       </div>
 
@@ -2742,7 +2752,14 @@
       }
       const reportBody = document.getElementById('rekap-kinerja-month-body');
       if (reportBody) {
-        reportBody.innerHTML = reportRows.length ? reportRows.map(r => `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td class="p-2 text-center align-middle">${r.foto ? `<a href="#" data-report-photo-id="${escapeHTML(String(r.id))}" onclick="openReportPhotoById(${safeJsArg(r.id)});return false" class="inline-flex items-center gap-1 text-blue-700 underline font-semibold"><i class="fa-regular fa-image"></i> Lihat foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`).join('') : '<tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
+        reportBody.innerHTML = reportRows.length ? reportRows.map(r => {const rhk=(dbRhk||[]).find(x=>String(x.id)===String(r.rhkId));return `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3">${escapeHTML(rhk?.uraianHasilKerja||'—')}</td><td class="p-3 text-center font-bold">${escapeHTML(String(r.volume ?? r.realisasiQty ?? '—'))}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td data-print-photo="1" class="p-2 text-center align-middle">${r.foto ? `<a href="#" data-report-photo-id="${escapeHTML(String(r.id))}" onclick="openReportPhotoById(${safeJsArg(r.id)});return false" class="inline-flex items-center gap-1 text-blue-700 underline font-semibold"><i class="fa-regular fa-image"></i> Lihat foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`;}).join('') : '<tr><td colspan="7" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
+      }
+      const summaryBody=document.getElementById('rekap-rhk-summary-body');
+      if(summaryBody){
+        const monthKey=monthReports; const year=monthKey.slice(0,4);
+        const rhks=(dbRhk||[]).filter(x=>String(x.tahun)===year);
+        const approvedYear=(myLaporan||[]).filter(x=>x.status==='Disetujui'&&dateKeyISO(x.tanggal).slice(0,4)===year);
+        summaryBody.innerHTML=rhks.length?rhks.map(r=>{const linked=approvedYear.filter(x=>String(x.rhkId||'')===String(r.id));const monthly=linked.filter(x=>dateKeyISO(x.tanggal).slice(0,7)===monthKey).reduce((s,x)=>s+Number(x.volume??x.realisasiQty??0),0);const cumulative=linked.reduce((s,x)=>s+Number(x.volume??x.realisasiQty??0),0);const pct=Number(r.targetTahunan)>0?cumulative/Number(r.targetTahunan)*100:0;return `<tr><td class="p-3">${escapeHTML(r.uraianHasilKerja||'')}</td><td class="p-3">${escapeHTML(r.outputPekerjaan||r.satuanTarget||'—')}</td><td class="p-3 text-right">${escapeHTML(String(r.targetTahunan))} ${escapeHTML(r.satuanTarget||'')}</td><td class="p-3 text-right font-bold">${monthly} ${escapeHTML(r.satuanTarget||'')}</td><td class="p-3 text-right font-bold">${cumulative} ${escapeHTML(r.satuanTarget||'')}</td><td class="p-3 text-right">${pct.toFixed(2)}%</td></tr>`;}).join(''):'<tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada RHK untuk tahun ini.</td></tr>';
       }
     }
 
@@ -2885,7 +2902,7 @@
       const tbody = document.getElementById('pjlp-table-body');
       tbody.innerHTML = "";
       if (riwayatLaporan.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-400">Belum ada laporan harian.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="py-4 text-center text-slate-400">Belum ada laporan harian.</td></tr>`;
       } else {
         riwayatLaporan.forEach(l => {
           tbody.innerHTML += `
@@ -2893,8 +2910,10 @@
               <td class="py-3 px-3 font-semibold">${escapeHTML(formatDateDisplay(l.tanggal))}</td>
               <td class="py-3 px-3 whitespace-nowrap">${escapeHTML(l.jamMulai ? formatTimeDisplay(l.jamMulai) : "—")}–${escapeHTML(l.jamSelesai ? formatTimeDisplay(l.jamSelesai) : "—")}</td>
               <td class="py-3 px-3">${escapeHTML(l.kegiatan)}</td>
+              <td class="py-3 px-3">${escapeHTML((dbRhk||[]).find(x=>String(x.id)===String(l.rhkId))?.uraianHasilKerja||'—')}</td>
+              <td class="py-3 px-3 text-center font-bold">${escapeHTML(String(l.volume ?? l.realisasiQty ?? '—'))}</td>
               <td class="py-3 px-3 font-bold">${escapeHTML(l.output)}</td>
-              <td class="py-3 px-3 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
+              <td data-print-photo="1" class="py-3 px-3 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
               <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status)}</span></td>
             </tr>
           `;
@@ -3077,16 +3096,11 @@
         if (elementId === 'printable-laporan-container') {
           const table = clone.querySelector('table');
           if (table) {
-            const headRow = table.querySelector('thead tr');
-            if (headRow && ![...headRow.cells].some(c => /foto/i.test(c.textContent || ''))) {
-              const th = document.createElement('th'); th.textContent = 'Foto Dokumentasi';
-              headRow.insertBefore(th, headRow.lastElementChild || null);
-            }
             const bodyRows = [...table.querySelectorAll('tbody tr')];
             await Promise.all(bodyRows.map(async row => {
               if (row.cells.length === 1 && Number(row.cells[0].colSpan || 1) > 1) return;
               const link = row.querySelector('a[onclick*="openReportPhotoById"]');
-              const photoCell = link ? link.closest('td') : (row.cells.length >= 6 ? row.cells[4] : (row.cells.length >= 5 ? row.cells[4] : null));
+              const photoCell = row.querySelector('[data-print-photo]') || (link ? link.closest('td') : null);
               if (!photoCell) return;
               if (!link) { photoCell.textContent = photoCell.textContent.trim() || '—'; return; }
               const match = String(link.getAttribute('onclick') || '').match(/openReportPhotoById\((.*?)\)/);
@@ -3432,7 +3446,7 @@
       const rows=(dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif');
       const count=document.getElementById('rhk-total'); if(count)count.textContent=rows.length+' RHK';
       if(!rows.length){list.innerHTML='<p class="text-sm text-slate-400">Belum ada RHK aktif untuk tahun '+year+'.</p>';populateRhkSelect();return;}
-      list.innerHTML=rows.map(r=>`<div class="border border-slate-200 rounded-2xl p-4 space-y-2"><div class="flex items-start justify-between gap-2"><h4 class="font-bold text-sm">${escapeHTML(r.uraianHasilKerja||'')}</h4><span class="text-[10px] rounded-full bg-emerald-50 text-emerald-700 px-2 py-1 font-bold">Aktif</span></div><div class="grid grid-cols-2 gap-2 text-xs"><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Target tahunan</span><div class="font-bold">${escapeHTML(String(r.targetTahunan))} ${escapeHTML(r.satuanTarget||'')}</div></div><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Waktu pelaksanaan</span><div class="font-bold">${escapeHTML(r.waktuPelaksanaan||'')}</div></div></div><div class="flex justify-end pt-1"><button type="button" onclick="openEditRhk('${escapeHTML(r.id)}')" class="rounded-lg border border-blue-200 bg-blue-50 text-blue-700 px-3 py-2 text-xs font-bold hover:bg-blue-100"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit RHK</button></div></div>`).join('');
+      list.innerHTML=rows.map(r=>`<div class="border border-slate-200 rounded-2xl p-4 space-y-2"><div class="flex items-start justify-between gap-2"><h4 class="font-bold text-sm">${escapeHTML(r.uraianHasilKerja||'')}</h4><span class="text-[10px] rounded-full bg-emerald-50 text-emerald-700 px-2 py-1 font-bold">Aktif</span></div><div class="grid grid-cols-2 gap-2 text-xs"><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Target tahunan</span><div class="font-bold">${escapeHTML(String(r.targetTahunan))} ${escapeHTML(r.satuanTarget||'')}</div></div><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Waktu pelaksanaan</span><div class="font-bold">${escapeHTML(r.waktuPelaksanaan||'')}</div></div><div class="bg-slate-50 rounded-lg p-2 col-span-2"><span class="text-slate-500">Output pekerjaan</span><div class="font-bold">${escapeHTML(r.outputPekerjaan||r.satuanTarget||'—')}</div></div></div><div class="flex justify-end gap-2 pt-1"><button type="button" onclick="openEditRhk('${escapeHTML(r.id)}')" class="rounded-lg border border-blue-200 bg-blue-50 text-blue-700 px-3 py-2 text-xs font-bold hover:bg-blue-100"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit RHK</button><button type="button" onclick="handleDeleteRhk('${escapeHTML(r.id)}')" class="rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-3 py-2 text-xs font-bold hover:bg-rose-100"><i class="fa-solid fa-trash-can mr-1"></i>Hapus RHK</button></div></div>`).join('');
       populateRhkSelect(); renderRhkPerformance();
     }
     function openEditRhk(rhkId){
@@ -3442,6 +3456,7 @@
       document.getElementById('rhk-edit-uraian').value=row.uraianHasilKerja||'';
       document.getElementById('rhk-edit-target').value=row.targetTahunan||'';
       document.getElementById('rhk-edit-satuan').value=row.satuanTarget||'';
+      document.getElementById('rhk-edit-output').value=row.outputPekerjaan||row.satuanTarget||'';
       const selected=String(row.waktuPelaksanaan||'').split(',').map(x=>x.trim());
       document.querySelectorAll('input[name="rhk-edit-bulan"]').forEach(x=>x.checked=selected.includes(x.value));
       document.getElementById('rhk-edit-modal').classList.remove('hidden');
@@ -3453,19 +3468,29 @@
       const months=Array.from(document.querySelectorAll('input[name="rhk-edit-bulan"]:checked')).map(x=>x.value);
       if(!months.length){notify('Pilih minimal satu bulan pelaksanaan.');return;}
       if(btn){btn.disabled=true;btn.textContent='Menyimpan…';}
-      try{await gasCall('updateRhk',{rhkId:document.getElementById('rhk-edit-id').value,uraianHasilKerja:document.getElementById('rhk-edit-uraian').value.trim(),targetTahunan:document.getElementById('rhk-edit-target').value,satuanTarget:document.getElementById('rhk-edit-satuan').value.trim(),waktuPelaksanaan:months.join(', ')});await refreshServerData();renderRhkPanel();closeEditRhk();notify('RHK berhasil diperbarui.');}
+      try{await gasCall('updateRhk',{rhkId:document.getElementById('rhk-edit-id').value,uraianHasilKerja:document.getElementById('rhk-edit-uraian').value.trim(),targetTahunan:document.getElementById('rhk-edit-target').value,satuanTarget:document.getElementById('rhk-edit-satuan').value.trim(),outputPekerjaan:document.getElementById('rhk-edit-output').value.trim(),waktuPelaksanaan:months.join(', ')});await refreshServerData();renderRhkPanel();closeEditRhk();notify('RHK berhasil diperbarui.');}
       catch(err){notify('RHK gagal diperbarui: '+(err.message||err));}
       finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Perubahan';}}
     }
+    async function handleDeleteRhk(rhkId){
+      const row=(dbRhk||[]).find(r=>String(r.id)===String(rhkId));
+      if(!row){notify('RHK tidak ditemukan. Silakan muat ulang data.');return;}
+      const linked=(dbLaporan||[]).some(r=>String(r.rhkId||'')===String(rhkId));
+      const warning=linked?'RHK ini sudah digunakan pada laporan harian. RHK akan dinonaktifkan dari daftar aktif, tetapi riwayat laporan dan keterkaitannya tetap dipertahankan.':'RHK akan dinonaktifkan dan tidak dapat dipilih untuk laporan baru.';
+      if(!confirm('Hapus RHK berikut?\\n\\n'+(row.uraianHasilKerja||'')+'\\n\\n'+warning+'\\n\\nTindakan ini dicatat dalam riwayat audit.'))return;
+      try{await gasCall('deleteRhk',{rhkId:rhkId});await refreshServerData();renderRhkPanel();notify('RHK berhasil dihapus dari daftar aktif. Riwayat lama tetap aman.');}
+      catch(err){notify('RHK gagal dihapus: '+(err.message||err));}
+    }
+
     function populateRhkSelect(){
       const el=document.getElementById('lap-rhk-id');if(!el)return;const year=String(new Date().getFullYear());const rows=(dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif');const prev=el.value;
       el.innerHTML='<option value="">Pilih RHK yang relevan</option>'+rows.map(r=>`<option value="${escapeHTML(r.id)}">${escapeHTML(r.uraianHasilKerja)} — Target ${escapeHTML(String(r.targetTahunan))} ${escapeHTML(r.satuanTarget||'')}</option>`).join('');if(rows.some(r=>r.id===prev))el.value=prev;
-      el.onchange=()=>{const chosen=rows.find(r=>String(r.id)===String(el.value));const hint=document.getElementById('lap-volume-unit');if(hint)hint.textContent=chosen?'Isi volume dalam satuan '+(chosen.satuanTarget||'sesuai RHK')+'.':'Isi jumlah sesuai satuan target RHK yang dipilih.';};
+      el.onchange=()=>{const chosen=rows.find(r=>String(r.id)===String(el.value));const hint=document.getElementById('lap-volume-unit');const outputEl=document.getElementById('lap-output');if(hint)hint.textContent=chosen?'Isi volume dalam satuan '+(chosen.satuanTarget||'sesuai RHK')+'.':'Isi jumlah sesuai satuan target RHK yang dipilih.';if(outputEl)outputEl.value=chosen?(chosen.outputPekerjaan||chosen.satuanTarget||''):'';};
       el.onchange();
     }
     async function handleSaveRhk(e){
       e.preventDefault();const btn=e.submitter||e.target.querySelector('button[type="submit"]');if(btn?.disabled)return;if(btn){btn.disabled=true;btn.textContent='Menyimpan…';}
-      try{await gasCall('saveRhk',{tahun:String(new Date().getFullYear()),uraianHasilKerja:document.getElementById('rhk-uraian').value.trim(),targetTahunan:document.getElementById('rhk-target').value,satuanTarget:document.getElementById('rhk-satuan').value.trim(),waktuPelaksanaan:Array.from(document.querySelectorAll('input[name=\"rhk-bulan\"]:checked')).map(x=>x.value).join(', ')});await refreshServerData();document.getElementById('rhk-uraian').value='';document.getElementById('rhk-target').value='';document.getElementById('rhk-satuan').value='';document.querySelectorAll('input[name=\"rhk-bulan\"]:checked').forEach(x=>x.checked=false);renderRhkPanel();notify('RHK berhasil disimpan dan langsung aktif.');}
+      try{await gasCall('saveRhk',{tahun:String(new Date().getFullYear()),uraianHasilKerja:document.getElementById('rhk-uraian').value.trim(),targetTahunan:document.getElementById('rhk-target').value,satuanTarget:document.getElementById('rhk-satuan').value.trim(),outputPekerjaan:document.getElementById('rhk-output').value.trim(),waktuPelaksanaan:Array.from(document.querySelectorAll('input[name=\"rhk-bulan\"]:checked')).map(x=>x.value).join(', ')});await refreshServerData();document.getElementById('rhk-uraian').value='';document.getElementById('rhk-target').value='';document.getElementById('rhk-satuan').value='';document.getElementById('rhk-output').value='';document.querySelectorAll('input[name=\"rhk-bulan\"]:checked').forEach(x=>x.checked=false);renderRhkPanel();notify('RHK berhasil disimpan dan langsung aktif.');}
       catch(err){notify('RHK gagal disimpan: '+err.message);}finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-floppy-disk mr-2"></i>Simpan RHK';}}
     }
     function renderRhkPerformance(){
