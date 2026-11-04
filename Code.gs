@@ -160,11 +160,7 @@ function api(action, payload, token) {
   if (action === 'healthCheck') return {ok:true, app:'SIAP-DPMD', time:new Date().toISOString()};
   if (action === 'login') return login_(payload);
   if (action === 'register') return register_(payload);
-  if (action === 'logout') {
-    // Idempotent: logout tetap sukses bila token sudah kedaluwarsa/terhapus.
-    if (token) CacheService.getScriptCache().remove('sess:' + token);
-    return {ok:true, loggedOut:true};
-  }
+  if (action === 'logout') { if (token) CacheService.getScriptCache().remove('sess:' + token); return {ok:true}; }
 
   // Jalur antaraplikasi LINTAS DPMD. Rahasia hanya dikirim server-ke-server,
   // tidak boleh ditanam di HTML/browser. Semua aksi pengguna tetap memakai sesi biasa.
@@ -175,6 +171,8 @@ function api(action, payload, token) {
     case 'getCurrentUser': return {ok:true, user:user, verifikatorNama:getVerifierName_(user)};
     case 'getMonthlyProductivity': return getMonthlyProductivity_(user);
     case 'getAppData': return getAppData_(user);
+    case 'saveRhk': requireRole_(user, ['PJLP']); return saveRhk_(user, payload);
+    case 'updateRhk': requireRole_(user, ['PJLP']); return updateRhk_(user, payload);
     case 'getAuditLog': requireRole_(user, ['SuperAdmin']); return getAuditLog_(payload);
     case 'rejectReport': requireRole_(user, ['SuperAdmin','Verifikator']); return rejectReport_(user, payload.reportId, payload.reason);
     case 'deleteReportAsVerifier': requireRole_(user, ['Verifikator']); return deleteReportAsVerifier_(user, payload.reportId);
@@ -267,6 +265,60 @@ function register_(p) {
   return {ok:true};
 }
 
+
+function ensureRhkSheets_() {
+  const id = PropertiesService.getScriptProperties().getProperty('SIAP_DPMD_SPREADSHEET_ID');
+  if (!id) throw new Error('Konfigurasi database SIAP-DPMD tidak ditemukan.');
+  const ss = SpreadsheetApp.openById(id);
+  const defs = {
+    RHK:['id','userId','tahun','uraianHasilKerja','targetTahunan','satuanTarget','waktuPelaksanaan','status','createdAt','updatedAt'],
+    RHKHistory:['id','rhkId','userId','action','beforeData','afterData','createdAt']
+  };
+  Object.keys(defs).forEach(name => {
+    let sh = ss.getSheetByName(name);
+    if (!sh) sh = ss.insertSheet(name);
+    if (sh.getLastRow() === 0) { sh.getRange(1,1,1,defs[name].length).setValues([defs[name]]); sh.setFrozenRows(1); sh.getRange(1,1,1,defs[name].length).setFontWeight('bold').setBackground('#dbeafe'); }
+    else ensureSheetColumns_(name, defs[name]);
+  });
+}
+function saveRhk_(user,p) {
+  ensureRhkSheets_();
+  const year = String(p.tahun || '');
+  const uraian = required_(p.uraianHasilKerja,'Uraian hasil kerja');
+  const target = Number(p.targetTahunan);
+  const satuan = required_(p.satuanTarget,'Satuan target');
+  const waktu = required_(p.waktuPelaksanaan,'Waktu pelaksanaan');
+  if (!/^20\d{2}$/.test(year)) throw new Error('Tahun RHK tidak valid.');
+  if (!Number.isFinite(target) || target <= 0) throw new Error('Target tahunan harus berupa angka lebih dari nol.');
+  if (uraian.length > 500 || satuan.length > 80 || waktu.length > 120) throw new Error('Ada isian RHK yang melebihi batas karakter.');
+  const lock=LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const duplicate=readRows_('RHK').some(r=>String(r.userId)===String(user.id)&&String(r.tahun)===year&&String(r.uraianHasilKerja||'').trim().toLowerCase()===uraian.toLowerCase()&&String(r.status||'Aktif')==='Aktif');
+    if (duplicate) throw new Error('Uraian RHK yang sama sudah terdaftar pada tahun tersebut.');
+    const now=new Date().toISOString();
+    const row={id:'rhk-'+Utilities.getUuid(),userId:user.id,tahun:year,uraianHasilKerja:uraian,targetTahunan:target,satuanTarget:satuan,waktuPelaksanaan:waktu,status:'Aktif',createdAt:now,updatedAt:now};
+    appendObjects_('RHK',[row]);
+    appendObjects_('RHKHistory',[{id:'rhkh-'+Utilities.getUuid(),rhkId:row.id,userId:user.id,action:'CREATE',beforeData:'',afterData:JSON.stringify(row),createdAt:now}]);
+    audit_(user.id,'CREATE','RHK',row.id,'RHK tahunan dibuat');
+    return {ok:true,rhk:row};
+  } finally { lock.releaseLock(); }
+}
+function updateRhk_(user,p) {
+  ensureRhkSheets_();
+  const row=findById_('RHK',p.rhkId);
+  if (!row || String(row.userId)!==String(user.id)) throw new Error('RHK tidak ditemukan atau bukan milik Anda.');
+  const linked=readRows_('Reports').some(r=>String(r.rhkId||'')===String(row.id));
+  const patch={};
+  ['uraianHasilKerja','satuanTarget','waktuPelaksanaan'].forEach(k=>{if(p[k]!==undefined)patch[k]=required_(p[k],k);});
+  if(p.targetTahunan!==undefined){const n=Number(p.targetTahunan);if(!Number.isFinite(n)||n<=0)throw new Error('Target tahunan harus lebih dari nol.');patch.targetTahunan=n;}
+  if(!Object.keys(patch).length)throw new Error('Tidak ada perubahan RHK.');
+  const before=JSON.stringify(row); patch.updatedAt=new Date().toISOString(); updateById_('RHK',row.id,patch);
+  const after=Object.assign({},row,patch);
+  appendObjects_('RHKHistory',[{id:'rhkh-'+Utilities.getUuid(),rhkId:row.id,userId:user.id,action:linked?'UPDATE_WITH_LINKED_REPORTS':'UPDATE',beforeData:before,afterData:JSON.stringify(after),createdAt:patch.updatedAt}]);
+  audit_(user.id,'UPDATE','RHK',row.id,'RHK diperbarui'+(linked?' setelah memiliki laporan terkait':''));
+  return {ok:true};
+}
+
 function getAppData_(user) {
   let users = readRows_('Users').map(safeUser_);
   let attendance = readRows_('Attendance').map(a => {
@@ -275,19 +327,23 @@ function getAppData_(user) {
   });
   let reports = readRows_('Reports').map(r => { r.foto = r.fotoFileId ? driveUrl_(r.fotoFileId) : ''; return r; });
   let archives = readRows_('Archives').map(a => { delete a.driveFileId; return a; });
+  let rhks = [];
+  try { ensureRhkSheets_(); rhks = readRows_('RHK').filter(r => String(r.status || 'Aktif') === 'Aktif'); } catch (e) { console.warn('Data RHK belum tersedia:', e.message); }
   if (user.role === 'PJLP') {
     users = users.filter(u => u.id === user.id);
     attendance = attendance.filter(a => a.userId === user.id);
     reports = reports.filter(r => r.userId === user.id);
     archives = archives.filter(a => a.userId === user.id);
+    rhks = rhks.filter(r => String(r.userId) === String(user.id));
   } else if (user.role === 'Verifikator') {
     users = users.filter(u => u.bidang === user.bidang);
     const ids = users.map(u => u.id);
     attendance = attendance.filter(a => ids.indexOf(a.userId) >= 0);
     reports = reports.filter(r => ids.indexOf(r.userId) >= 0);
     archives = [];
+    rhks = rhks.filter(r => ids.indexOf(String(r.userId)) >= 0);
   }
-  return {ok:true, users, attendance, reports, archives};
+  return {ok:true, users, attendance, reports, archives, rhks};
 }
 
 function getVerifierName_(user, usersOpt) {
@@ -478,6 +534,13 @@ function haversineMeters_(lat1, lon1, lat2, lon2) {
 function saveReport_(user, p) {
   const kegiatan = required_(p.kegiatan, 'Uraian kegiatan');
   const output = required_(p.output, 'Output pekerjaan');
+  const rhkId = required_(p.rhkId, 'Rencana Hasil Kerja');
+  const realisasiQty = Number(p.realisasiQty);
+  if (!Number.isFinite(realisasiQty) || realisasiQty <= 0) throw new Error('Realisasi output harus berupa angka lebih dari nol.');
+  ensureRhkSheets_();
+  const linkedRhk = findById_('RHK', rhkId);
+  if (!linkedRhk || String(linkedRhk.userId) !== String(user.id) || String(linkedRhk.status || 'Aktif') !== 'Aktif') throw new Error('RHK tidak ditemukan, tidak aktif, atau bukan milik Anda.');
+  if (String(linkedRhk.tahun) !== String(String(p.tanggal || '').slice(0,4))) throw new Error('Tanggal kegiatan harus berada dalam tahun RHK yang dipilih.');
   const tanggalInput = required_(p.tanggal, 'Tanggal');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggalInput)) throw new Error('Tanggal laporan harus berformat YYYY-MM-DD.');
   const parsedDate = new Date(tanggalInput + 'T12:00:00+08:00');
@@ -497,7 +560,7 @@ function saveReport_(user, p) {
     throw new Error('Ukuran foto kegiatan setelah kompresi maksimal 3 MB. Silakan pilih atau kompres ulang foto.');
   }
 
-  ensureSheetColumns_('Reports', ['jamMulai','jamSelesai','integrationId','source']);
+  ensureSheetColumns_('Reports', ['jamMulai','jamSelesai','integrationId','source','rhkId','realisasiQty']);
   const integrationId = String(p.integrationId || '').trim();
   const source = integrationId ? 'LINTAS DPMD' : 'SIAP-DPMD';
   const lock = LockService.getScriptLock();
@@ -518,7 +581,7 @@ function saveReport_(user, p) {
     if (duplicate) throw new Error('Anda sudah memiliki laporan pada tanggal dan rentang jam tersebut. Setiap rentang waktu hanya boleh digunakan satu kali per hari.');
 
     const fotoFileId = saveDataUrlToDrive_(fotoData, 'Dokumentasi_' + user.id + '_' + Date.now(), null);
-    const row = {id:'lap-' + Utilities.getUuid(), userId:user.id, nama:user.nama, bidang:user.bidang, tanggal, jamMulai, jamSelesai, kegiatan, output, fotoFileId, status:'Pending', verifiedBy:'', verifiedAt:'', createdAt:new Date().toISOString(), integrationId, source};
+    const row = {id:'lap-' + Utilities.getUuid(), userId:user.id, nama:user.nama, bidang:user.bidang, tanggal, jamMulai, jamSelesai, kegiatan, output, fotoFileId, rhkId, realisasiQty, status:'Pending', verifiedBy:'', verifiedAt:'', createdAt:new Date().toISOString(), integrationId, source};
     appendObjects_('Reports', [row]);
     audit_(user.id, 'CREATE', 'Reports', row.id, 'Laporan harian dibuat (' + jamMulai + '-' + jamSelesai + ')');
     return {ok:true, id:row.id};
@@ -869,13 +932,9 @@ function resetPassword_(user, p) {
 
 function requireSession_(token) {
   if (!token) throw new Error('Sesi tidak tersedia. Silakan masuk kembali.');
-  const cache = CacheService.getScriptCache();
-  const cacheKey = 'sess:' + token;
-  const raw = cache.get(cacheKey);
+  const raw = CacheService.getScriptCache().get('sess:' + token);
   if (!raw) throw new Error('Sesi kedaluwarsa. Silakan masuk kembali.');
   const sess = JSON.parse(raw);
-  // Perpanjang masa sesi secara sliding, tetapi tidak menambah pembacaan Sheets.
-  cache.put(cacheKey, raw, APP.SESSION_TTL_SECONDS);
   const user = findById_('Users', sess.id);
   if (!user || user.status !== 'Aktif') throw new Error('Akun tidak aktif.');
   return safeUser_(user);
