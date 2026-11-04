@@ -785,15 +785,15 @@
                 </div>
 
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Uraian Pekerjaan / Kegiatan <span class="text-rose-500">*</span></label>
-                  <textarea id="lap-kegiatan" rows="4" required placeholder="Jelaskan secara rinci pekerjaan harian yang telah dilaksanakan hari ini..."
-                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 outline-none"></textarea>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Rencana Hasil Kerja (RHK) <span class="text-rose-500">*</span></label>
+                  <select id="lap-rhk-id" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"><option value="">Pilih RHK yang relevan</option></select>
+                  <p class="text-[10px] text-slate-500 mt-1">Pilih RHK terlebih dahulu sebagai acuan uraian kegiatan dan output pekerjaan hari ini.</p>
                 </div>
 
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Rencana Hasil Kerja (RHK) <span class="text-rose-500">*</span></label>
-                  <select id="lap-rhk-id" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"><option value="">Pilih RHK yang relevan</option></select>
-                  <p class="text-[10px] text-slate-500 mt-1">Pilih RHK aktif yang paling sesuai dengan pekerjaan hari ini.</p>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Uraian Pekerjaan / Kegiatan <span class="text-rose-500">*</span></label>
+                  <textarea id="lap-kegiatan" rows="4" required placeholder="Uraikan pekerjaan yang dilakukan untuk mendukung RHK yang dipilih..."
+                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 outline-none"></textarea>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 items-start">
@@ -857,8 +857,8 @@
                     <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                       <th class="py-3 px-3">Tanggal</th>
                       <th class="py-3 px-3">Waktu</th>
-                      <th class="py-3 px-3">Uraian Kegiatan</th>
                       <th class="py-3 px-3">Rencana Hasil Kerja (RHK)</th>
+                      <th class="py-3 px-3">Uraian Pekerjaan / Kegiatan</th>
                       <th class="py-3 px-3 text-center">Volume</th>
                       <th class="py-3 px-3">Output Pekerjaan</th>
                       <th class="py-3 px-3 text-center">Foto Dokumentasi</th>
@@ -991,7 +991,7 @@
           </div>
           <div class="overflow-x-auto border border-slate-200 rounded-xl">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="py-3 px-3">Waktu</th><th class="p-3">Uraian Kegiatan</th><th class="p-3">Rencana Hasil Kerja (RHK)</th><th class="p-3 text-center">Volume</th><th class="p-3">Output Pekerjaan</th><th class="p-3">Foto Dokumentasi</th></tr></thead>
+              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="py-3 px-3">Waktu</th><th class="p-3">Rencana Hasil Kerja (RHK)</th><th class="p-3">Uraian Pekerjaan / Kegiatan</th><th class="p-3 text-center">Volume</th><th class="p-3">Output Pekerjaan</th><th class="p-3">Foto Dokumentasi</th></tr></thead>
               <tbody id="rekap-kinerja-month-body" class="divide-y divide-slate-100"><tr><td colspan="7" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr></tbody>
             </table>
           </div>
@@ -2752,7 +2752,7 @@
       }
       const reportBody = document.getElementById('rekap-kinerja-month-body');
       if (reportBody) {
-        reportBody.innerHTML = reportRows.length ? reportRows.map(r => {const rhk=(dbRhk||[]).find(x=>String(x.id)===String(r.rhkId));return `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3">${escapeHTML(rhk?.uraianHasilKerja||'—')}</td><td class="p-3 text-center font-bold">${escapeHTML(String(r.volume ?? r.realisasiQty ?? '—'))}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td data-print-photo="1" class="p-2 text-center align-middle">${r.foto ? `<a href="#" data-report-photo-id="${escapeHTML(String(r.id))}" onclick="openReportPhotoById(${safeJsArg(r.id)});return false" class="inline-flex items-center gap-1 text-blue-700 underline font-semibold"><i class="fa-regular fa-image"></i> Lihat foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`;}).join('') : '<tr><td colspan="7" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
+        reportBody.innerHTML = reportRows.length ? reportRows.map(r => {const rhk=(dbRhk||[]).find(x=>String(x.id)===String(r.rhkId));return `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(rhk?.uraianHasilKerja||r.rhkUraian||'—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3 text-center font-bold">${escapeHTML(String(r.volume ?? r.realisasiQty ?? '—'))}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td data-print-photo="1" class="p-2 text-center align-middle">${r.foto ? `<a href="#" data-report-photo-id="${escapeHTML(String(r.id))}" onclick="openReportPhotoById(${safeJsArg(r.id)});return false" class="inline-flex items-center gap-1 text-blue-700 underline font-semibold"><i class="fa-regular fa-image"></i> Lihat foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`;}).join('') : '<tr><td colspan="7" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
       }
       const summaryBody=document.getElementById('rekap-rhk-summary-body');
       if(summaryBody){
@@ -2909,8 +2909,8 @@
             <tr class="hover:bg-slate-50 transition">
               <td class="py-3 px-3 font-semibold">${escapeHTML(formatDateDisplay(l.tanggal))}</td>
               <td class="py-3 px-3 whitespace-nowrap">${escapeHTML(l.jamMulai ? formatTimeDisplay(l.jamMulai) : "—")}–${escapeHTML(l.jamSelesai ? formatTimeDisplay(l.jamSelesai) : "—")}</td>
+              <td class="py-3 px-3">${escapeHTML((dbRhk||[]).find(x=>String(x.id)===String(l.rhkId))?.uraianHasilKerja||l.rhkUraian||'—')}</td>
               <td class="py-3 px-3">${escapeHTML(l.kegiatan)}</td>
-              <td class="py-3 px-3">${escapeHTML((dbRhk||[]).find(x=>String(x.id)===String(l.rhkId))?.uraianHasilKerja||'—')}</td>
               <td class="py-3 px-3 text-center font-bold">${escapeHTML(String(l.volume ?? l.realisasiQty ?? '—'))}</td>
               <td class="py-3 px-3 font-bold">${escapeHTML(l.output)}</td>
               <td data-print-photo="1" class="py-3 px-3 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
