@@ -288,14 +288,15 @@ function saveRhk_(user,p) {
   const uraian = required_(p.uraianHasilKerja,'Uraian hasil kerja');
   const targetBulanan = Number(p.targetBulanan);
   const satuan = required_(p.satuanTarget,'Satuan target');
-  const outputPekerjaan = required_(p.outputPekerjaan,'Output pekerjaan RHK');
+  // Output laporan mengikuti Satuan Target; kolom outputPekerjaan dipertahankan untuk kompatibilitas data lama.
+  const outputPekerjaan = satuan;
   const waktu = required_(p.waktuPelaksanaan,'Waktu pelaksanaan');
   const allowedMonths = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   const selectedMonths = waktu.split(',').map(x=>x.trim()).filter(Boolean);
   if (!selectedMonths.length || selectedMonths.some(m=>!allowedMonths.includes(m)) || new Set(selectedMonths).size !== selectedMonths.length) throw new Error('Waktu pelaksanaan harus berupa pilihan satu atau beberapa bulan yang valid.');
   if (!/^20\d{2}$/.test(year)) throw new Error('Tahun RHK tidak valid.');
   if (!Number.isFinite(targetBulanan) || targetBulanan <= 0) throw new Error('Target bulanan harus berupa angka lebih dari nol.');
-  if (uraian.length > 500 || satuan.length > 80 || outputPekerjaan.length > 200 || waktu.length > 120) throw new Error('Ada isian RHK yang melebihi batas karakter.');
+  if (uraian.length > 500 || satuan.length > 80 || waktu.length > 120) throw new Error('Ada isian RHK yang melebihi batas karakter.');
   const targetTahunan = targetBulanan * selectedMonths.length;
   const lock=LockService.getScriptLock(); lock.waitLock(10000);
   try {
@@ -304,6 +305,7 @@ function saveRhk_(user,p) {
     const now=new Date().toISOString();
     const row={id:'rhk-'+Utilities.getUuid(),userId:user.id,tahun:year,uraianHasilKerja:uraian,targetBulanan:targetBulanan,targetTahunan:targetTahunan,satuanTarget:satuan,outputPekerjaan:outputPekerjaan,waktuPelaksanaan:waktu,status:'Aktif',createdAt:now,updatedAt:now};
     appendObjects_('RHK',[row]);
+    invalidateRhkCache_();
     appendObjects_('RHKHistory',[{id:'rhkh-'+Utilities.getUuid(),rhkId:row.id,userId:user.id,action:'CREATE',beforeData:'',afterData:JSON.stringify(row),createdAt:now}]);
     audit_(user.id,'CREATE','RHK',row.id,'RHK dibuat dengan target bulanan');
     return {ok:true,rhk:row};
@@ -317,7 +319,8 @@ function updateRhk_(user,p) {
   const patch={};
   if(p.uraianHasilKerja!==undefined){const v=required_(p.uraianHasilKerja,'Uraian hasil kerja');if(v.length>500)throw new Error('Uraian hasil kerja maksimal 500 karakter.');patch.uraianHasilKerja=v;}
   if(p.satuanTarget!==undefined){const v=required_(p.satuanTarget,'Satuan target');if(v.length>80)throw new Error('Satuan target maksimal 80 karakter.');patch.satuanTarget=v;}
-  if(p.outputPekerjaan!==undefined){const v=required_(p.outputPekerjaan,'Output pekerjaan RHK');if(v.length>200)throw new Error('Output pekerjaan RHK maksimal 200 karakter.');patch.outputPekerjaan=v;}
+  // Kolom legacy outputPekerjaan diselaraskan dengan Satuan Target; tidak lagi diisi terpisah.
+  if(p.satuanTarget!==undefined){patch.outputPekerjaan=patch.satuanTarget || String(p.satuanTarget).trim();}
   let nextWaktu=String(row.waktuPelaksanaan||'');
   if(p.waktuPelaksanaan!==undefined){
     const v=required_(p.waktuPelaksanaan,'Waktu pelaksanaan');
@@ -336,9 +339,10 @@ function updateRhk_(user,p) {
   if(!Object.keys(patch).length)throw new Error('Tidak ada perubahan RHK.');
   const before=JSON.stringify(row); patch.updatedAt=new Date().toISOString(); updateById_('RHK',row.id,patch);
   const after=Object.assign({},row,patch);
+  invalidateRhkCache_();
   appendObjects_('RHKHistory',[{id:'rhkh-'+Utilities.getUuid(),rhkId:row.id,userId:user.id,action:linked?'UPDATE_WITH_LINKED_REPORTS':'UPDATE',beforeData:before,afterData:JSON.stringify(after),createdAt:patch.updatedAt}]);
   audit_(user.id,'UPDATE','RHK',row.id,'RHK diperbarui'+(linked?' setelah memiliki laporan terkait':''));
-  return {ok:true};
+  return {ok:true,rhk:after};
 }
 
 
@@ -353,9 +357,29 @@ function deleteRhk_(user,p) {
   const patch={status:'Dihapus',deletedAt:now,updatedAt:now};
   updateById_('RHK',row.id,patch);
   const after=Object.assign({},row,patch);
+  invalidateRhkCache_();
   appendObjects_('RHKHistory',[{id:'rhkh-'+Utilities.getUuid(),rhkId:row.id,userId:user.id,action:linked?'SOFT_DELETE_WITH_LINKED_REPORTS':'SOFT_DELETE',beforeData:before,afterData:JSON.stringify(after),createdAt:now}]);
   audit_(user.id,'DELETE','RHK',row.id,linked?'RHK dinonaktifkan; laporan terdahulu tetap dipertahankan':'RHK dinonaktifkan');
-  return {ok:true,softDeleted:true,hasLinkedReports:linked};
+  return {ok:true,softDeleted:true,hasLinkedReports:linked,rhk:after};
+}
+
+function getCachedRhkRows_() {
+  const cache = CacheService.getScriptCache();
+  const key = 'ref:rhks:v1';
+  const cached = cache.get(key);
+  if (cached !== null) {
+    try { return JSON.parse(cached); } catch (e) { cache.remove(key); }
+  }
+  const rows = readRows_('RHK');
+  // CacheService has a per-item size limit. Cache only when comfortably below it.
+  try {
+    const serialized = JSON.stringify(rows);
+    if (serialized.length < 90000) cache.put(key, serialized, 90);
+  } catch (e) { console.warn('Cache RHK dilewati:', e.message); }
+  return rows;
+}
+function invalidateRhkCache_() {
+  try { CacheService.getScriptCache().remove('ref:rhks:v1'); } catch (e) { console.warn('Invalidasi cache RHK:', e.message); }
 }
 
 function getAppData_(user) {
@@ -369,7 +393,7 @@ function getAppData_(user) {
   let rhks = [];
   // Sertakan RHK yang dinonaktifkan agar laporan historis tetap dapat menampilkan nama RHK.
   // Frontend hanya menampilkan status Aktif pada daftar dan pilihan input laporan baru.
-  try { ensureRhkSheets_(); rhks = readRows_('RHK'); } catch (e) { console.warn('Data RHK belum tersedia:', e.message); }
+  try { ensureRhkSheets_(); rhks = getCachedRhkRows_(); } catch (e) { console.warn('Data RHK belum tersedia:', e.message); }
   if (user.role === 'PJLP') {
     users = users.filter(u => u.id === user.id);
     attendance = attendance.filter(a => a.userId === user.id);
@@ -587,7 +611,7 @@ function saveReport_(user, p) {
     linkedRhk = findById_('RHK', rhkId);
     if (!linkedRhk || String(linkedRhk.userId) !== String(user.id) || String(linkedRhk.status || 'Aktif') !== 'Aktif') throw new Error('RHK tidak ditemukan, tidak aktif, atau bukan milik Anda.');
     if (String(linkedRhk.tahun) !== String(String(p.tanggal || '').slice(0,4))) throw new Error('Tanggal kegiatan harus berada dalam tahun RHK yang dipilih.');
-    const expectedOutput=String(linkedRhk.outputPekerjaan||linkedRhk.satuanTarget||'').trim();
+    const expectedOutput=String(linkedRhk.satuanTarget||linkedRhk.outputPekerjaan||'').trim();
     if(expectedOutput && output !== expectedOutput) throw new Error('Output pekerjaan harus mengikuti Output Pekerjaan yang telah ditetapkan pada RHK: '+expectedOutput+'.');
   }
   const tanggalInput = required_(p.tanggal, 'Tanggal');
