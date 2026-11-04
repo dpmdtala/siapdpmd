@@ -402,6 +402,9 @@
         <button id="pjlp-tab-btn-hadir" onclick="switchPjlpTab('hadir')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-fingerprint"></i> Presensi / Daftar Hadir
         </button>
+        <button id="pjlp-tab-btn-rhk" onclick="switchPjlpTab('rhk')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
+          <i class="fa-solid fa-bullseye"></i> Rencana Hasil Kerja (RHK)
+        </button>
         <button id="pjlp-tab-btn-kegiatan" onclick="switchPjlpTab('kegiatan')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-pen-to-square"></i> Input Kegiatan Harian
         </button>
@@ -701,6 +704,26 @@
         </div>
       </div>
 
+      <!-- TAB RHK: RENCANA HASIL KERJA TAHUNAN -->
+      <div id="pjlp-tab-rhk" class="hidden space-y-6">
+        <div class="grid lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div><h3 class="font-bold text-slate-900">Tambah Rencana Hasil Kerja</h3><p class="text-xs text-slate-500">RHK tahunan langsung aktif setelah disimpan.</p></div>
+            <form onsubmit="handleSaveRhk(event)" class="space-y-3">
+              <div><label class="block text-xs font-bold mb-1">Uraian Hasil Kerja *</label><textarea id="rhk-uraian" rows="3" maxlength="500" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Tuliskan hasil kerja yang direncanakan"></textarea></div>
+              <div><label class="block text-xs font-bold mb-1">Target Tahunan *</label><input id="rhk-target" type="number" min="0.01" step="any" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Contoh: 240"></div>
+              <div><label class="block text-xs font-bold mb-1">Satuan Target *</label><input id="rhk-satuan" maxlength="80" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Contoh: Dokumen"></div>
+              <div><label class="block text-xs font-bold mb-1">Waktu Pelaksanaan *</label><input id="rhk-waktu" maxlength="120" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Contoh: Januari–Desember 2026"></div>
+              <button type="submit" class="w-full rounded-xl bg-blue-600 text-white font-bold p-3 text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Simpan RHK</button>
+            </form>
+          </div>
+          <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center justify-between"><div><h3 class="font-bold">Daftar RHK Saya</h3><p class="text-xs text-slate-500">RHK aktif yang menjadi acuan laporan harian.</p></div><span id="rhk-total" class="text-xs font-bold bg-blue-50 text-blue-700 px-3 py-1 rounded-full">0 RHK</span></div>
+            <div id="rhk-list" class="space-y-3"><p class="text-sm text-slate-400">Belum ada RHK. Tambahkan RHK tahunan terlebih dahulu.</p></div>
+          </div>
+        </div>
+      </div>
+
       <!-- TAB 3: INPUT KEGIATAN HARIAN -->
       <div id="pjlp-tab-kegiatan" class="hidden space-y-6">
         <div class="grid lg:grid-cols-12 gap-8">
@@ -728,6 +751,17 @@
                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Jam Selesai <span class="text-rose-500">*</span></label>
                     <input type="time" id="lap-jam-selesai" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-blue-600 outline-none">
                   </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Rencana Hasil Kerja (RHK) *</label>
+                  <select id="lap-rhk-id" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"><option value="">Pilih RHK yang relevan</option></select>
+                  <p class="text-[10px] text-slate-500 mt-1">Pilih RHK aktif yang paling sesuai dengan kegiatan hari ini.</p>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Jumlah Realisasi Output *</label>
+                  <input type="number" id="lap-realisasi-qty" min="0.01" step="any" value="1" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold">
+                  <p class="text-[10px] text-slate-500 mt-1">Isi jumlah hasil sesuai satuan RHK. Realisasi baru dihitung setelah laporan disetujui.</p>
                 </div>
 
                 <div>
@@ -1911,6 +1945,7 @@
     let dbAbsensi = [];
     let holidayDates = {};
     let dbLaporan = [];
+    let dbRhk = [];
     let dbArsip = [];
     let gasSessionToken = '';
     const SIAP_SESSION_KEY = 'siapdpmd_session_v1';
@@ -1961,42 +1996,35 @@
     function setRequestProgress(active, label) { return; }
     const SIAP_API_URL = 'https://script.google.com/macros/s/AKfycbw9UJ2J6QQu0BtjSKBaqcR7yvEU-mpe8iJJf3IazeOLRDhewnOQRwT7nfzWW1egthly/exec';
 
-    // Hindari request baca identik yang terkirim bersamaan (mis. klik/menu ganda).
-    const siapReadRequests = new Map();
     async function gasCall(action, payload = {}) {
-      const readOnlyActions = new Set(['healthCheck','getCurrentUser','getAppData','getMonthlyProductivity','getAuditLog']);
-      const requestKey = readOnlyActions.has(action) ? action + ':' + JSON.stringify(payload) + ':' + gasSessionToken : '';
-      if (requestKey && siapReadRequests.has(requestKey)) return siapReadRequests.get(requestKey);
-      const requestPromise = (async () => {
-        const labels = {login:'Memverifikasi akun…',register:'Mengirim pendaftaran…',saveAttendance:'Menyimpan presensi…',saveReport:'Mengirim laporan…',updateProfile:'Memperbarui profil…',changePassword:'Memperbarui kata sandi…',saveArchive:'Mengunggah arsip…',getAppData:'Memuat data aplikasi…',getReportPhoto:'Memuat foto laporan…'};
-        setRequestProgress(true, labels[action] || 'Sedang memproses…');
-        const controller = new AbortController();
-        // Batas waktu lebih singkat untuk interaksi ringan; unggahan diberi waktu lebih longgar.
-        const timeoutMs = ['saveAttendance','saveReport','saveArchive','updateProfile','register'].includes(action) ? 45000 : 25000;
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const response = await fetch(SIAP_API_URL, {
-            method: 'POST',
-            headers: {'Content-Type': 'text/plain;charset=utf-8'},
-            body: JSON.stringify({action, payload, token: gasSessionToken}),
-            cache: 'no-store', redirect: 'follow', signal: controller.signal
-          });
-          let result;
-          try { result = await response.json(); }
-          catch (_) { throw new Error('Server SIAP-DPMD tidak mengembalikan JSON yang valid. Periksa deployment Web App.'); }
-          if (!response.ok || !result || result.ok !== true) throw new Error((result && result.message) || ('Permintaan gagal. HTTP ' + response.status));
-          return result;
-        } catch (err) {
-          if (err && err.name === 'AbortError') throw new Error('Permintaan ke server melewati batas waktu. Coba lagi.');
-          if (err instanceof TypeError) throw new Error('Koneksi API SIAP-DPMD gagal. Periksa deployment Web App, izin akses, dan kemungkinan pembatasan CORS.');
-          throw err;
-        } finally { clearTimeout(timer); setRequestProgress(false); }
-      })();
-      if (requestKey) {
-        siapReadRequests.set(requestKey, requestPromise);
-        requestPromise.finally(() => { if (siapReadRequests.get(requestKey) === requestPromise) siapReadRequests.delete(requestKey); }).catch(() => {});
+      const labels = {login:'Memverifikasi akun…',register:'Mengirim pendaftaran…',saveAttendance:'Menyimpan presensi…',saveReport:'Mengirim laporan…',updateProfile:'Memperbarui profil…',changePassword:'Memperbarui kata sandi…',saveArchive:'Mengunggah arsip…',getAppData:'Memuat data aplikasi…',getReportPhoto:'Memuat foto laporan…'};
+      setRequestProgress(true, labels[action] || 'Sedang memproses…');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60000);
+      try {
+        const response = await fetch(SIAP_API_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'text/plain;charset=utf-8'},
+          body: JSON.stringify({action, payload, token: gasSessionToken}),
+          cache: 'no-store',
+          redirect: 'follow',
+          signal: controller.signal
+        });
+        let result;
+        try { result = await response.json(); }
+        catch (_) { throw new Error('Server SIAP-DPMD tidak mengembalikan JSON yang valid. Periksa deployment Web App.'); }
+        if (!response.ok || !result || result.ok !== true) {
+          throw new Error((result && result.message) || ('Permintaan gagal. HTTP ' + response.status));
+        }
+        return result;
+      } catch (err) {
+        if (err && err.name === 'AbortError') throw new Error('Permintaan ke server melewati batas waktu. Coba lagi.');
+        if (err instanceof TypeError) throw new Error('Koneksi API SIAP-DPMD gagal. Periksa deployment Web App, izin akses, dan kemungkinan pembatasan CORS.');
+        throw err;
+      } finally {
+        clearTimeout(timer);
+        setRequestProgress(false);
       }
-      return requestPromise;
     }
 
     async function refreshServerData() {
@@ -2005,6 +2033,7 @@
       dbAbsensi = result.attendance || [];
       holidayDates = result.holidays || {};
       dbLaporan = result.reports || [];
+      dbRhk = result.rhks || [];
       dbArsip = result.archives || [];
       gasReady = true;
       if (currentUser) {
@@ -2172,7 +2201,7 @@
           if (currentUser.role === 'SuperAdmin') switchAdminTab('users');
           else if (currentUser.role === 'Verifikator') renderVerifikatorDashboard();
           else renderPjlpTables();
-          renderMonthlyProductiveEmployee().catch(err => console.warn('Widget produktivitas belum termuat:', err));
+          renderMonthlyProductiveEmployee();
         } catch (loadErr) {
           console.error('Dashboard data load failed:', loadErr);
           notify('Login berhasil, tetapi sebagian data belum termuat. Gunakan Muat Ulang atau coba lagi.');
@@ -2320,43 +2349,19 @@
       }
     }
 
-    let siapLogoutInProgress = false;
     async function handleLogout() {
-      if (siapLogoutInProgress) return;
-      siapLogoutInProgress = true;
-      const oldToken = gasSessionToken;
       const logoutButton = document.querySelector('[onclick="handleLogout()"]');
-      if (logoutButton) { logoutButton.disabled = true; logoutButton.setAttribute('aria-busy','true'); }
-      // Putuskan akses di sisi browser terlebih dahulu agar pengguna langsung keluar.
+      if (logoutButton) { logoutButton.setAttribute('aria-busy','true'); }
+      try { if (gasSessionToken) await gasCall('logout', {}); } catch (_) {}
       gasSessionToken = '';
       persistSession();
       currentUser = null;
-      dbUsers = []; dbAbsensi = []; dbLaporan = []; dbArsip = []; holidayDates = {};
-      gasReady = false;
       clearLoginCredentials();
-      const alertBox = document.getElementById('modal-alert');
-      if (alertBox) { alertBox.textContent=''; alertBox.classList.add('hidden'); }
-      const modal = document.getElementById('auth-modal');
-      if (modal) modal.classList.add('hidden');
+      const alertBox = document.getElementById('modal-alert'); if (alertBox) { alertBox.textContent=''; alertBox.classList.add('hidden'); }
+      const modal = document.getElementById('auth-modal'); if (modal) modal.classList.add('hidden');
       updateUserNavbar();
       switchView('landing');
-      // Revoke token server-side tanpa menahan perpindahan tampilan. Token lama dikirim eksplisit.
-      try {
-        if (oldToken) {
-          const response = await fetch(SIAP_API_URL, {
-            method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-            body:JSON.stringify({action:'logout',payload:{},token:oldToken}),
-            cache:'no-store', redirect:'follow', keepalive:true
-          });
-          // Respons tidak perlu memblokir logout lokal; server akan menghapus token.
-          if (!response.ok) console.warn('Pencabutan sesi server belum terkonfirmasi.');
-        }
-      } catch (err) { console.warn('Logout lokal berhasil; pencabutan sesi server belum terkonfirmasi:', err); }
-      finally {
-        if (logoutButton) { logoutButton.disabled = false; logoutButton.removeAttribute('aria-busy'); }
-        siapLogoutInProgress = false;
-      }
-      notify('Anda telah keluar dari SIAP-DPMD.');
+      if (logoutButton) logoutButton.removeAttribute('aria-busy');
     }
 
     // Profile Editing & Photo Upload
@@ -3390,6 +3395,29 @@
       } finally { lapPhotoProcessing = false; }
     }
 
+    function renderRhkPanel() {
+      const list=document.getElementById('rhk-list'); if(!list)return;
+      const year=String(new Date().getFullYear());
+      const rows=(dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif');
+      const count=document.getElementById('rhk-total'); if(count)count.textContent=rows.length+' RHK';
+      if(!rows.length){list.innerHTML='<p class="text-sm text-slate-400">Belum ada RHK aktif untuk tahun '+year+'.</p>';populateRhkSelect();return;}
+      list.innerHTML=rows.map(r=>`<div class="border border-slate-200 rounded-2xl p-4 space-y-2"><div class="flex items-start justify-between gap-2"><h4 class="font-bold text-sm">${escapeHTML(r.uraianHasilKerja||'')}</h4><span class="text-[10px] rounded-full bg-emerald-50 text-emerald-700 px-2 py-1 font-bold">Aktif</span></div><div class="grid grid-cols-2 gap-2 text-xs"><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Target tahunan</span><div class="font-bold">${escapeHTML(String(r.targetTahunan))} ${escapeHTML(r.satuanTarget||'')}</div></div><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Waktu pelaksanaan</span><div class="font-bold">${escapeHTML(r.waktuPelaksanaan||'')}</div></div></div></div>`).join('');
+      populateRhkSelect(); renderRhkPerformance();
+    }
+    function populateRhkSelect(){
+      const el=document.getElementById('lap-rhk-id');if(!el)return;const year=String(new Date().getFullYear());const rows=(dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif');const prev=el.value;
+      el.innerHTML='<option value="">Pilih RHK yang relevan</option>'+rows.map(r=>`<option value="${escapeHTML(r.id)}">${escapeHTML(r.uraianHasilKerja)} — Target ${escapeHTML(String(r.targetTahunan))} ${escapeHTML(r.satuanTarget||'')}</option>`).join('');if(rows.some(r=>r.id===prev))el.value=prev;
+    }
+    async function handleSaveRhk(e){
+      e.preventDefault();const btn=e.submitter||e.target.querySelector('button[type="submit"]');if(btn?.disabled)return;if(btn){btn.disabled=true;btn.textContent='Menyimpan…';}
+      try{await gasCall('saveRhk',{tahun:String(new Date().getFullYear()),uraianHasilKerja:document.getElementById('rhk-uraian').value.trim(),targetTahunan:document.getElementById('rhk-target').value,satuanTarget:document.getElementById('rhk-satuan').value.trim(),waktuPelaksanaan:document.getElementById('rhk-waktu').value.trim()});await refreshServerData();document.getElementById('rhk-uraian').value='';document.getElementById('rhk-target').value='';document.getElementById('rhk-satuan').value='';document.getElementById('rhk-waktu').value='';renderRhkPanel();notify('RHK berhasil disimpan dan langsung aktif.');}
+      catch(err){notify('RHK gagal disimpan: '+err.message);}finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-floppy-disk mr-2"></i>Simpan RHK';}}
+    }
+    function renderRhkPerformance(){
+      const host=document.getElementById('rhk-list');if(!host)return;const year=String(new Date().getFullYear());const reports=(dbLaporan||[]).filter(r=>r.status==='Disetujui'&&String(dateKeyISO(r.tanggal)).slice(0,4)===year);
+      (dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif').forEach(r=>{const approved=reports.filter(x=>String(x.rhkId||'')===String(r.id));const month=new Date().getMonth();const monthly=approved.filter(x=>Number(String(dateKeyISO(x.tanggal)).slice(5,7))===month+1).reduce((s,x)=>s+Number(x.realisasiQty||0),0);const cumulative=approved.reduce((s,x)=>s+Number(x.realisasiQty||0),0);const pct=Number(r.targetTahunan)>0?Math.min(100, cumulative/Number(r.targetTahunan)*100):0;const card=Array.from(host.children).find(el=>el.textContent.includes(r.uraianHasilKerja));if(card&&!card.querySelector('[data-rhk-progress]')){const div=document.createElement('div');div.dataset.rhkProgress='1';div.className='pt-2 border-t text-xs space-y-1';div.innerHTML=`<div class="flex justify-between"><span>Realisasi bulan ini</span><b>${monthly} ${escapeHTML(r.satuanTarget||'')}</b></div><div class="flex justify-between"><span>Realisasi kumulatif (disetujui)</span><b>${cumulative} ${escapeHTML(r.satuanTarget||'')}</b></div><div class="flex justify-between"><span>Capaian target tahunan</span><b>${pct.toFixed(2)}%</b></div><div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-2 bg-emerald-500" style="width:${pct}%"></div></div>`;card.appendChild(div);}});
+    }
+
     async function handleSaveLaporan(e) {
       e.preventDefault();
       const form = e.currentTarget || document.getElementById('form-laporan');
@@ -3397,9 +3425,12 @@
       if (submitBtn && submitBtn.disabled) return;
       const kegiatan = document.getElementById('lap-kegiatan').value.trim();
       const output = document.getElementById('lap-output').value.trim();
+      const rhkId = document.getElementById('lap-rhk-id')?.value || '';
+      const realisasiQty = Number(document.getElementById('lap-realisasi-qty')?.value || 0);
       const jamMulai = document.getElementById('lap-jam-mulai').value;
       const jamSelesai = document.getElementById('lap-jam-selesai').value;
       if (lapPhotoProcessing) { notify('Foto sedang dioptimalkan. Tunggu sampai pratinjau foto muncul, lalu kirim kembali.'); return; }
+      if (!rhkId || !Number.isFinite(realisasiQty) || realisasiQty <= 0) { notify('Pilih RHK dan isi jumlah realisasi output terlebih dahulu.'); return; }
       if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi, termasuk foto yang sudah selesai dioptimalkan!'); return; }
       if (jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai.'); return; }
       if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.innerHTML; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…'; }
@@ -3407,7 +3438,7 @@
       try {
         await gasCall('saveReport', {
           tanggal: document.getElementById('lap-tanggal').value,
-          jamMulai, jamSelesai, kegiatan, output, foto: tempLapFotoBase64
+          jamMulai, jamSelesai, kegiatan, output, rhkId, realisasiQty, foto: tempLapFotoBase64
         });
         await refreshServerData();
         notify('Kegiatan harian berhasil disimpan.');
@@ -3553,7 +3584,7 @@
       if (tabName !== 'hadir' && typeof stopCameraStream === 'function') {
         try { stopCameraStream(); } catch (err) { console.warn('Pembersihan kamera dilewati:', err); }
       }
-      const allowedTabs = ['profile', 'hadir', 'kegiatan', 'rekap-hadir', 'rekap-kinerja', 'arsip'];
+      const allowedTabs = ['profile', 'hadir', 'rhk', 'kegiatan', 'rekap-hadir', 'rekap-kinerja', 'arsip'];
       if (!allowedTabs.includes(tabName)) {
         console.warn('Tab PJLP tidak dikenal:', tabName);
         return;
@@ -3574,6 +3605,8 @@
       activePanel.classList.remove('hidden');
       activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
       if (tabName === 'hadir') { locationVerified = false; lastGpsPosition = null; checkUserLocation({silent:true}); }
+      if (tabName === 'rhk') renderRhkPanel();
+      if (tabName === 'kegiatan') populateRhkSelect();
     }
 
     function switchVerifTab(tabName) {
@@ -4130,7 +4163,7 @@
           if (currentUser.role === 'SuperAdmin') switchAdminTab('users');
           else if (currentUser.role === 'Verifikator') renderVerifikatorDashboard();
           else renderPjlpTables();
-          renderMonthlyProductiveEmployee().catch(err => console.warn('Widget produktivitas belum termuat:', err));
+          renderMonthlyProductiveEmployee();
           return;
         } catch (err) {
           console.warn('Sesi tersimpan tidak dapat dipulihkan:', err);
