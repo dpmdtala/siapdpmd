@@ -160,7 +160,11 @@ function api(action, payload, token) {
   if (action === 'healthCheck') return {ok:true, app:'SIAP-DPMD', time:new Date().toISOString()};
   if (action === 'login') return login_(payload);
   if (action === 'register') return register_(payload);
-  if (action === 'logout') { if (token) CacheService.getScriptCache().remove('sess:' + token); return {ok:true}; }
+  if (action === 'logout') {
+    // Idempotent: logout tetap sukses bila token sudah kedaluwarsa/terhapus.
+    if (token) CacheService.getScriptCache().remove('sess:' + token);
+    return {ok:true, loggedOut:true};
+  }
 
   // Jalur antaraplikasi LINTAS DPMD. Rahasia hanya dikirim server-ke-server,
   // tidak boleh ditanam di HTML/browser. Semua aksi pengguna tetap memakai sesi biasa.
@@ -865,9 +869,13 @@ function resetPassword_(user, p) {
 
 function requireSession_(token) {
   if (!token) throw new Error('Sesi tidak tersedia. Silakan masuk kembali.');
-  const raw = CacheService.getScriptCache().get('sess:' + token);
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'sess:' + token;
+  const raw = cache.get(cacheKey);
   if (!raw) throw new Error('Sesi kedaluwarsa. Silakan masuk kembali.');
   const sess = JSON.parse(raw);
+  // Perpanjang masa sesi secara sliding, tetapi tidak menambah pembacaan Sheets.
+  cache.put(cacheKey, raw, APP.SESSION_TTL_SECONDS);
   const user = findById_('Users', sess.id);
   if (!user || user.status !== 'Aktif') throw new Error('Akun tidak aktif.');
   return safeUser_(user);
