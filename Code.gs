@@ -191,7 +191,6 @@ function api(action, payload, token) {
     case 'downloadAttendanceEvidence': return downloadAttendanceEvidence_(user, payload.attendanceId);
     case 'saveAttendance': requireRole_(user, ['PJLP']); return saveAttendance_(user, payload);
     case 'saveReport': requireRole_(user, ['PJLP']); return saveReport_(user, payload);
-    case 'updateOwnReport': requireRole_(user, ['PJLP']); return updateOwnReport_(user, payload);
     case 'saveArchive': requireRole_(user, ['PJLP']); return saveArchive_(user, payload);
     case 'approveReport': requireRole_(user, ['SuperAdmin','Verifikator']); return approveReport_(user, payload.reportId);
     case 'resetPassword': requireRole_(user, ['SuperAdmin']); return resetPassword_(user, payload);
@@ -631,69 +630,6 @@ function saveReport_(user, p) {
   } finally {
     lock.releaseLock();
   }
-}
-
-/**
- * PJLP dapat melengkapi/memperbarui laporan lama agar terhubung dengan RHK.
- * Setiap perubahan mengembalikan status ke Pending agar diverifikasi ulang.
- * Foto lama dipertahankan jika pengguna tidak mengunggah foto pengganti.
- */
-function updateOwnReport_(user, p) {
-  const reportId = required_(p.reportId, 'ID laporan');
-  const old = findById_('Reports', reportId);
-  if (!old || String(old.userId) !== String(user.id)) throw new Error('Laporan tidak ditemukan atau bukan milik Anda.');
-  if (String(old.integrationId || '').trim()) throw new Error('Laporan yang berasal dari integrasi LINTAS tidak dapat diedit melalui form PJLP.');
-
-  const tanggal = required_(p.tanggal, 'Tanggal');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) throw new Error('Tanggal laporan harus berformat YYYY-MM-DD.');
-  const parsedDate = new Date(tanggal + 'T12:00:00+08:00');
-  if (isNaN(parsedDate.getTime()) || Utilities.formatDate(parsedDate, APP.TZ, 'yyyy-MM-dd') !== tanggal) throw new Error('Tanggal laporan tidak valid.');
-
-  const rhkId = required_(p.rhkId, 'Rencana Hasil Kerja');
-  ensureRhkSheets_();
-  const rhk = findById_('RHK', rhkId);
-  if (!rhk || String(rhk.userId) !== String(user.id) || String(rhk.status || 'Aktif') !== 'Aktif') throw new Error('Pilih RHK aktif milik Anda.');
-  if (String(rhk.tahun) !== tanggal.slice(0,4)) throw new Error('Tahun tanggal laporan harus sama dengan tahun RHK.');
-  const monthNames=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  const reportMonth=monthNames[Number(tanggal.slice(5,7))-1];
-  const activeMonths=String(rhk.waktuPelaksanaan||'').split(',').map(x=>x.trim());
-  if (!activeMonths.includes(reportMonth)) throw new Error('Bulan tanggal laporan tidak termasuk waktu pelaksanaan RHK.');
-
-  const kegiatan = required_(p.kegiatan, 'Uraian kegiatan');
-  const outputExpected = String(rhk.outputPekerjaan || rhk.satuanTarget || '').trim();
-  const output = required_(p.output || outputExpected, 'Output pekerjaan');
-  if (output !== outputExpected) throw new Error('Output pekerjaan harus mengikuti RHK yang dipilih: ' + outputExpected + '.');
-  const volume = Number(p.volume);
-  if (!Number.isFinite(volume) || volume <= 0) throw new Error('Volume pekerjaan harus berupa angka lebih dari nol.');
-  const jamMulai = required_(p.jamMulai, 'Jam mulai kegiatan');
-  const jamSelesai = required_(p.jamSelesai, 'Jam selesai kegiatan');
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(jamMulai) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(jamSelesai) || jamSelesai <= jamMulai) throw new Error('Jam kegiatan tidak valid; jam selesai harus setelah jam mulai.');
-
-  const lock=LockService.getScriptLock(); lock.waitLock(10000);
-  try {
-    const duplicate=readRows_('Reports').find(r => String(r.id)!==String(reportId) && String(r.userId)===String(user.id) && normalizeDateKey_(r.tanggal)===tanggal && String(r.jamMulai||'')===jamMulai && String(r.jamSelesai||'')===jamSelesai);
-    if (duplicate) throw new Error('Sudah ada laporan lain pada tanggal dan rentang jam tersebut.');
-
-    const patch={tanggal, jamMulai, jamSelesai, kegiatan, output, rhkId, volume, realisasiQty:volume,
-      status:'Pending', verifiedBy:'', verifiedAt:'', rejectionReason:'', updatedAt:new Date().toISOString()};
-    let newPhotoId='';
-    const fotoData=String(p.foto||'').trim();
-    if (fotoData) {
-      const match=fotoData.match(/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=]+)$/i);
-      if (!match) throw new Error('Foto dokumentasi harus berupa JPG, PNG, atau WEBP.');
-      const bytes=Math.floor(match[2].length*3/4)-(match[2].endsWith('==')?2:match[2].endsWith('=')?1:0);
-      if (bytes<=0 || bytes>APP.MAX_REPORT_PHOTO_BYTES) throw new Error('Ukuran foto setelah kompresi maksimal 3 MB.');
-      newPhotoId=saveDataUrlToDrive_(fotoData,'Dokumentasi_Revisi_'+user.id+'_'+Date.now(),null);
-      patch.fotoFileId=newPhotoId;
-    }
-    ensureSheetColumns_('Reports',['rhkId','realisasiQty','volume','updatedAt','rejectionReason']);
-    updateById_('Reports',reportId,patch);
-    if (newPhotoId && old.fotoFileId) { try { DriveApp.getFileById(String(old.fotoFileId)).setTrashed(true); } catch(e) { console.warn('Foto lama tidak dapat dipindahkan ke sampah:',e.message); } }
-    const before={tanggal:old.tanggal,jamMulai:old.jamMulai,jamSelesai:old.jamSelesai,kegiatan:old.kegiatan,output:old.output,rhkId:old.rhkId||'',volume:old.volume||old.realisasiQty||'',status:old.status};
-    const after={tanggal,jamMulai,jamSelesai,kegiatan,output,rhkId,volume,status:'Pending'};
-    audit_(user.id,'UPDATE','Reports',reportId,JSON.stringify({before,after,note:'Laporan lama dilengkapi/diperbarui dengan RHK; status dikembalikan ke Pending untuk verifikasi ulang.'}));
-    return {ok:true,id:reportId,status:'Pending',photoReplaced:!!newPhotoId};
-  } finally { lock.releaseLock(); }
 }
 
 /**
