@@ -1961,35 +1961,42 @@
     function setRequestProgress(active, label) { return; }
     const SIAP_API_URL = 'https://script.google.com/macros/s/AKfycbw9UJ2J6QQu0BtjSKBaqcR7yvEU-mpe8iJJf3IazeOLRDhewnOQRwT7nfzWW1egthly/exec';
 
+    // Hindari request baca identik yang terkirim bersamaan (mis. klik/menu ganda).
+    const siapReadRequests = new Map();
     async function gasCall(action, payload = {}) {
-      const labels = {login:'Memverifikasi akun…',register:'Mengirim pendaftaran…',saveAttendance:'Menyimpan presensi…',saveReport:'Mengirim laporan…',updateProfile:'Memperbarui profil…',changePassword:'Memperbarui kata sandi…',saveArchive:'Mengunggah arsip…',getAppData:'Memuat data aplikasi…',getReportPhoto:'Memuat foto laporan…'};
-      setRequestProgress(true, labels[action] || 'Sedang memproses…');
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 60000);
-      try {
-        const response = await fetch(SIAP_API_URL, {
-          method: 'POST',
-          headers: {'Content-Type': 'text/plain;charset=utf-8'},
-          body: JSON.stringify({action, payload, token: gasSessionToken}),
-          cache: 'no-store',
-          redirect: 'follow',
-          signal: controller.signal
-        });
-        let result;
-        try { result = await response.json(); }
-        catch (_) { throw new Error('Server SIAP-DPMD tidak mengembalikan JSON yang valid. Periksa deployment Web App.'); }
-        if (!response.ok || !result || result.ok !== true) {
-          throw new Error((result && result.message) || ('Permintaan gagal. HTTP ' + response.status));
-        }
-        return result;
-      } catch (err) {
-        if (err && err.name === 'AbortError') throw new Error('Permintaan ke server melewati batas waktu. Coba lagi.');
-        if (err instanceof TypeError) throw new Error('Koneksi API SIAP-DPMD gagal. Periksa deployment Web App, izin akses, dan kemungkinan pembatasan CORS.');
-        throw err;
-      } finally {
-        clearTimeout(timer);
-        setRequestProgress(false);
+      const readOnlyActions = new Set(['healthCheck','getCurrentUser','getAppData','getMonthlyProductivity','getAuditLog']);
+      const requestKey = readOnlyActions.has(action) ? action + ':' + JSON.stringify(payload) + ':' + gasSessionToken : '';
+      if (requestKey && siapReadRequests.has(requestKey)) return siapReadRequests.get(requestKey);
+      const requestPromise = (async () => {
+        const labels = {login:'Memverifikasi akun…',register:'Mengirim pendaftaran…',saveAttendance:'Menyimpan presensi…',saveReport:'Mengirim laporan…',updateProfile:'Memperbarui profil…',changePassword:'Memperbarui kata sandi…',saveArchive:'Mengunggah arsip…',getAppData:'Memuat data aplikasi…',getReportPhoto:'Memuat foto laporan…'};
+        setRequestProgress(true, labels[action] || 'Sedang memproses…');
+        const controller = new AbortController();
+        // Batas waktu lebih singkat untuk interaksi ringan; unggahan diberi waktu lebih longgar.
+        const timeoutMs = ['saveAttendance','saveReport','saveArchive','updateProfile','register'].includes(action) ? 45000 : 25000;
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const response = await fetch(SIAP_API_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'text/plain;charset=utf-8'},
+            body: JSON.stringify({action, payload, token: gasSessionToken}),
+            cache: 'no-store', redirect: 'follow', signal: controller.signal
+          });
+          let result;
+          try { result = await response.json(); }
+          catch (_) { throw new Error('Server SIAP-DPMD tidak mengembalikan JSON yang valid. Periksa deployment Web App.'); }
+          if (!response.ok || !result || result.ok !== true) throw new Error((result && result.message) || ('Permintaan gagal. HTTP ' + response.status));
+          return result;
+        } catch (err) {
+          if (err && err.name === 'AbortError') throw new Error('Permintaan ke server melewati batas waktu. Coba lagi.');
+          if (err instanceof TypeError) throw new Error('Koneksi API SIAP-DPMD gagal. Periksa deployment Web App, izin akses, dan kemungkinan pembatasan CORS.');
+          throw err;
+        } finally { clearTimeout(timer); setRequestProgress(false); }
+      })();
+      if (requestKey) {
+        siapReadRequests.set(requestKey, requestPromise);
+        requestPromise.finally(() => { if (siapReadRequests.get(requestKey) === requestPromise) siapReadRequests.delete(requestKey); }).catch(() => {});
       }
+      return requestPromise;
     }
 
     async function refreshServerData() {
@@ -2165,7 +2172,7 @@
           if (currentUser.role === 'SuperAdmin') switchAdminTab('users');
           else if (currentUser.role === 'Verifikator') renderVerifikatorDashboard();
           else renderPjlpTables();
-          renderMonthlyProductiveEmployee();
+          renderMonthlyProductiveEmployee().catch(err => console.warn('Widget produktivitas belum termuat:', err));
         } catch (loadErr) {
           console.error('Dashboard data load failed:', loadErr);
           notify('Login berhasil, tetapi sebagian data belum termuat. Gunakan Muat Ulang atau coba lagi.');
@@ -2313,19 +2320,43 @@
       }
     }
 
+    let siapLogoutInProgress = false;
     async function handleLogout() {
+      if (siapLogoutInProgress) return;
+      siapLogoutInProgress = true;
+      const oldToken = gasSessionToken;
       const logoutButton = document.querySelector('[onclick="handleLogout()"]');
-      if (logoutButton) { logoutButton.setAttribute('aria-busy','true'); }
-      try { if (gasSessionToken) await gasCall('logout', {}); } catch (_) {}
+      if (logoutButton) { logoutButton.disabled = true; logoutButton.setAttribute('aria-busy','true'); }
+      // Putuskan akses di sisi browser terlebih dahulu agar pengguna langsung keluar.
       gasSessionToken = '';
       persistSession();
       currentUser = null;
+      dbUsers = []; dbAbsensi = []; dbLaporan = []; dbArsip = []; holidayDates = {};
+      gasReady = false;
       clearLoginCredentials();
-      const alertBox = document.getElementById('modal-alert'); if (alertBox) { alertBox.textContent=''; alertBox.classList.add('hidden'); }
-      const modal = document.getElementById('auth-modal'); if (modal) modal.classList.add('hidden');
+      const alertBox = document.getElementById('modal-alert');
+      if (alertBox) { alertBox.textContent=''; alertBox.classList.add('hidden'); }
+      const modal = document.getElementById('auth-modal');
+      if (modal) modal.classList.add('hidden');
       updateUserNavbar();
       switchView('landing');
-      if (logoutButton) logoutButton.removeAttribute('aria-busy');
+      // Revoke token server-side tanpa menahan perpindahan tampilan. Token lama dikirim eksplisit.
+      try {
+        if (oldToken) {
+          const response = await fetch(SIAP_API_URL, {
+            method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+            body:JSON.stringify({action:'logout',payload:{},token:oldToken}),
+            cache:'no-store', redirect:'follow', keepalive:true
+          });
+          // Respons tidak perlu memblokir logout lokal; server akan menghapus token.
+          if (!response.ok) console.warn('Pencabutan sesi server belum terkonfirmasi.');
+        }
+      } catch (err) { console.warn('Logout lokal berhasil; pencabutan sesi server belum terkonfirmasi:', err); }
+      finally {
+        if (logoutButton) { logoutButton.disabled = false; logoutButton.removeAttribute('aria-busy'); }
+        siapLogoutInProgress = false;
+      }
+      notify('Anda telah keluar dari SIAP-DPMD.');
     }
 
     // Profile Editing & Photo Upload
@@ -4099,7 +4130,7 @@
           if (currentUser.role === 'SuperAdmin') switchAdminTab('users');
           else if (currentUser.role === 'Verifikator') renderVerifikatorDashboard();
           else renderPjlpTables();
-          renderMonthlyProductiveEmployee();
+          renderMonthlyProductiveEmployee().catch(err => console.warn('Widget produktivitas belum termuat:', err));
           return;
         } catch (err) {
           console.warn('Sesi tersimpan tidak dapat dipulihkan:', err);
