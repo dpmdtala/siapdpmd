@@ -755,6 +755,24 @@
         </div>
       </div>
 
+      <!-- MODAL EDIT / LENGKAPI LAPORAN HARIAN LAMA -->
+      <div id="edit-report-modal" class="hidden fixed inset-0 z-[110] bg-slate-900/60 p-4 overflow-y-auto no-print">
+        <div class="max-w-2xl mx-auto my-6 bg-white rounded-3xl shadow-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between gap-3"><div><h3 class="font-bold text-lg text-slate-900">Edit / Lengkapi Laporan Harian</h3><p class="text-xs text-slate-500">Pilih RHK, lengkapi uraian, volume, dan output sesuai format baru.</p></div><button type="button" onclick="closeEditReportModal()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-600" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button></div>
+          <form id="edit-report-form" onsubmit="handleUpdateOwnReport(event)" class="space-y-3">
+            <input type="hidden" id="edit-report-id">
+            <div><label class="block text-xs font-bold mb-1">Tanggal Pelaksanaan *</label><input type="date" id="edit-report-date" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></div>
+            <div class="grid grid-cols-2 gap-3"><div><label class="block text-xs font-bold mb-1">Jam Mulai *</label><input type="time" id="edit-report-start" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></div><div><label class="block text-xs font-bold mb-1">Jam Selesai *</label><input type="time" id="edit-report-end" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></div></div>
+            <div><label class="block text-xs font-bold mb-1">Rencana Hasil Kerja (RHK) *</label><select id="edit-report-rhk" required onchange="syncEditReportOutput()" class="w-full rounded-xl border border-slate-300 p-3 text-sm"><option value="">Pilih RHK</option></select></div>
+            <div><label class="block text-xs font-bold mb-1">Uraian Pekerjaan / Kegiatan *</label><textarea id="edit-report-activity" rows="3" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Jelaskan kegiatan yang dilaksanakan"></textarea></div>
+            <div class="grid grid-cols-2 gap-3"><div><label class="block text-xs font-bold mb-1">Volume *</label><input id="edit-report-volume" type="number" min="0.01" step="any" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></div><div><label class="block text-xs font-bold mb-1">Output Pekerjaan *</label><input id="edit-report-output" readonly required class="w-full rounded-xl border border-slate-300 p-3 text-sm bg-slate-50"></div></div>
+            <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">Foto lama tetap digunakan jika tidak mengunggah foto pengganti. Setelah disimpan, status laporan kembali menjadi <b>Pending</b> dan harus diverifikasi ulang agar realisasi RHK dihitung kembali.</div>
+            <div><label class="block text-xs font-bold mb-1">Ganti Foto Dokumentasi (Opsional)</label><input id="edit-report-photo" type="file" accept="image/*" onchange="previewEditReportPhoto(event)" class="w-full text-xs"><div id="edit-report-photo-preview-wrap" class="hidden mt-2"><img id="edit-report-photo-preview" class="w-full max-h-40 object-contain rounded-xl border" alt="Pratinjau foto baru"></div><p id="edit-report-photo-current" class="text-[10px] text-slate-500 mt-1"></p></div>
+            <div class="flex gap-2 pt-2"><button type="button" onclick="closeEditReportModal()" class="flex-1 rounded-xl border border-slate-300 text-slate-700 font-bold p-3 text-sm">Batal</button><button id="edit-report-submit" type="submit" class="flex-1 rounded-xl bg-blue-600 text-white font-bold p-3 text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Perubahan</button></div>
+          </form>
+        </div>
+      </div>
+
       <!-- TAB 3: INPUT KEGIATAN HARIAN -->
       <div id="pjlp-tab-kegiatan" class="hidden space-y-6">
         <div class="grid lg:grid-cols-12 gap-8">
@@ -863,6 +881,7 @@
                       <th class="py-3 px-3">Output Pekerjaan</th>
                       <th class="py-3 px-3 text-center">Foto Dokumentasi</th>
                       <th class="py-3 px-3 text-center">Status</th>
+                      <th class="py-3 px-3 text-center no-print">Aksi</th>
                     </tr>
                   </thead>
                   <tbody id="pjlp-table-body" class="divide-y divide-slate-100 font-medium text-slate-700">
@@ -2902,7 +2921,7 @@
       const tbody = document.getElementById('pjlp-table-body');
       tbody.innerHTML = "";
       if (riwayatLaporan.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="py-4 text-center text-slate-400">Belum ada laporan harian.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="py-4 text-center text-slate-400">Belum ada laporan harian.</td></tr>`;
       } else {
         riwayatLaporan.forEach(l => {
           tbody.innerHTML += `
@@ -2914,7 +2933,8 @@
               <td class="py-3 px-3 text-center font-bold">${escapeHTML(String(l.volume ?? l.realisasiQty ?? '—'))}</td>
               <td class="py-3 px-3 font-bold">${escapeHTML(l.output)}</td>
               <td data-print-photo="1" class="py-3 px-3 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
-              <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status)}</span></td>
+              <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':(l.status==='Ditolak'?'bg-rose-100 text-rose-800':'bg-amber-100 text-amber-800')}">${escapeHTML(l.status)}</span></td>
+              <td class="py-3 px-3 text-center no-print"><button type="button" onclick="openEditReportModal(${safeJsArg(l.id)})" class="px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold hover:bg-amber-100"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit</button></td>
             </tr>
           `;
         });
@@ -3536,6 +3556,48 @@
       } finally {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = submitBtn.dataset.originalText || 'Kirim Kegiatan'; }
       }
+    }
+
+    let editReportPhotoBase64 = null;
+    let editReportPhotoBusy = false;
+    function openEditReportModal(reportId) {
+      const row=(dbLaporan||[]).find(r=>String(r.id)===String(reportId));
+      if(!row){notify('Laporan tidak ditemukan. Muat ulang data terlebih dahulu.');return;}
+      if(String(row.integrationId||'').trim()){notify('Laporan dari LINTAS tidak dapat diedit melalui menu ini.');return;}
+      const date=String(dateKeyISO(row.tanggal)||'').slice(0,10);
+      const year=date.slice(0,4);
+      const options=(dbRhk||[]).filter(r=>String(r.userId)===String(currentUser.id)&&String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif');
+      const select=document.getElementById('edit-report-rhk');
+      select.innerHTML='<option value="">Pilih RHK</option>'+options.map(r=>`<option value="${escapeHTML(r.id)}">${escapeHTML(r.uraianHasilKerja)} — ${escapeHTML(r.targetTahunan)} ${escapeHTML(r.satuanTarget||'')}</option>`).join('');
+      document.getElementById('edit-report-id').value=row.id;
+      document.getElementById('edit-report-date').value=date;
+      document.getElementById('edit-report-start').value=String(row.jamMulai||'').slice(0,5);
+      document.getElementById('edit-report-end').value=String(row.jamSelesai||'').slice(0,5);
+      document.getElementById('edit-report-activity').value=row.kegiatan||'';
+      document.getElementById('edit-report-volume').value=row.volume??row.realisasiQty??'';
+      select.value=options.some(r=>String(r.id)===String(row.rhkId))?String(row.rhkId):'';
+      editReportPhotoBase64=null; editReportPhotoBusy=false;
+      document.getElementById('edit-report-photo').value='';
+      document.getElementById('edit-report-photo-preview-wrap').classList.add('hidden');
+      document.getElementById('edit-report-photo-current').textContent=row.foto?'Foto dokumentasi lama tersimpan. Unggah foto baru hanya jika ingin menggantinya.':'Belum ada foto lama yang terdeteksi; unggah foto jika diperlukan.';
+      syncEditReportOutput();
+      document.getElementById('edit-report-modal').classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    }
+    function closeEditReportModal(){document.getElementById('edit-report-modal')?.classList.add('hidden');document.body.classList.remove('overflow-hidden');editReportPhotoBase64=null;editReportPhotoBusy=false;}
+    function syncEditReportOutput(){const id=document.getElementById('edit-report-rhk')?.value||'';const row=(dbRhk||[]).find(r=>String(r.id)===String(id));const out=document.getElementById('edit-report-output');if(out)out.value=row?(row.outputPekerjaan||row.satuanTarget||''):'';}
+    async function previewEditReportPhoto(e){const file=e?.target?.files?.[0];editReportPhotoBase64=null;if(!file)return;if(file.size>20*1024*1024){e.target.value='';notify('Ukuran foto asli maksimal 20 MB.');return;}editReportPhotoBusy=true;try{editReportPhotoBase64=await compressImageFile(file);document.getElementById('edit-report-photo-preview').src=editReportPhotoBase64;document.getElementById('edit-report-photo-preview-wrap').classList.remove('hidden');}catch(err){e.target.value='';notify('Foto gagal diproses: '+(err.message||err));}finally{editReportPhotoBusy=false;}}
+    async function handleUpdateOwnReport(e){
+      e.preventDefault();if(editReportPhotoBusy){notify('Tunggu proses optimasi foto selesai.');return;}
+      const btn=document.getElementById('edit-report-submit');if(btn.disabled)return;
+      const reportId=document.getElementById('edit-report-id').value;
+      const payload={reportId,tanggal:document.getElementById('edit-report-date').value,jamMulai:document.getElementById('edit-report-start').value,jamSelesai:document.getElementById('edit-report-end').value,rhkId:document.getElementById('edit-report-rhk').value,kegiatan:document.getElementById('edit-report-activity').value.trim(),volume:document.getElementById('edit-report-volume').value,output:document.getElementById('edit-report-output').value};
+      if(editReportPhotoBase64)payload.foto=editReportPhotoBase64;
+      if(!payload.rhkId||!payload.kegiatan||!payload.output||!payload.volume){notify('Lengkapi RHK, uraian kegiatan, volume, dan output.');return;}
+      btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-2"></i>Menyimpan…';
+      try{await gasCall('updateOwnReport',payload);await refreshServerData();renderPjlpTables();renderRhkPanel();closeEditReportModal();notify('Laporan berhasil diperbarui dan dikirim ulang untuk verifikasi. Status menjadi Pending.');}
+      catch(err){notify('Laporan gagal diperbarui: '+(err.message||err));}
+      finally{btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Perubahan';}
     }
 
     function openUploadArsipModal() { document.getElementById('arsip-modal').classList.remove('hidden'); }
