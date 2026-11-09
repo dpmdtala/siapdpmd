@@ -586,7 +586,12 @@
                 <div class="rounded-xl border border-amber-100 bg-amber-50 p-3"><p class="text-[10px] font-bold uppercase text-amber-700">Jumlah Izin</p><p id="absen-stat-izin" class="mt-1 text-xl font-black text-amber-800">0</p></div>
                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-600">Jumlah Absen</p><p id="absen-stat-absen" class="mt-1 text-xl font-black text-slate-800">0</p></div>
               </div>
-<form onsubmit="handleSaveAbsen(event)" class="space-y-4">
+              <form onsubmit="handleSaveAbsen(event)" class="space-y-4">
+                <div id="absen-tanggal-wrap" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-1">
+                  <label for="absen-tanggal" class="block text-xs font-extrabold text-amber-900 uppercase">Tanggal Presensi Manual</label>
+                  <input type="date" id="absen-tanggal" class="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 bg-white text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500">
+                  <p id="absen-tanggal-help" class="text-[10px] text-amber-800">Tanggal hanya dapat dipilih dalam bulan berjalan hingga hari ini. Jam tercatat mengikuti waktu saat data diinput.</p>
+                </div>
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase mb-1">1. Status Kehadiran (Pilih Dulu)</label>
                   <select id="absen-status" required onchange="handleStatusChange()" class="w-full px-3.5 py-2.5 rounded-xl border border-blue-300 text-xs font-bold outline-none bg-blue-50/40 focus:ring-2 focus:ring-blue-600">
@@ -1096,6 +1101,20 @@
         </div>
         <button id="admin-report-date-toggle" type="button" onclick="toggleGlobalReportDatePolicy()" class="shrink-0 px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-2">
           <i class="fa-solid fa-lock"></i><span>KUNCI TANGGAL</span>
+        </button>
+      </div>
+
+      <div id="admin-attendance-date-policy" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-start gap-3">
+          <div id="admin-attendance-date-icon" class="w-11 h-11 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center text-lg"><i class="fa-solid fa-location-dot"></i></div>
+          <div>
+            <h3 class="font-extrabold text-slate-900">Pengaturan Global Presensi Manual</h3>
+            <p id="admin-attendance-date-status" class="text-sm font-bold text-rose-700 mt-1">Presensi manual TERKUNCI</p>
+            <p id="admin-attendance-date-description" class="text-xs text-slate-500 mt-1">Seluruh pegawai menggunakan presensi normal dengan GPS, radius kantor, dan jadwal presensi.</p>
+          </div>
+        </div>
+        <button id="admin-attendance-date-toggle" type="button" onclick="toggleGlobalAttendanceDatePolicy()" class="shrink-0 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-unlock"></i><span>BUKA PRESENSI MANUAL</span>
         </button>
       </div>
       
@@ -1933,6 +1952,7 @@
     let gasReady = false;
     // Kebijakan tanggal global dibaca dari backend; default terbuka untuk mempertahankan perilaku Revisi 6.
     let reportDateOpen = true;
+    let attendanceDateOpen = false;
 
     // Escape teks dinamis sebelum dimasukkan ke template HTML.
     // Data dari Google Sheets harus diperlakukan sebagai teks, bukan markup.
@@ -2015,8 +2035,10 @@
       holidayDates = result.holidays || {};
       dbLaporan = result.reports || [];
       reportDateOpen = result.reportDateOpen !== false;
+      attendanceDateOpen = result.attendanceDateOpen === true;
       applyReportDatePolicy();
-      if (currentUser && currentUser.role === 'SuperAdmin') renderGlobalReportDatePolicy();
+      applyAttendanceDatePolicy();
+      if (currentUser && currentUser.role === 'SuperAdmin') { renderGlobalReportDatePolicy(); renderGlobalAttendanceDatePolicy(); }
       dbArsip = result.archives || [];
       gasReady = true;
       if (currentUser) {
@@ -3135,6 +3157,7 @@
       if (evidenceInput) evidenceInput.required = needsEvidence;
       if (!needsEvidence) { attendanceEvidenceDataUrl=''; attendanceEvidenceName=''; if(evidenceInput) evidenceInput.value=''; const nameEl=document.getElementById('absen-evidence-file-name'); if(nameEl) nameEl.textContent=''; }
       if (!card || !title || !desc) return;
+      if (attendanceDateOpen) { applyAttendanceDatePolicy(); return; }
       if (status === 'Hadir') {
         card.className = "p-3.5 rounded-2xl text-xs font-bold border flex items-center justify-between bg-sky-50 text-sky-900 border-sky-200";
         title.innerText = "Radius 30m Kantor DPMD Aktif";
@@ -3160,6 +3183,17 @@
     }
 
     function validateAttendanceWindow(showMessage = true) {
+      if (attendanceDateOpen) {
+        const input = document.getElementById('absen-tanggal');
+        const today = getTodayWitaKey();
+        const selected = input ? input.value : today;
+        const min = today.slice(0,7) + '-01';
+        const invalid = !selected || selected < min || selected > today;
+        const submit = document.getElementById('btn-submit-absen');
+        if (submit) { submit.disabled = invalid; submit.classList.toggle('opacity-50', invalid); submit.classList.toggle('cursor-not-allowed', invalid); const span=submit.querySelector('span'); if (span) span.textContent = invalid ? 'Pilih tanggal bulan berjalan' : 'Simpan Presensi Manual'; }
+        if (invalid && showMessage) notify('Pilih tanggal pada bulan berjalan dan tidak boleh melewati hari ini.');
+        return !invalid;
+      }
       const sesi = document.querySelector('input[name="absen-sesi"]:checked')?.value || 'Masuk';
       const sch = getLocalWorkSchedule();
       let message = '';
@@ -3181,6 +3215,7 @@
 
     async function checkUserLocation(options = {}) {
       const silent = typeof options === 'boolean' ? options : !!options.silent;
+      if (attendanceDateOpen) { applyAttendanceDatePolicy(); return true; }
       const status = document.getElementById('absen-status')?.value || 'Hadir';
       const title = document.getElementById('geofence-title');
       const desc = document.getElementById('geofence-desc');
@@ -3238,7 +3273,8 @@
       sigCanvas = document.getElementById('sig-canvas');
       document.querySelectorAll('input[name="absen-sesi"]').forEach(el => el.addEventListener('change', () => validateAttendanceWindow(false)));
       document.getElementById('lap-tanggal')?.addEventListener('change', e => { e.target.dataset.userSelected = 'true'; });
-      document.getElementById('absen-status')?.addEventListener('change', () => { locationVerified=false; lastGpsPosition=null; checkUserLocation({silent:true}); });
+      document.getElementById('absen-status')?.addEventListener('change', () => { locationVerified=false; lastGpsPosition=null; if (attendanceDateOpen) applyAttendanceDatePolicy(); else checkUserLocation({silent:true}); });
+      document.getElementById('absen-tanggal')?.addEventListener('change', () => validateAttendanceWindow(false));
       setInterval(() => validateAttendanceWindow(false), 1000);
       validateAttendanceWindow(false);
       if (sigCanvas) {
@@ -3259,6 +3295,7 @@
     async function handleSaveAbsen(e) {
       e.preventDefault();
       if (attendanceSubmissionInFlight) { notify('Presensi sedang diproses. Mohon tunggu sampai selesai.'); return; }
+      try { await syncGlobalAttendanceDatePolicy(); } catch (policyErr) { notify('Status pengaturan presensi belum dapat diverifikasi. Periksa koneksi lalu coba kembali.'); return; }
       if (!validateAttendanceWindow(true)) return;
       if (['Dinas Luar','Izin','Sakit'].includes(document.getElementById('absen-status').value) && !attendanceEvidenceDataUrl) { notify('Unggah Surat Tugas, Surat Izin, atau Surat Sakit sebelum menyimpan presensi.'); return; }
       if (!signatureDrawn) { notify('Tanda tangan digital wajib dibubuhkan sebelum menyimpan presensi.'); return; }
@@ -3267,24 +3304,27 @@
       const catatan = ['Dinas Luar','Izin','Sakit'].includes(status) && catatanInput ? catatanInput.value.trim() : '';
       if (['Dinas Luar','Izin','Sakit'].includes(status) && !catatan) { notify('Catatan / Detail Lokasi wajib diisi untuk status ' + status + '.'); if (catatanInput) catatanInput.focus(); return; }
       const sesi = document.querySelector('input[name="absen-sesi"]:checked')?.value || 'Masuk';
-      const todayLocalKey = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Makassar', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
-      const alreadyRecorded = (dbAbsensi || []).some(a => String(a.userId) === String(currentUser?.id) && dateKeyISO(a.tanggal) === todayLocalKey && String(a.sesi || '').toLowerCase() === sesi.toLowerCase());
-      if (alreadyRecorded) { notify(`Anda sudah melakukan presensi ${sesi} hari ini.`); return; }
-      if (!lastGpsPosition || !locationVerified || !lastGpsPosition.capturedAt || Date.now() - lastGpsPosition.capturedAt > 120000) {
-        const gpsReady = await checkUserLocation({silent:false});
-        if (!gpsReady) return;
+      const todayLocalKey = getTodayWitaKey();
+      const attendanceDate = attendanceDateOpen ? (document.getElementById('absen-tanggal')?.value || todayLocalKey) : todayLocalKey;
+      const alreadyRecorded = (dbAbsensi || []).some(a => String(a.userId) === String(currentUser?.id) && dateKeyISO(a.tanggal) === attendanceDate && String(a.sesi || '').toLowerCase() === sesi.toLowerCase());
+      if (alreadyRecorded) { notify(`Anda sudah melakukan presensi ${sesi} pada tanggal ${formatDateDisplay(attendanceDate)}.`); return; }
+      if (!attendanceDateOpen) {
+        if (!lastGpsPosition || !locationVerified || !lastGpsPosition.capturedAt || Date.now() - lastGpsPosition.capturedAt > 120000) {
+          const gpsReady = await checkUserLocation({silent:false});
+          if (!gpsReady) return;
+        }
+        if (status === 'Hadir' && (!locationWithinFence || lastGpsPosition.distanceMeters > 30)) { notify('Anda berada diluar radius kantor !'); return; }
       }
-      if (status === 'Hadir' && (!locationWithinFence || lastGpsPosition.distanceMeters > 30)) { notify('Anda berada diluar radius kantor !'); return; }
       attendanceSubmissionInFlight = true;
       const button = document.getElementById('btn-submit-absen');
       if (button) { button.disabled = true; button.classList.add('opacity-50'); }
       try {
         const result = await gasCall('saveAttendance', {
-          status, sesi, catatan,
-          latitude:lastGpsPosition.latitude,
-          longitude:lastGpsPosition.longitude,
-          accuracy:lastGpsPosition.accuracy,
-          distanceMeters:lastGpsPosition.distanceMeters,
+          status, sesi, catatan, tanggal:attendanceDate,
+          latitude:attendanceDateOpen ? '' : lastGpsPosition.latitude,
+          longitude:attendanceDateOpen ? '' : lastGpsPosition.longitude,
+          accuracy:attendanceDateOpen ? '' : lastGpsPosition.accuracy,
+          distanceMeters:attendanceDateOpen ? '' : lastGpsPosition.distanceMeters,
           signature:(sigCanvas && signatureDrawn) ? sigCanvas.toDataURL('image/png') : '',
           suratData:attendanceEvidenceDataUrl, suratNama:attendanceEvidenceName
         });
@@ -3448,6 +3488,86 @@
       } catch (err) {
         notify('Pengaturan tanggal gagal diperbarui: ' + (err.message || err));
         renderGlobalReportDatePolicy();
+      } finally { if (button) button.disabled=false; }
+    }
+
+    async function syncGlobalAttendanceDatePolicy() {
+      const result = await gasCall('getGlobalAttendanceDatePolicy', {});
+      attendanceDateOpen = result.attendanceDateOpen === true;
+      applyAttendanceDatePolicy();
+      if (currentUser && currentUser.role === 'SuperAdmin') renderGlobalAttendanceDatePolicy();
+      return attendanceDateOpen;
+    }
+
+    function applyAttendanceDatePolicy() {
+      const wrap = document.getElementById('absen-tanggal-wrap');
+      const input = document.getElementById('absen-tanggal');
+      const card = document.getElementById('geofence-status-card');
+      const title = document.getElementById('geofence-title');
+      const desc = document.getElementById('geofence-desc');
+      const today = getTodayWitaKey();
+      if (input) {
+        input.max = today;
+        input.min = attendanceDateOpen ? today.slice(0,7) + '-01' : today;
+        if (!attendanceDateOpen || !input.value || input.value < input.min || input.value > today) input.value = today;
+      }
+      if (wrap) wrap.classList.toggle('hidden', !attendanceDateOpen);
+      if (card && title && desc) {
+        if (attendanceDateOpen) {
+          card.className = 'p-3.5 rounded-2xl text-xs font-bold border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-amber-50 text-amber-900 border-amber-200 w-full min-w-0';
+          title.textContent = 'Mode Presensi Manual Dibuka Admin';
+          desc.textContent = 'Tidak memerlukan GPS atau radius kantor. Pilih tanggal pada bulan berjalan; jam mengikuti waktu input.';
+        } else {
+          const status = document.getElementById('absen-status')?.value || 'Hadir';
+          card.className = 'p-3.5 rounded-2xl text-xs font-bold border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-sky-50 text-sky-900 border-sky-200 w-full min-w-0';
+          title.textContent = status === 'Hadir' ? 'Radius 30m Kantor DPMD Aktif' : 'Perekaman Koordinat Lokasi (' + status + ')';
+          desc.textContent = status === 'Hadir' ? 'Koordinat Kantor DPMD: -3.7994516, 114.7790374' : 'GPS merekam koordinat lokasi tempat Anda berada.';
+        }
+      }
+      validateAttendanceWindow(false);
+    }
+
+    function renderGlobalAttendanceDatePolicy() {
+      const status = document.getElementById('admin-attendance-date-status');
+      const desc = document.getElementById('admin-attendance-date-description');
+      const button = document.getElementById('admin-attendance-date-toggle');
+      const icon = document.getElementById('admin-attendance-date-icon');
+      if (!status || !button) return;
+      if (attendanceDateOpen) {
+        status.textContent = 'Presensi manual TERBUKA';
+        status.className = 'text-sm font-bold text-emerald-700 mt-1';
+        if (desc) desc.textContent = 'Seluruh pegawai dapat memilih tanggal sebelumnya dalam bulan berjalan hingga hari ini. GPS, radius, dan batas jam dinonaktifkan sementara.';
+        button.className = 'shrink-0 px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-2';
+        button.innerHTML = '<i class="fa-solid fa-lock"></i><span>KUNCI PRESENSI MANUAL</span>';
+        if (icon) { icon.className='w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-lg'; icon.innerHTML='<i class="fa-solid fa-lock-open"></i>'; }
+      } else {
+        status.textContent = 'Presensi manual TERKUNCI';
+        status.className = 'text-sm font-bold text-rose-700 mt-1';
+        if (desc) desc.textContent = 'Seluruh pegawai menggunakan presensi normal dengan GPS, radius kantor, dan jadwal presensi.';
+        button.className = 'shrink-0 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm transition flex items-center justify-center gap-2';
+        button.innerHTML = '<i class="fa-solid fa-unlock"></i><span>BUKA PRESENSI MANUAL</span>';
+        if (icon) { icon.className='w-11 h-11 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center text-lg'; icon.innerHTML='<i class="fa-solid fa-lock"></i>'; }
+      }
+    }
+
+    async function toggleGlobalAttendanceDatePolicy() {
+      if (!currentUser || currentUser.role !== 'SuperAdmin') { notify('Hanya Super Admin yang dapat mengubah pengaturan presensi.'); return; }
+      const nextOpen = !attendanceDateOpen;
+      const question = nextOpen
+        ? 'Buka presensi manual untuk seluruh pegawai? Pegawai dapat mengisi tanggal sebelumnya dalam bulan berjalan tanpa GPS dan batas jam.'
+        : 'Kunci presensi manual untuk seluruh pegawai? Presensi normal dengan GPS, radius kantor, dan jadwal akan diberlakukan kembali.';
+      if (!confirm(question)) return;
+      const button = document.getElementById('admin-attendance-date-toggle');
+      if (button) { button.disabled=true; button.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i><span>Menyimpan…</span>'; }
+      try {
+        const result = await gasCall('setGlobalAttendanceDatePolicy', {open:nextOpen});
+        attendanceDateOpen = result.attendanceDateOpen === true;
+        applyAttendanceDatePolicy();
+        renderGlobalAttendanceDatePolicy();
+        notify(attendanceDateOpen ? 'Presensi manual berhasil DIBUKA untuk seluruh pegawai.' : 'Presensi manual berhasil DIKUNCI untuk seluruh pegawai.');
+      } catch (err) {
+        notify('Pengaturan presensi gagal diperbarui: ' + (err.message || err));
+        renderGlobalAttendanceDatePolicy();
       } finally { if (button) button.disabled=false; }
     }
 
@@ -4171,7 +4291,7 @@
       updateLiveClock();
       setInterval(updateLiveClock, 1000);
       // Sinkronkan status buka/kunci lintas akun secara berkala; backend tetap menjadi sumber validasi utama.
-      setInterval(() => { if (currentUser && currentUser.role === 'PJLP' && gasSessionToken) syncGlobalReportDatePolicy().catch(() => {}); }, 30000);
+      setInterval(() => { if (currentUser && currentUser.role === 'PJLP' && gasSessionToken) { syncGlobalReportDatePolicy().catch(() => {}); syncGlobalAttendanceDatePolicy().catch(() => {}); } }, 30000);
       gasSessionToken = readSavedSession();
       let lastError = null;
       for (let attempt = 0; attempt < 3; attempt++) {
