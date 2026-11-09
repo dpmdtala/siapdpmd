@@ -402,6 +402,9 @@
         <button id="pjlp-tab-btn-hadir" onclick="switchPjlpTab('hadir')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-fingerprint"></i> Presensi / Daftar Hadir
         </button>
+        <button id="pjlp-tab-btn-rhk" onclick="switchPjlpTab('rhk')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
+          <i class="fa-solid fa-bullseye"></i> Rencana Hasil Kerja (RHK)
+        </button>
         <button id="pjlp-tab-btn-kegiatan" onclick="switchPjlpTab('kegiatan')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-pen-to-square"></i> Input Kegiatan Harian
         </button>
@@ -712,6 +715,54 @@
         </div>
       </div>
 
+      <!-- TAB RHK: RENCANA HASIL KERJA -->
+      <div id="pjlp-tab-rhk" class="hidden space-y-6">
+        <div class="grid lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div><h3 class="font-bold text-slate-900">Tambah Rencana Hasil Kerja</h3><p class="text-xs text-slate-500">RHK langsung aktif setelah disimpan.</p></div>
+            <form onsubmit="handleSaveRhk(event)" class="space-y-3">
+              <div><label class="block text-xs font-bold mb-1">Uraian Hasil Kerja *</label><textarea id="rhk-uraian" rows="3" maxlength="500" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Tuliskan hasil kerja yang direncanakan"></textarea></div>
+              <div class="grid grid-cols-2 gap-2 items-end"><div><label class="block text-xs font-bold mb-1">Target Bulanan *</label><input id="rhk-target" type="number" min="0.01" step="any" required class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm" placeholder="Contoh: 3"></div><div><label class="block text-xs font-bold mb-1">Satuan Target *</label><input id="rhk-satuan" maxlength="80" required class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm" placeholder="Contoh: Dokumen"></div></div><p class="text-[11px] text-slate-500 -mt-1">Target tahunan dihitung otomatis dari target bulanan dikalikan jumlah bulan pelaksanaan.</p>
+              <div>
+                <label class="block text-xs font-bold mb-2">Waktu Pelaksanaan (Bulan) *</label>
+                <div id="rhk-waktu" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Januari" class="rounded">Januari</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Februari" class="rounded">Februari</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Maret" class="rounded">Maret</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="April" class="rounded">April</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Mei" class="rounded">Mei</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Juni" class="rounded">Juni</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Juli" class="rounded">Juli</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Agustus" class="rounded">Agustus</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="September" class="rounded">September</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Oktober" class="rounded">Oktober</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="November" class="rounded">November</label>
+                  <label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-bulan" value="Desember" class="rounded">Desember</label>
+                </div><p class="text-[10px] text-slate-500 mt-1">Pilih satu atau beberapa bulan pelaksanaan.</p></div>
+              <button type="submit" class="w-full rounded-xl bg-blue-600 text-white font-bold p-3 text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Simpan RHK</button>
+            </form>
+          </div>
+          <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center justify-between"><div><h3 class="font-bold">Daftar RHK Saya</h3><p class="text-xs text-slate-500">RHK aktif yang menjadi acuan laporan harian.</p></div><span id="rhk-total" class="text-xs font-bold bg-blue-50 text-blue-700 px-3 py-1 rounded-full">0 RHK</span></div>
+            <div id="rhk-list" class="space-y-3"><p class="text-sm text-slate-400">Belum ada RHK. Tambahkan RHK terlebih dahulu.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL EDIT RHK -->
+      <div id="rhk-edit-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/60 p-4 overflow-y-auto">
+        <div class="max-w-xl mx-auto my-8 bg-white rounded-3xl shadow-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between gap-3"><div><h3 class="font-bold text-lg text-slate-900">Edit Rencana Hasil Kerja</h3><p class="text-xs text-slate-500">Perubahan akan langsung tersimpan pada RHK Anda.</p></div><button type="button" onclick="closeEditRhk()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-600" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button></div>
+          <form id="rhk-edit-form" onsubmit="handleUpdateRhk(event)" class="space-y-3"><input type="hidden" id="rhk-edit-id">
+            <div><label class="block text-xs font-bold mb-1">Uraian Hasil Kerja *</label><textarea id="rhk-edit-uraian" rows="3" maxlength="500" required class="w-full rounded-xl border border-slate-300 p-3 text-sm"></textarea></div>
+            <div class="grid grid-cols-2 gap-2 items-end"><div><label class="block text-xs font-bold mb-1">Target Bulanan *</label><input id="rhk-edit-target" type="number" min="0.01" step="any" required class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"></div><div><label class="block text-xs font-bold mb-1">Satuan Target *</label><input id="rhk-edit-satuan" maxlength="80" required class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"></div></div><p class="text-[11px] text-slate-500 -mt-1">Target tahunan dihitung otomatis dari target bulanan dikalikan jumlah bulan pelaksanaan.</p>
+            <div><label class="block text-xs font-bold mb-2">Waktu Pelaksanaan (Bulan) *</label><div id="rhk-edit-waktu" class="grid grid-cols-3 sm:grid-cols-4 gap-2"><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Januari" class="rounded">Januari</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Februari" class="rounded">Februari</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Maret" class="rounded">Maret</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="April" class="rounded">April</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Mei" class="rounded">Mei</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Juni" class="rounded">Juni</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Juli" class="rounded">Juli</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Agustus" class="rounded">Agustus</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="September" class="rounded">September</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Oktober" class="rounded">Oktober</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="November" class="rounded">November</label><label class="flex items-center gap-1.5 rounded-lg border border-slate-200 p-2 text-xs"><input type="checkbox" name="rhk-edit-bulan" value="Desember" class="rounded">Desember</label></div></div>
+            <div class="flex gap-2 pt-2"><button type="button" onclick="closeEditRhk()" class="flex-1 rounded-xl border border-slate-300 text-slate-700 font-bold p-3 text-sm">Batal</button><button type="submit" class="flex-1 rounded-xl bg-blue-600 text-white font-bold p-3 text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Perubahan</button></div>
+          </form>
+        </div>
+      </div>
+
+
       <!-- TAB 3: INPUT KEGIATAN HARIAN -->
       <div id="pjlp-tab-kegiatan" class="hidden space-y-6">
         <div class="grid lg:grid-cols-12 gap-8">
@@ -742,15 +793,28 @@
                 </div>
 
                 <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Rencana Hasil Kerja (RHK) <span class="text-rose-500">*</span></label>
+                  <select id="lap-rhk-id" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold bg-white"><option value="">Pilih RHK yang relevan</option></select>
+                  <p class="text-[10px] text-slate-500 mt-1">Pilih RHK terlebih dahulu sebagai acuan uraian kegiatan dan output pekerjaan hari ini.</p>
+                </div>
+
+                <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Uraian Pekerjaan / Kegiatan <span class="text-rose-500">*</span></label>
                   <textarea id="lap-kegiatan" rows="4" required placeholder="Jelaskan secara rinci pekerjaan harian yang telah diselesaikan hari ini..." 
                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 outline-none"></textarea>
                 </div>
 
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Volume / Output Pekerjaan <span class="text-rose-500">*</span></label>
-                  <input type="text" id="lap-output" required placeholder="Contoh: 3 Berkas / 1 Kegiatan / 5 Dokumen" 
-                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 outline-none">
+                <div class="grid grid-cols-2 gap-3 items-start">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Volume <span class="text-rose-500">*</span></label>
+                    <input type="number" id="lap-volume" min="0.01" step="any" required placeholder="Contoh: 1" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-bold">
+                    <p id="lap-volume-unit" class="text-[10px] text-slate-500 mt-1">Isi jumlah sesuai satuan target RHK.</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Output Pekerjaan <span class="text-rose-500">*</span></label>
+                    <input type="text" id="lap-output" required readonly placeholder="Terisi otomatis dari RHK yang dipilih" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium">
+                    <p class="text-[10px] text-slate-500 mt-1">Terisi otomatis mengikuti Satuan Target RHK.</p>
+                  </div>
                 </div>
 
                 <div>
@@ -801,8 +865,11 @@
                     <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                       <th class="py-3 px-3">Tanggal</th>
                       <th class="py-3 px-3">Waktu</th>
-                      <th class="py-3 px-3">Uraian Kegiatan</th>
-                      <th class="py-3 px-3">Output</th>
+                      <th class="py-3 px-3">Rencana Hasil Kerja (RHK)</th>
+                      <th class="py-3 px-3">Uraian Pekerjaan / Kegiatan</th>
+                      <th class="py-3 px-3 text-center">Volume</th>
+                      <th class="py-3 px-3">Output Pekerjaan</th>
+                      <th class="py-3 px-3 text-center">Foto Dokumentasi</th>
                       <th class="py-3 px-3 text-center">Status</th>
                     </tr>
                   </thead>
@@ -932,10 +999,15 @@
           </div>
           <div class="overflow-x-auto border border-slate-200 rounded-xl">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="py-3 px-3">Waktu</th><th class="p-3">Kegiatan</th><th class="p-3">Output</th><th class="p-3">Foto Dokumentasi</th></tr></thead>
-              <tbody id="rekap-kinerja-month-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr></tbody>
+              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="py-3 px-3">Waktu</th><th class="p-3">Rencana Hasil Kerja (RHK)</th><th class="p-3">Uraian Pekerjaan / Kegiatan</th><th class="p-3 text-center">Volume</th><th class="p-3">Output Pekerjaan</th><th class="p-3">Foto Dokumentasi</th></tr></thead>
+              <tbody id="rekap-kinerja-month-body" class="divide-y divide-slate-100"><tr><td colspan="7" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr></tbody>
             </table>
           </div>
+          <section class="border border-slate-200 rounded-xl overflow-hidden" id="rekap-rhk-summary-section">
+            <h4 class="px-4 py-3 bg-slate-50 font-bold text-slate-800 text-xs">Ringkasan Realisasi RHK</h4>
+            <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-white text-slate-600"><tr><th class="p-3">Rencana Hasil Kerja</th><th class="p-3">Output Pekerjaan</th><th class="p-3 text-right">Target Tahunan (Hasil Perhitungan)</th><th class="p-3 text-right">Target Bulanan</th><th class="p-3 text-right">Realisasi Bulanan</th><th class="p-3 text-right">Realisasi Kumulatif</th><th class="p-3 text-right">Capaian Tahunan</th></tr></thead><tbody id="rekap-rhk-summary-body"><tr><td colspan="7" class="p-3 text-center text-slate-400">Belum ada realisasi RHK.</td></tr></tbody></table></div>
+            <p class="px-3 py-2 text-[10px] text-slate-500">Realisasi dihitung dari laporan harian berstatus Disetujui. Laporan Pending dan Ditolak tidak diperhitungkan.</p>
+          </section>
         </div>
       </div>
 
@@ -1950,6 +2022,7 @@
     let dbAbsensi = [];
     let holidayDates = {};
     let dbLaporan = [];
+    let dbRhk = [];
     let dbArsip = [];
     let gasSessionToken = '';
     const SIAP_SESSION_KEY = 'siapdpmd_session_v1';
@@ -2040,6 +2113,7 @@
       dbAbsensi = result.attendance || [];
       holidayDates = result.holidays || {};
       dbLaporan = result.reports || [];
+      dbRhk = result.rhks || [];
       reportDateOpen = result.reportDateOpen !== false;
       attendanceDateOpen = result.attendanceDateOpen === true;
       applyReportDatePolicy();
@@ -2773,6 +2847,7 @@
       const myAbsensi = applyDateFilter(allMyAbsensi, 'filter-riwayat-absensi-tanggal');
       const myArsip = dbArsip.filter(ar => ar.userId === currentUser.id);
       renderMonthlyRecaps(allMyAbsensi, allMyLaporan);
+      renderRhkPanel();
 
       const nowForStats = new Date(new Date().toLocaleString('en-US', {timeZone:'Asia/Makassar'}));
       const thisMonthKey = `${nowForStats.getFullYear()}-${String(nowForStats.getMonth()+1).padStart(2,'0')}`;
@@ -2865,17 +2940,19 @@
       const tbody = document.getElementById('pjlp-table-body');
       tbody.innerHTML = "";
       if (riwayatLaporan.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-400">Belum ada laporan harian.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="py-4 text-center text-slate-400">Belum ada laporan harian.</td></tr>`;
       } else {
         riwayatLaporan.forEach(l => {
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition">
               <td class="py-3 px-3 font-semibold">${escapeHTML(formatDateDisplay(l.tanggal))}</td>
               <td class="py-3 px-3 whitespace-nowrap">${escapeHTML(l.jamMulai ? formatTimeDisplay(l.jamMulai) : "—")}–${escapeHTML(l.jamSelesai ? formatTimeDisplay(l.jamSelesai) : "—")}</td>
+              <td class="py-3 px-3">${escapeHTML((dbRhk||[]).find(x=>String(x.id)===String(l.rhkId))?.uraianHasilKerja||l.rhkUraian||'—')}</td>
               <td class="py-3 px-3">${escapeHTML(l.kegiatan)}</td>
+              <td class="py-3 px-3 text-center font-bold">${escapeHTML(String(l.volume ?? l.realisasiQty ?? '—'))}</td>
               <td class="py-3 px-3 font-bold">${escapeHTML(l.output)}</td>
-              <td class="py-3 px-3 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
-              <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${escapeHTML(l.status)}</span></td>
+              <td data-print-photo="1" class="py-3 px-3 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
+              <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':(l.status==='Ditolak'?'bg-rose-100 text-rose-800':'bg-amber-100 text-amber-800')}">${escapeHTML(l.status)}</span></td>
             </tr>
           `;
         });
@@ -3591,13 +3668,117 @@
       } finally { if (button) button.disabled=false; }
     }
 
-    async function handleSaveLaporan(e) {
+    function renderRhkPanel() {
+      const list=document.getElementById('rhk-list'); if(!list)return;
+      const year=String(new Date().getFullYear());
+      const rows=(dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif');
+      const count=document.getElementById('rhk-total'); if(count)count.textContent=rows.length+' RHK';
+      if(!rows.length){list.innerHTML='<p class="text-sm text-slate-400">Belum ada RHK aktif untuk tahun '+year+'.</p>';populateRhkSelect();return;}
+      list.innerHTML=rows.map(r=>`<div class="border border-slate-200 rounded-2xl p-4 space-y-2"><div class="flex items-start justify-between gap-2"><h4 class="font-bold text-sm">${escapeHTML(r.uraianHasilKerja||'')}</h4><span class="text-[10px] rounded-full bg-emerald-50 text-emerald-700 px-2 py-1 font-bold">Aktif</span></div><div class="grid grid-cols-2 gap-2 text-xs"><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Target bulanan</span><div class="font-bold">${formatRhkQuantity(getRhkMonthlyTargetValue(r))} ${escapeHTML(r.satuanTarget||'')}</div></div><div class="bg-slate-50 rounded-lg p-2"><span class="text-slate-500">Waktu pelaksanaan</span><div class="font-bold">${escapeHTML(r.waktuPelaksanaan||'')}</div></div></div><div class="flex justify-end gap-2 pt-1"><button type="button" onclick="openEditRhk('${escapeHTML(r.id)}')" class="rounded-lg border border-blue-200 bg-blue-50 text-blue-700 px-3 py-2 text-xs font-bold hover:bg-blue-100"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit RHK</button><button type="button" onclick="handleDeleteRhk('${escapeHTML(r.id)}')" class="rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-3 py-2 text-xs font-bold hover:bg-rose-100"><i class="fa-solid fa-trash-can mr-1"></i>Hapus RHK</button></div></div>`).join('');
+      populateRhkSelect(); renderRhkPerformance();
+    }
+    function openEditRhk(rhkId){
+      const row=(dbRhk||[]).find(r=>String(r.id)===String(rhkId));
+      if(!row){notify('Data RHK tidak ditemukan. Silakan muat ulang data.');return;}
+      document.getElementById('rhk-edit-id').value=row.id;
+      document.getElementById('rhk-edit-uraian').value=row.uraianHasilKerja||'';
+      document.getElementById('rhk-edit-target').value=getRhkMonthlyTargetValue(row)||'';
+      document.getElementById('rhk-edit-satuan').value=row.satuanTarget||'';
+      const selected=String(row.waktuPelaksanaan||'').split(',').map(x=>x.trim());
+      document.querySelectorAll('input[name="rhk-edit-bulan"]').forEach(x=>x.checked=selected.includes(x.value));
+      document.getElementById('rhk-edit-modal').classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    }
+    function closeEditRhk(){document.getElementById('rhk-edit-modal')?.classList.add('hidden');document.body.classList.remove('overflow-hidden');}
+    async function handleUpdateRhk(e){
+      e.preventDefault();const btn=e.submitter||e.target.querySelector('button[type="submit"]');if(btn?.disabled)return;
+      const months=Array.from(document.querySelectorAll('input[name="rhk-edit-bulan"]:checked')).map(x=>x.value);
+      if(!months.length){notify('Pilih minimal satu bulan pelaksanaan.');return;}
+      if(btn){btn.disabled=true;btn.textContent='Menyimpan…';}
+      try{const result=await gasCall('updateRhk',{rhkId:document.getElementById('rhk-edit-id').value,uraianHasilKerja:document.getElementById('rhk-edit-uraian').value.trim(),targetBulanan:document.getElementById('rhk-edit-target').value,satuanTarget:document.getElementById('rhk-edit-satuan').value.trim(),waktuPelaksanaan:months.join(', ')});if(result.rhk){dbRhk=(dbRhk||[]).map(r=>String(r.id)===String(result.rhk.id)?result.rhk:r);}renderRhkPanel();closeEditRhk();notify('RHK berhasil diperbarui.');}
+      catch(err){notify('RHK gagal diperbarui: '+(err.message||err));}
+      finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Perubahan';}}
+    }
+    async function handleDeleteRhk(rhkId){
+      const row=(dbRhk||[]).find(r=>String(r.id)===String(rhkId));
+      if(!row){notify('RHK tidak ditemukan. Silakan muat ulang data.');return;}
+      const linked=(dbLaporan||[]).some(r=>String(r.rhkId||'')===String(rhkId));
+      const warning=linked?'RHK ini sudah digunakan pada laporan harian. RHK akan dinonaktifkan dari daftar aktif, tetapi riwayat laporan dan keterkaitannya tetap dipertahankan.':'RHK akan dinonaktifkan dan tidak dapat dipilih untuk laporan baru.';
+      if(!confirm('Hapus RHK berikut?\\n\\n'+(row.uraianHasilKerja||'')+'\\n\\n'+warning+'\\n\\nTindakan ini dicatat dalam riwayat audit.'))return;
+      try{const result=await gasCall('deleteRhk',{rhkId:rhkId});if(result.rhk){dbRhk=(dbRhk||[]).map(r=>String(r.id)===String(result.rhk.id)?result.rhk:r);}renderRhkPanel();notify('RHK berhasil dihapus dari daftar aktif. Riwayat lama tetap aman.');}
+      catch(err){notify('RHK gagal dihapus: '+(err.message||err));}
+    }
+
+    function populateRhkSelect(){
+      const el=document.getElementById('lap-rhk-id');if(!el)return;const year=String(new Date().getFullYear());const rows=(dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif');const prev=el.value;
+      el.innerHTML='<option value="">Pilih RHK yang relevan</option>'+rows.map(r=>`<option value="${escapeHTML(r.id)}">${escapeHTML(r.uraianHasilKerja)} — Target bulanan ${escapeHTML(String(getRhkMonthlyTargetValue(r)))} ${escapeHTML(r.satuanTarget||'')}</option>`).join('');if(rows.some(r=>r.id===prev))el.value=prev;
+      el.onchange=()=>{const chosen=rows.find(r=>String(r.id)===String(el.value));const hint=document.getElementById('lap-volume-unit');const outputEl=document.getElementById('lap-output');if(hint)hint.textContent=chosen?'Isi volume dalam satuan '+(chosen.satuanTarget||'sesuai RHK')+'.':'Isi jumlah sesuai satuan target RHK yang dipilih.';if(outputEl)outputEl.value=chosen?(chosen.satuanTarget||chosen.outputPekerjaan||''):'';};
+      el.onchange();
+    }
+    async function handleSaveRhk(e){
+      e.preventDefault();const btn=e.submitter||e.target.querySelector('button[type="submit"]');if(btn?.disabled)return;if(btn){btn.disabled=true;btn.textContent='Menyimpan…';}
+      try{const result=await gasCall('saveRhk',{tahun:String(new Date().getFullYear()),uraianHasilKerja:document.getElementById('rhk-uraian').value.trim(),targetBulanan:document.getElementById('rhk-target').value,satuanTarget:document.getElementById('rhk-satuan').value.trim(),waktuPelaksanaan:Array.from(document.querySelectorAll('input[name="rhk-bulan"]:checked')).map(x=>x.value).join(', ')});if(result.rhk)dbRhk=[...(dbRhk||[]),result.rhk];document.getElementById('rhk-uraian').value='';document.getElementById('rhk-target').value='';document.getElementById('rhk-satuan').value='';document.querySelectorAll('input[name="rhk-bulan"]:checked').forEach(x=>x.checked=false);renderRhkPanel();notify('RHK berhasil disimpan dan langsung aktif.');}
+      catch(err){notify('RHK gagal disimpan: '+err.message);}finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-floppy-disk mr-2"></i>Simpan RHK';}}
+    }
+    const RHK_MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    function getRhkScheduledMonthNumbers(rhk){
+      const raw=String(rhk?.waktuPelaksanaan||'');
+      return raw.split(',').map(x=>x.trim().toLocaleLowerCase('id-ID')).map(name=>RHK_MONTH_NAMES.findIndex(m=>m.toLocaleLowerCase('id-ID')===name)+1).filter(n=>n>0);
+    }
+    function getRhkMonthlyTargetValue(rhk){
+      const scheduled=getRhkScheduledMonthNumbers(rhk);
+      const stored=Number(rhk?.targetBulanan||0);
+      if(Number.isFinite(stored)&&stored>0)return stored;
+      const legacyAnnual=Number(rhk?.targetTahunan||0);
+      return scheduled.length&&Number.isFinite(legacyAnnual)&&legacyAnnual>0?legacyAnnual/scheduled.length:0;
+    }
+    function getRhkAnnualTarget(rhk){
+      const scheduled=getRhkScheduledMonthNumbers(rhk);
+      const monthly=getRhkMonthlyTargetValue(rhk);
+      return monthly>0&&scheduled.length?monthly*scheduled.length:Number(rhk?.targetTahunan||0);
+    }
+    function getRhkMonthlyTarget(rhk, monthNumber){
+      const scheduled=getRhkScheduledMonthNumbers(rhk);
+      if(!scheduled.length||!scheduled.includes(Number(monthNumber)))return 0;
+      return getRhkMonthlyTargetValue(rhk);
+    }
+    function formatRhkQuantity(value){
+      const n=Number(value||0);
+      return Number.isFinite(n)?n.toLocaleString('id-ID',{maximumFractionDigits:2}):'0';
+    }
+
+    function renderRhkPerformance(){
+      const host=document.getElementById('rhk-list');if(!host)return;
+      const nowWita=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Makassar'}));
+      const year=String(nowWita.getFullYear());
+      const reports=(dbLaporan||[]).filter(r=>r.status==='Disetujui'&&String(dateKeyISO(r.tanggal)).slice(0,4)===year);
+      (dbRhk||[]).filter(r=>String(r.tahun)===year&&String(r.status||'Aktif')==='Aktif').forEach(r=>{
+        const approved=reports.filter(x=>String(x.rhkId||'')===String(r.id));
+        const monthNumber=nowWita.getMonth()+1;
+        const monthly=approved.filter(x=>Number(String(dateKeyISO(x.tanggal)).slice(5,7))===monthNumber).reduce((s,x)=>s+Number(x.volume??x.realisasiQty??0),0);
+        const cumulative=approved.reduce((s,x)=>s+Number(x.volume??x.realisasiQty??0),0);
+        const monthlyTarget=getRhkMonthlyTarget(r,monthNumber);
+        const annualTarget=getRhkAnnualTarget(r);
+        const pct=annualTarget>0?Math.min(100,Math.max(0,cumulative/annualTarget*100)):0;
+        const card=Array.from(host.children).find(el=>el.textContent.includes(r.uraianHasilKerja));
+        if(card&&!card.querySelector('[data-rhk-progress]')){
+          const div=document.createElement('div');div.dataset.rhkProgress='1';div.className='pt-2 border-t text-xs space-y-1';
+          div.innerHTML=`<div class="flex justify-between"><span>Target bulanan</span><b>${formatRhkQuantity(monthlyTarget)} ${escapeHTML(r.satuanTarget||'')}</b></div><div class="flex justify-between"><span>Realisasi bulan ini (disetujui)</span><b>${formatRhkQuantity(monthly)} ${escapeHTML(r.satuanTarget||'')}</b></div><div class="flex justify-between"><span>Realisasi kumulatif (disetujui)</span><b>${formatRhkQuantity(cumulative)} ${escapeHTML(r.satuanTarget||'')}</b></div><div class="flex justify-between"><span>Capaian target tahunan</span><b>${pct.toFixed(2)}%</b></div><div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-2 bg-emerald-500" style="width:${pct}%"></div></div>`;
+          card.appendChild(div);
+        }
+      });
+    }
+
+    async 
+async function handleSaveLaporan(e) {
       e.preventDefault();
       const form = e.currentTarget || document.getElementById('form-laporan');
       const submitBtn = form && form.querySelector('button[type="submit"]');
       if (submitBtn && submitBtn.disabled) return;
       const kegiatan = document.getElementById('lap-kegiatan').value.trim();
       const output = document.getElementById('lap-output').value.trim();
+      const rhkId = document.getElementById('lap-rhk-id')?.value || '';
+      const volume = Number(document.getElementById('lap-volume')?.value || 0);
       const jamMulai = document.getElementById('lap-jam-mulai').value;
       const jamSelesai = document.getElementById('lap-jam-selesai').value;
       const tanggalPelaksanaan = document.getElementById('lap-tanggal').value;
@@ -3607,6 +3788,7 @@
         notify(reportDateOpen ? 'Tanggal pelaksanaan wajib diisi dan tidak boleh melewati hari ini.' : 'Pengisian tanggal sebelumnya sedang dikunci oleh Admin. Silakan gunakan tanggal hari ini.'); return;
       }
       if (lapPhotoProcessing) { notify('Foto sedang dioptimalkan. Tunggu sampai pratinjau foto muncul, lalu kirim kembali.'); return; }
+      if (!rhkId || !Number.isFinite(volume) || volume <= 0) { notify('Pilih RHK dan isi volume pekerjaan dengan angka lebih dari nol.'); return; }
       if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi, termasuk foto yang sudah selesai dioptimalkan!'); return; }
       if (jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai.'); return; }
       if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.innerHTML; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…'; }
@@ -3614,12 +3796,15 @@
       try {
         await gasCall('saveReport', {
           tanggal: tanggalPelaksanaan,
-          jamMulai, jamSelesai, kegiatan, output, foto: tempLapFotoBase64
+          jamMulai, jamSelesai, kegiatan, output, rhkId, volume, realisasiQty: volume, foto: tempLapFotoBase64
         });
         await refreshServerData();
         notify('Kegiatan harian berhasil disimpan.');
         document.getElementById('lap-kegiatan').value = '';
         document.getElementById('lap-output').value = '';
+        document.getElementById('lap-volume').value = '';
+        document.getElementById('lap-rhk-id').value = '';
+        document.getElementById('lap-rhk-id').dispatchEvent(new Event('change'));
         document.getElementById('lap-jam-mulai').value = '';
         document.getElementById('lap-jam-selesai').value = '';
         document.getElementById('lap-foto-file').value = '';
@@ -3760,7 +3945,7 @@
       if (tabName !== 'hadir' && typeof stopCameraStream === 'function') {
         try { stopCameraStream(); } catch (err) { console.warn('Pembersihan kamera dilewati:', err); }
       }
-      const allowedTabs = ['profile', 'hadir', 'kegiatan', 'rekap-hadir', 'rekap-kinerja', 'arsip'];
+      const allowedTabs = ['profile', 'hadir', 'rhk', 'kegiatan', 'rekap-hadir', 'rekap-kinerja', 'arsip'];
       if (!allowedTabs.includes(tabName)) {
         console.warn('Tab PJLP tidak dikenal:', tabName);
         return;
@@ -3779,6 +3964,7 @@
         return;
       }
       activePanel.classList.remove('hidden');
+      if (tabName === 'rhk') renderRhkPanel();
       activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
       if (tabName === 'hadir') { locationVerified = false; lastGpsPosition = null; checkUserLocation({silent:true}); }
     }
