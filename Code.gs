@@ -419,6 +419,14 @@ function saveAttendance_(user, p) {
   }
   const policy = attendanceDateOpen ? {allowed:true, lateBySeconds:0} : getAttendancePolicy_(now, sesi);
   if (!policy.allowed) throw new Error(policy.message);
+  let attendanceTime = Utilities.formatDate(now, APP.TZ, 'HH:mm:ss');
+  if (attendanceDateOpen) {
+    const suppliedTime = String(p.jam || '').trim();
+    if (!/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(suppliedTime)) {
+      throw new Error('Jam presensi manual wajib diisi dengan format HH:MM atau HH:MM:SS.');
+    }
+    attendanceTime = suppliedTime.length === 5 ? suppliedTime + ':00' : suppliedTime;
+  }
 
   const needsEvidence = ['Dinas Luar','Izin','Sakit'].includes(status);
   let suratFileId = '', suratNama = '', suratData = '';
@@ -474,7 +482,7 @@ function saveAttendance_(user, p) {
     const row = {
       id:'abs-' + Utilities.getUuid(), userId:user.id,
       tanggal:attendanceDate,
-      jam:Utilities.formatDate(now, APP.TZ, 'HH:mm:ss'),
+      jam:attendanceTime,
       status, sesi, catatan,
       latitude, longitude, distanceMeters:distanceMeters === '' ? '' : Math.round(distanceMeters * 100) / 100,
       lateBySeconds,
@@ -483,7 +491,7 @@ function saveAttendance_(user, p) {
     };
     ensureSheetColumns_('Attendance', ['suratFileId','suratNama']);
     appendObjects_('Attendance', [row]);
-    audit_(user.id, 'CREATE', 'Attendance', row.id, 'Presensi ' + status + ' / ' + sesi + ' / Tanggal ' + attendanceDate + (attendanceDateOpen ? ' / Input manual (mode dibuka Admin)' : (lateBySeconds ? ' / Terlambat ' + formatDuration_(lateBySeconds) : '')));
+    audit_(user.id, 'CREATE', 'Attendance', row.id, 'Presensi ' + status + ' / ' + sesi + ' / Tanggal ' + attendanceDate + (attendanceDateOpen ? ' / Input manual oleh pegawai; jam presensi ' + attendanceTime + ' WITA' : (lateBySeconds ? ' / Terlambat ' + formatDuration_(lateBySeconds) : '')));
     return {ok:true, id:row.id, lateBySeconds, lateByText:row.lateByText, distanceMeters:row.distanceMeters,
       message:lateBySeconds > 0 ? 'Presensi tercatat. Terlambat ' + row.lateByText : 'Presensi tercatat tepat waktu.'};
   } finally {
