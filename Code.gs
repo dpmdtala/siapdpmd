@@ -173,6 +173,8 @@ function api(action, payload, token) {
     case 'getAppData': return getAppData_(user);
     case 'getGlobalReportDatePolicy': return {ok:true, reportDateOpen:getGlobalReportDatePolicy_()};
     case 'setGlobalReportDatePolicy': requireRole_(user, ['SuperAdmin']); return setGlobalReportDatePolicy_(user, payload.open);
+    case 'getGlobalAttendanceDatePolicy': return {ok:true, attendanceDateOpen:getGlobalAttendanceDatePolicy_()};
+    case 'setGlobalAttendanceDatePolicy': requireRole_(user, ['SuperAdmin']); return setGlobalAttendanceDatePolicy_(user, payload.open);
     case 'getAuditLog': requireRole_(user, ['SuperAdmin']); return getAuditLog_(payload);
     case 'rejectReport': requireRole_(user, ['SuperAdmin','Verifikator']); return rejectReport_(user, payload.reportId, payload.reason);
     case 'deleteReportAsVerifier': requireRole_(user, ['Verifikator']); return deleteReportAsVerifier_(user, payload.reportId);
@@ -285,7 +287,28 @@ function getAppData_(user) {
     reports = reports.filter(r => ids.indexOf(r.userId) >= 0);
     archives = [];
   }
-  return {ok:true, users, attendance, reports, archives, reportDateOpen:getGlobalReportDatePolicy_()};
+  return {ok:true, users, attendance, reports, archives,
+    reportDateOpen:getGlobalReportDatePolicy_(),
+    attendanceDateOpen:getGlobalAttendanceDatePolicy_()};
+}
+
+function getGlobalAttendanceDatePolicy_() {
+  // Default LOCKED: presensi tetap memakai GPS, radius, dan jadwal normal sampai Super Admin membukanya.
+  const value = PropertiesService.getScriptProperties().getProperty('SIAP_DPMD_ATTENDANCE_DATE_OPEN');
+  return value === 'true';
+}
+
+function setGlobalAttendanceDatePolicy_(user, open) {
+  if (typeof open !== 'boolean') throw new Error('Nilai pengaturan presensi tidak valid.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    PropertiesService.getScriptProperties().setProperty('SIAP_DPMD_ATTENDANCE_DATE_OPEN', open ? 'true' : 'false');
+    audit_(user.id, 'UPDATE', 'AttendanceDatePolicy', 'global', open
+      ? 'Membuka presensi manual untuk seluruh pegawai; tanggal dapat dipilih dalam bulan berjalan.'
+      : 'Mengunci presensi manual; seluruh pegawai kembali menggunakan presensi normal dengan GPS dan jadwal.');
+    return {ok:true, attendanceDateOpen:open};
+  } finally { lock.releaseLock(); }
 }
 
 function getGlobalReportDatePolicy_() {
@@ -382,7 +405,19 @@ function saveAttendance_(user, p) {
   if (status === 'Hadir') catatan = '';
 
   const now = new Date();
-  const policy = getAttendancePolicy_(now, sesi);
+  const today = Utilities.formatDate(now, APP.TZ, 'yyyy-MM-dd');
+  const attendanceDateOpen = getGlobalAttendanceDatePolicy_();
+  const attendanceDate = String(p.tanggal || today).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(attendanceDate)) throw new Error('Tanggal presensi tidak valid.');
+  const parsedAttendanceDate = new Date(attendanceDate + 'T12:00:00+08:00');
+  if (isNaN(parsedAttendanceDate.getTime()) || Utilities.formatDate(parsedAttendanceDate, APP.TZ, 'yyyy-MM-dd') !== attendanceDate) throw new Error('Tanggal presensi tidak valid.');
+  if (attendanceDate > today) throw new Error('Tanggal presensi tidak boleh melewati hari ini.');
+  if (attendanceDateOpen) {
+    if (attendanceDate.slice(0,7) !== today.slice(0,7)) throw new Error('Presensi manual hanya dapat diisi untuk tanggal pada bulan berjalan.');
+  } else if (attendanceDate !== today) {
+    throw new Error('Presensi tanggal sebelumnya sedang dikunci oleh Admin. Silakan gunakan tanggal hari ini.');
+  }
+  const policy = attendanceDateOpen ? {allowed:true, lateBySeconds:0} : getAttendancePolicy_(now, sesi);
   if (!policy.allowed) throw new Error(policy.message);
 
   const needsEvidence = ['Dinas Luar','Izin','Sakit'].includes(status);
@@ -398,33 +433,32 @@ function saveAttendance_(user, p) {
     // Simpan berkas setelah validasi waktu/lokasi dan duplikasi lolos agar tidak meninggalkan file yatim.
   }
 
-  const latitude = Number(p.latitude), longitude = Number(p.longitude);
-  const accuracy = Number(p.accuracy);
-  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
-      !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-    throw new Error('Koordinat GPS tidak valid. Tekan Cek Lokasi dan izinkan akses lokasi.');
+  let latitude = '', longitude = '', distanceMeters = '', accuracy = '';
+  if (!attendanceDateOpen) {
+    latitude = Number(p.latitude); longitude = Number(p.longitude);
+    accuracy = Number(p.accuracy);
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
+        !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      throw new Error('Koordinat GPS tidak valid. Tekan Cek Lokasi dan izinkan akses lokasi.');
+    }
+    if (!Number.isFinite(accuracy) || accuracy <= 0 || (status === 'Hadir' && accuracy > 50)) {
+      throw new Error(status === 'Hadir'
+        ? 'Akurasi GPS belum memadai (maksimal toleransi akurasi 50 meter). Aktifkan lokasi presisi dan coba lagi.'
+        : 'Koordinat GPS tidak valid. Aktifkan lokasi perangkat dan coba lagi.');
+    }
+    // Calculate distance on the server; never trust a browser-supplied distance.
+    const office = {lat:-3.7994516, lon:114.7790374};
+    distanceMeters = haversineMeters_(latitude, longitude, office.lat, office.lon);
+    if (status === 'Hadir' && distanceMeters > 30) {
+      throw new Error('Presensi Hadir ditolak karena lokasi berada di luar radius 30 meter dari kantor.');
+    }
   }
-  if (!Number.isFinite(accuracy) || accuracy <= 0 || (status === 'Hadir' && accuracy > 50)) {
-    throw new Error(status === 'Hadir'
-      ? 'Akurasi GPS belum memadai (maksimal toleransi akurasi 50 meter). Aktifkan lokasi presisi dan coba lagi.'
-      : 'Koordinat GPS tidak valid. Aktifkan lokasi perangkat dan coba lagi.');
-  }
-
-  // Calculate distance on the server; never trust a browser-supplied distance.
-  const office = {lat:-3.7994516, lon:114.7790374};
-  const distanceMeters = haversineMeters_(latitude, longitude, office.lat, office.lon);
-  // Samakan validasi server dengan ketentuan radius antarmuka: maksimal 30 meter.
-  if (status === 'Hadir' && distanceMeters > 30) {
-    throw new Error('Presensi Hadir ditolak karena lokasi berada di luar radius 30 meter dari kantor.');
-  }
-
-  const today = Utilities.formatDate(now, APP.TZ, 'yyyy-MM-dd');
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     const existing = readRows_('Attendance').filter(a =>
       String(a.userId) === String(user.id) &&
-      normalizeDateKey_(a.tanggal) === today &&
+      normalizeDateKey_(a.tanggal) === attendanceDate &&
       String(a.sesi || '').trim().toLowerCase() === sesi.toLowerCase()
     );
     if (existing.length) throw new Error('Anda sudah melakukan presensi ' + sesi + ' hari ini.');
@@ -436,20 +470,20 @@ function saveAttendance_(user, p) {
     // Swafoto tidak lagi menjadi syarat presensi; kolom lama tetap dipertahankan untuk kompatibilitas data historis.
     const selfieFileId = '';
     const signatureFileId = saveDataUrlToDrive_(p.signature, 'TandaTangan_' + user.id + '_' + Date.now() + '.png', 'image/png');
-    const lateBySeconds = sesi === 'Masuk' && status === 'Hadir' ? Math.max(0, policy.lateBySeconds) : 0;
+    const lateBySeconds = !attendanceDateOpen && sesi === 'Masuk' && status === 'Hadir' ? Math.max(0, policy.lateBySeconds) : 0;
     const row = {
       id:'abs-' + Utilities.getUuid(), userId:user.id,
-      tanggal:today,
+      tanggal:attendanceDate,
       jam:Utilities.formatDate(now, APP.TZ, 'HH:mm:ss'),
       status, sesi, catatan,
-      latitude, longitude, distanceMeters:Math.round(distanceMeters * 100) / 100,
+      latitude, longitude, distanceMeters:distanceMeters === '' ? '' : Math.round(distanceMeters * 100) / 100,
       lateBySeconds,
       lateByText:lateBySeconds > 0 ? formatDuration_(lateBySeconds) : '',
       selfieFileId, signatureFileId, suratFileId, suratNama, createdAt:now.toISOString()
     };
     ensureSheetColumns_('Attendance', ['suratFileId','suratNama']);
     appendObjects_('Attendance', [row]);
-    audit_(user.id, 'CREATE', 'Attendance', row.id, 'Presensi ' + status + ' / ' + sesi + (lateBySeconds ? ' / Terlambat ' + formatDuration_(lateBySeconds) : ''));
+    audit_(user.id, 'CREATE', 'Attendance', row.id, 'Presensi ' + status + ' / ' + sesi + ' / Tanggal ' + attendanceDate + (attendanceDateOpen ? ' / Input manual (mode dibuka Admin)' : (lateBySeconds ? ' / Terlambat ' + formatDuration_(lateBySeconds) : '')));
     return {ok:true, id:row.id, lateBySeconds, lateByText:row.lateByText, distanceMeters:row.distanceMeters,
       message:lateBySeconds > 0 ? 'Presensi tercatat. Terlambat ' + row.lateByText : 'Presensi tercatat tepat waktu.'};
   } finally {
