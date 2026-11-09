@@ -587,10 +587,16 @@
                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-600">Jumlah Absen</p><p id="absen-stat-absen" class="mt-1 text-xl font-black text-slate-800">0</p></div>
               </div>
               <form onsubmit="handleSaveAbsen(event)" class="space-y-4">
-                <div id="absen-tanggal-wrap" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-1">
-                  <label for="absen-tanggal" class="block text-xs font-extrabold text-amber-900 uppercase">Tanggal Presensi Manual</label>
-                  <input type="date" id="absen-tanggal" class="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 bg-white text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500">
-                  <p id="absen-tanggal-help" class="text-[10px] text-amber-800">Tanggal hanya dapat dipilih dalam bulan berjalan hingga hari ini. Jam tercatat mengikuti waktu saat data diinput.</p>
+                <div id="absen-tanggal-wrap" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+                  <div class="space-y-1">
+                    <label for="absen-tanggal" class="block text-xs font-extrabold text-amber-900 uppercase">Tanggal Presensi Manual</label>
+                    <input type="date" id="absen-tanggal" class="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 bg-white text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500">
+                  </div>
+                  <div class="space-y-1">
+                    <label for="absen-jam" class="block text-xs font-extrabold text-amber-900 uppercase">Jam Presensi Manual (WITA)</label>
+                    <input type="time" id="absen-jam" step="1" required class="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 bg-white text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500">
+                    <p class="text-[10px] text-amber-800">Admin membuka mode manual agar pegawai dapat mengisi tanggal dan menyesuaikan jam Masuk/Pulang sesuai waktu presensi sebenarnya. Waktu perekaman sistem tetap tersimpan otomatis.</p>
+                  </div>
                 </div>
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase mb-1">1. Status Kehadiran (Pilih Dulu)</label>
@@ -3182,6 +3188,11 @@
       return {day, nowSeconds, end, pulangDeadline, isWorkday:true, openIn:8*3600-1800};
     }
 
+    function getCurrentWitaTimeInput() {
+      const parts = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Makassar', hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23'}).formatToParts(new Date()).reduce((o,p)=>(o[p.type]=p.value,o),{});
+      return `${parts.hour}:${parts.minute}:${parts.second}`;
+    }
+
     function validateAttendanceWindow(showMessage = true) {
       if (attendanceDateOpen) {
         const input = document.getElementById('absen-tanggal');
@@ -3275,6 +3286,8 @@
       document.getElementById('lap-tanggal')?.addEventListener('change', e => { e.target.dataset.userSelected = 'true'; });
       document.getElementById('absen-status')?.addEventListener('change', () => { locationVerified=false; lastGpsPosition=null; if (attendanceDateOpen) applyAttendanceDatePolicy(); else checkUserLocation({silent:true}); });
       document.getElementById('absen-tanggal')?.addEventListener('change', () => validateAttendanceWindow(false));
+      const manualTimeInput = document.getElementById('absen-jam');
+      manualTimeInput?.addEventListener('change', () => { manualTimeInput.dataset.userEdited = 'true'; });
       setInterval(() => validateAttendanceWindow(false), 1000);
       validateAttendanceWindow(false);
       if (sigCanvas) {
@@ -3319,8 +3332,10 @@
       const button = document.getElementById('btn-submit-absen');
       if (button) { button.disabled = true; button.classList.add('opacity-50'); }
       try {
+        const manualJam = attendanceDateOpen ? (document.getElementById('absen-jam')?.value || '') : '';
+        if (attendanceDateOpen && !/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(manualJam)) { notify('Isi jam presensi manual dengan format jam yang benar.'); return; }
         const result = await gasCall('saveAttendance', {
-          status, sesi, catatan, tanggal:attendanceDate,
+          status, sesi, catatan, tanggal:attendanceDate, jam:manualJam,
           latitude:attendanceDateOpen ? '' : lastGpsPosition.latitude,
           longitude:attendanceDateOpen ? '' : lastGpsPosition.longitude,
           accuracy:attendanceDateOpen ? '' : lastGpsPosition.accuracy,
@@ -3331,6 +3346,8 @@
         await refreshServerData();
         notify('Tersimpan');
         clearSignature();
+        const manualTimeAfterSave = document.getElementById('absen-jam');
+        if (manualTimeAfterSave && attendanceDateOpen) { manualTimeAfterSave.dataset.userEdited = ''; manualTimeAfterSave.value = getCurrentWitaTimeInput(); }
         attendanceEvidenceDataUrl = ''; attendanceEvidenceName = '';
         const evidenceInput = document.getElementById('absen-evidence-file'); if (evidenceInput) evidenceInput.value='';
         const evidenceWrap = document.getElementById('absen-evidence-wrap'); if (evidenceWrap) evidenceWrap.classList.add('hidden');
@@ -3512,6 +3529,9 @@
         if (!attendanceDateOpen || !input.value || input.value < input.min || input.value > today) input.value = today;
       }
       if (wrap) wrap.classList.toggle('hidden', !attendanceDateOpen);
+      const manualTimeInput = document.getElementById('absen-jam');
+      if (attendanceDateOpen && manualTimeInput && manualTimeInput.dataset.userEdited !== 'true') manualTimeInput.value = getCurrentWitaTimeInput();
+      if (manualTimeInput) manualTimeInput.required = attendanceDateOpen;
       if (card && title && desc) {
         if (attendanceDateOpen) {
           card.className = 'p-3.5 rounded-2xl text-xs font-bold border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-amber-50 text-amber-900 border-amber-200 w-full min-w-0';
