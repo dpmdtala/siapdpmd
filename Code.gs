@@ -15,7 +15,7 @@ const APP = {
   },
   SESSION_TTL_SECONDS: 21600,
   MAX_UPLOAD_BYTES: 5 * 1024 * 1024,
-  MAX_REPORT_PHOTO_BYTES: 3 * 1024 * 1024,
+  MAX_REPORT_PHOTO_BYTES: 1 * 1024 * 1024,
   MAX_ARCHIVE_BYTES: 1 * 1024 * 1024
 };
 
@@ -607,8 +607,9 @@ function saveAttendance_(user, p) {
     const match = String(suratData).match(/^data:(application\/pdf|image\/(?:jpeg|png));base64,/i);
     if (!match) throw new Error('Berkas pendukung harus berupa PDF, JPG, atau PNG.');
     const raw = Utilities.base64Decode(String(suratData).split(',')[1] || '');
-    if (!raw.length || raw.length > APP.MAX_UPLOAD_BYTES) throw new Error('Ukuran surat pendukung maksimal 5 MB.');
     const mimeType = match[1].toLowerCase();
+    const evidenceLimit = mimeType.startsWith('image/') ? APP.MAX_REPORT_PHOTO_BYTES : APP.MAX_UPLOAD_BYTES;
+    if (!raw.length || raw.length > evidenceLimit) throw new Error(mimeType.startsWith('image/') ? 'Foto bukti setelah kompresi maksimal 1 MB.' : 'Dokumen PDF maksimal 5 MB.');
     suratNama = sanitizeFilename_(p.suratNama || ('Surat_' + status + '_' + user.id));
     // Simpan berkas setelah validasi waktu/lokasi dan duplikasi lolos agar tidak meninggalkan file yatim.
   }
@@ -742,7 +743,7 @@ function saveReport_(user, p) {
   const fotoMatch = fotoData.match(/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=]+)$/i);
   if (!fotoMatch) throw new Error('Foto dokumentasi harus berupa JPG, PNG, atau WEBP.');
   const estimatedPhotoBytes = Math.floor(fotoMatch[2].length * 3 / 4) - (fotoMatch[2].endsWith('==') ? 2 : fotoMatch[2].endsWith('=') ? 1 : 0);
-  if (estimatedPhotoBytes <= 0 || estimatedPhotoBytes > APP.MAX_REPORT_PHOTO_BYTES) throw new Error('Ukuran foto kegiatan setelah kompresi maksimal 3 MB. Silakan pilih atau kompres ulang foto.');
+  if (estimatedPhotoBytes <= 0 || estimatedPhotoBytes > APP.MAX_REPORT_PHOTO_BYTES) throw new Error('Ukuran foto setelah kompresi maksimal 1 MB. Silakan pilih atau kompres ulang foto.');
 
   ensureSheetColumns_('Reports', ['jamMulai','jamSelesai','integrationId','source','rhkId','rhkUraian','realisasiQty','volume']);
   const integrationId = String(p.integrationId || '').trim();
