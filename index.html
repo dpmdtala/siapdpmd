@@ -985,14 +985,14 @@
               </div>
               <div>
                 <p class="text-slate-400">Total Hari Kerja:</p>
-                <p class="font-bold text-slate-800 text-sm">22 Hari</p>
+                <p class="font-bold text-slate-800 text-sm" id="rekap-kinerja-hari-kerja-count">—</p>
               </div>
               <div>
                 <p class="text-slate-400">Laporan Disetujui:</p>
                 <p id="rekap-disetujui-count" class="font-bold text-blue-600 text-sm">0 Laporan</p>
               </div>
               <div>
-                <p class="text-slate-400">Status Verifikasi Atasan:</p>
+                <p class="text-slate-400">Nilai Kinerja:</p>
                 <span id="rekap-status-badge" class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Menunggu Persetujuan</span>
               </div>
             </div>
@@ -2522,31 +2522,24 @@
         notify('Format foto harus JPG, PNG, atau WEBP.');
         return;
       }
-      avatarReadPromise = new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error('Foto tidak dapat dibaca.'));
-        reader.onload = () => {
-          const image = new Image();
-          image.onerror = () => reject(new Error('Berkas foto tidak valid.'));
-          image.onload = () => {
-            const maxSide = 600;
-            const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, Math.round(image.width * scale));
-            canvas.height = Math.max(1, Math.round(image.height * scale));
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-            tempAvatarBase64 = canvas.toDataURL('image/jpeg', 0.82);
-            const preview = document.getElementById('edit-prof-avatar-preview');
-            const status = document.getElementById('edit-prof-avatar-status');
-            if (preview) { preview.src = tempAvatarBase64; preview.classList.remove('hidden'); }
-            if (status) status.textContent = 'Foto baru siap disimpan dan akan menjadi foto profil setelah proses berhasil.';
-            resolve(tempAvatarBase64);
-          };
-          image.src = reader.result;
-        };
-        reader.readAsDataURL(file);
-      }).catch(err => { tempAvatarBase64 = null; notify(err.message || 'Gagal membaca foto.'); throw err; });
+      if (file.size > 20 * 1024 * 1024) {
+        e.target.value = '';
+        notify('Ukuran foto asli maksimal 20 MB.');
+        return;
+      }
+      avatarReadPromise = compressImageFile(file, 900, 0.80).then(data => {
+        tempAvatarBase64 = data;
+        const preview = document.getElementById('edit-prof-avatar-preview');
+        const status = document.getElementById('edit-prof-avatar-status');
+        if (preview) { preview.src = data; preview.classList.remove('hidden'); }
+        if (status) status.textContent = 'Foto telah dikompresi maksimal 1 MB dan siap disimpan.';
+        return data;
+      }).catch(err => {
+        tempAvatarBase64 = null;
+        e.target.value = '';
+        notify(err.message || 'Gagal mengompres foto.');
+        throw err;
+      });
     }
 
     async function handleSaveProfile(e) {
@@ -2664,22 +2657,32 @@
       const el = document.getElementById(id);
       return (el && el.value) ? el.value : currentMonthKey();
     }
+    function supportedMonthKeys() {
+      const keys = [];
+      // Sistem SIAP-DPMD mulai diberlakukan Oktober 2026; tampilkan sampai Desember tahun depan.
+      const start = new Date(2026, 9, 1);
+      const end = new Date(new Date().getFullYear() + 1, 11, 1);
+      for (let d = new Date(start); d <= end; d.setMonth(d.getMonth()+1)) {
+        keys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+      }
+      return keys;
+    }
+    function monthOptionMarkup(keys) {
+      return keys.map(key => {
+        const [y,m] = key.split('-').map(Number);
+        const label = new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(new Date(y,m-1,1));
+        return `<option value="${key}">${label}</option>`;
+      }).join('');
+    }
     function ensureMonthOptions() {
-      const now = new Date();
       const currentKey = currentMonthKey();
+      const keys = supportedMonthKeys();
       ['rekap-bulan-hadir-select','rekap-bulan-kinerja-select'].forEach(id => {
         const select = document.getElementById(id);
         if (!select) return;
         const previous = select.value;
-        const options = [];
-        for (let i=0; i<18; i++) {
-          const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-          const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-          const label = new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(d);
-          options.push(`<option value="${key}">${label}</option>`);
-        }
-        select.innerHTML = options.join('');
-        select.value = options.some(o => o.includes(`value="${previous}"`)) ? previous : currentKey;
+        select.innerHTML = monthOptionMarkup(keys);
+        select.value = keys.includes(previous) ? previous : (keys.includes(currentKey) ? currentKey : keys[0]);
       });
     }
     function dateKeyISO(dateValue) {
@@ -2728,7 +2731,7 @@
       let workdays = 0;
       for (let day=1; day<=count; day++) {
         const weekday = new Date(year, month-1, day).getDay();
-        if (weekday !== 0 && weekday !== 6) workdays++;
+        if (weekday !== 0) workdays++;
       }
       return workdays;
     }
@@ -2751,6 +2754,8 @@
       const periodKinerja = document.getElementById('rekap-periode-kinerja');
       if (periodHadir) periodHadir.textContent = formatMonth(monthAttendance);
       if (periodKinerja) periodKinerja.textContent = formatMonth(monthReports);
+      const kinerjaWorkdayEl = document.getElementById('rekap-kinerja-hari-kerja-count');
+      if (kinerjaWorkdayEl) kinerjaWorkdayEl.textContent = `${workdaysInMonth(monthReports)} Hari`;
       const hadirMasukDays = new Set(attendanceRows.filter(a => a.sesi === 'Masuk' && a.status === 'Hadir').map(a => a.tanggal)).size;
       const hadirCount = document.getElementById('rekap-hadir-count');
       const workdayCount = document.getElementById('rekap-hari-kerja-count');
@@ -2806,11 +2811,24 @@
       const warning = document.getElementById('rekap-approval-warning');
       const badge = document.getElementById('rekap-status-badge');
       const allApproved = reportRows.length > 0 && approved === reportRows.length;
-      const hasRejected = reportRows.some(r => r.status === 'Ditolak');
       if (warning) warning.classList.toggle('hidden', allApproved || reportRows.length === 0);
+      // Nilai kinerja dihitung dari realisasi laporan yang telah disetujui dibanding target bulanan RHK.
+      const [ratingYear, ratingMonth] = monthReports.split('-').map(Number);
+      const activeRhk = (dbRhk || []).filter(x => String(x.userId) === String(currentUser?.id) && String(x.tahun) === String(ratingYear) && String(x.status || 'Aktif') === 'Aktif');
+      let totalTarget = 0, totalRealization = 0;
+      activeRhk.forEach(rhk => {
+        const target = Number(getRhkMonthlyTarget(rhk, ratingMonth) || 0);
+        if (target <= 0) return;
+        totalTarget += target;
+        totalRealization += reportRows.filter(r => r.status === 'Disetujui' && String(r.rhkId) === String(rhk.id))
+          .reduce((sum,r) => sum + Number(r.volume ?? r.realisasiQty ?? 0), 0);
+      });
+      const performancePercent = totalTarget > 0 ? (totalRealization / totalTarget * 100) : null;
+      const performanceValue = performancePercent === null ? 'Belum Dapat Dinilai' : performancePercent > 100 ? 'Di Atas Ekspektasi' : performancePercent >= 80 ? 'Sesuai Ekspektasi' : 'Di Bawah Ekspektasi';
       if (badge) {
-        badge.textContent = allApproved ? 'Disetujui (Siap Cetak)' : hasRejected ? 'Ada Laporan Ditolak' : reportRows.length ? 'Menunggu Persetujuan' : 'Belum Ada Laporan';
-        badge.className = `inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${allApproved ? 'bg-blue-100 text-blue-800' : hasRejected ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`;
+        badge.textContent = performanceValue;
+        badge.className = `inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${performancePercent === null ? 'bg-slate-100 text-slate-700' : performancePercent > 100 ? 'bg-emerald-100 text-emerald-800' : performancePercent >= 80 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`;
+        badge.dataset.performancePercent = performancePercent === null ? '' : performancePercent.toFixed(2);
       }
       const reportBody = document.getElementById('rekap-kinerja-month-body');
       if (reportBody) {
@@ -2907,21 +2925,16 @@
         const dayDate = new Date(nowForStats.getFullYear(),nowForStats.getMonth(),d);
         const key = `${nowForStats.getFullYear()}-${String(nowForStats.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         const wd = dayDate.getDay();
-        if (wd !== 0 && wd !== 6 && !holidayMapForStats[key]) effectiveWorkdaysElapsed++;
+        if (wd !== 0 && !holidayMapForStats[key]) effectiveWorkdaysElapsed++;
       }
       const daysWithAnyRecord = daysWithAttendance.size;
       countEl('absen-stat-absen', Math.max(0,effectiveWorkdaysElapsed - daysWithAnyRecord));
       const laporanMonthSelect = document.getElementById('filter-riwayat-laporan-bulan');
-      const reportMonthKeys = Array.from(new Set(allMyLaporan.map(l => dateKeyISO(l.tanggal).slice(0,7)).filter(k => /^\d{4}-\d{2}$/.test(k)))).sort();
       if (laporanMonthSelect) {
         const previous = laporanMonthSelect.value;
-        const options = Array.from(new Set([thisMonthKey, ...reportMonthKeys])).sort().reverse();
-        laporanMonthSelect.innerHTML = options.map(k => {
-          const [y,m] = k.split('-').map(Number);
-          const label = new Date(y,m-1,1).toLocaleDateString('id-ID',{month:'long',year:'numeric'});
-          return `<option value="${k}">${escapeHTML(label)}</option>`;
-        }).join('');
-        laporanMonthSelect.value = options.includes(previous) ? previous : thisMonthKey;
+        const options = supportedMonthKeys();
+        laporanMonthSelect.innerHTML = monthOptionMarkup(options);
+        laporanMonthSelect.value = options.includes(previous) ? previous : (options.includes(thisMonthKey) ? thisMonthKey : options[0]);
       }
       const selectedReportMonth = laporanMonthSelect?.value || thisMonthKey;
       const riwayatLaporan = allMyLaporan.filter(l => dateKeyISO(l.tanggal).slice(0,7) === selectedReportMonth)
@@ -3132,7 +3145,7 @@
         const photo = currentUser.avatar ? `<img src="${escapeHTML(currentUser.avatar)}" alt="Foto pegawai">` : '';
         const safe = v => escapeHTML(v || '—');
         const profile = `<section class="rekap-pegawai">${photo}<div class="rekap-pegawai-details"><div><b>Nama Pegawai:</b> ${safe(currentUser.nama)}</div><div><b>NIK:</b> ${safe(currentUser.nik)}</div><div><b>Bidang/Sub Bagian Kerja:</b> ${safe(currentUser.bidang)}</div><div><b>Tugas / Jabatan Kontrak:</b> ${safe(currentUser.jabatan)}</div></div></section>`;
-        const meta = `<section class="rekap-meta-grid"><div class="rekap-meta-item"><div class="rekap-meta-label">Periode Rekap</div><div class="rekap-meta-value">${safe(periode)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Total Hari Kerja</div><div class="rekap-meta-value">${safe(document.querySelector("#rekap-hari-kerja")?.textContent?.trim() || "22 Hari")}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Laporan Disetujui</div><div class="rekap-meta-value">${safe(approved)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Status Verifikasi Atasan</div><div class="rekap-meta-value">${safe(status)}</div></div></section>`;
+        const meta = `<section class="rekap-meta-grid"><div class="rekap-meta-item"><div class="rekap-meta-label">Periode Rekap</div><div class="rekap-meta-value">${safe(periode)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Total Hari Kerja</div><div class="rekap-meta-value">${safe(document.getElementById("rekap-kinerja-hari-kerja-count")?.textContent?.trim() || "—")}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Laporan Disetujui</div><div class="rekap-meta-value">${safe(approved)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Nilai Kinerja</div><div class="rekap-meta-value">${safe(status)}</div></div></section>`;
         window.verifikatorNama = window.verifikatorNama || '';
         const signatures = `<section class="rekap-signatures"><div class="rekap-signature"><div class="signature-heading">Mengetahui,</div><div class="signature-role">Verifikator / Atasan</div><div class="sign-space"></div><div class="signature-name">${safe(window.verifikatorNama || 'Nama Verifikator / Atasan')}</div></div><div class="rekap-signature"><div class="signature-heading">${safe(currentUser.jabatan || 'Tugas / Jabatan Kontrak')}</div><div class="signature-role">Pegawai PJLP</div><div class="sign-space"></div><div class="signature-name">${safe(currentUser.nama)}</div></div></section>`;
         finalBodyHtml = `${profile}${meta}${bodyHtml}${signatures}`;
@@ -3240,7 +3253,8 @@
 
     function handlePrintRekapKinerja() {
       if (!currentUser) return;
-      const myLaporan = dbLaporan.filter(l => l.userId === currentUser.id);
+      const selectedMonth = monthKeyFromSelect('rekap-bulan-kinerja-select');
+      const myLaporan = dbLaporan.filter(l => l.userId === currentUser.id && dateKeyISO(l.tanggal).slice(0,7) === selectedMonth);
       const approvedTotal = myLaporan.filter(l => l.status === 'Disetujui').length;
 
       if (currentUser.role === 'PJLP' && (myLaporan.length === 0 || approvedTotal < myLaporan.length)) {
@@ -3259,11 +3273,19 @@
       const nameEl = document.getElementById('absen-evidence-file-name');
       if (!file) { if(nameEl) nameEl.textContent=''; return; }
       if (!['application/pdf','image/jpeg','image/png'].includes(file.type)) { event.target.value=''; notify('Berkas harus PDF, JPG, atau PNG.'); return; }
-      if (file.size > 5 * 1024 * 1024) { event.target.value=''; notify('Ukuran berkas maksimal 5 MB.'); return; }
-      const reader = new FileReader();
-      reader.onload = e => { attendanceEvidenceDataUrl = String(e.target.result || ''); attendanceEvidenceName = file.name; if(nameEl) nameEl.textContent='Berkas dipilih: ' + file.name; };
-      reader.onerror = () => notify('Berkas gagal dibaca. Silakan pilih kembali.');
-      reader.readAsDataURL(file);
+      if (file.size > 20 * 1024 * 1024) { event.target.value=''; notify('Ukuran berkas asli maksimal 20 MB.'); return; }
+      if (file.type.startsWith('image/')) {
+        compressImageFile(file, 1600, 0.76).then(data => {
+          attendanceEvidenceDataUrl = data; attendanceEvidenceName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+          if(nameEl) nameEl.textContent='Foto dikompresi maksimal 1 MB: ' + attendanceEvidenceName;
+        }).catch(err => { event.target.value=''; attendanceEvidenceDataUrl=''; notify('Foto bukti gagal dikompresi: ' + (err.message || err)); });
+      } else {
+        if (file.size > 5 * 1024 * 1024) { event.target.value=''; notify('Dokumen PDF maksimal 5 MB.'); return; }
+        const reader = new FileReader();
+        reader.onload = e => { attendanceEvidenceDataUrl = String(e.target.result || ''); attendanceEvidenceName = file.name; if(nameEl) nameEl.textContent='Berkas dipilih: ' + file.name; };
+        reader.onerror = () => notify('Berkas gagal dibaca. Silakan pilih kembali.');
+        reader.readAsDataURL(file);
+      }
     }
 
     function handleStatusChange() {
@@ -3502,8 +3524,8 @@
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         let q = quality;
         let dataUrl = canvas.toDataURL('image/jpeg', q);
-        // Batas file foto kegiatan: maksimum 3 MiB setelah kompresi (Base64 kira-kira 4/3 ukuran biner).
-        const maxBinaryBytes = 3 * 1024 * 1024;
+        // Batas file foto: maksimum 1 MiB setelah kompresi agar unggah, muat, dan cetak lebih cepat.
+        const maxBinaryBytes = 1 * 1024 * 1024;
         const maxDataUrlChars = Math.ceil(maxBinaryBytes * 4 / 3) + 128;
         for (let attempt = 0; attempt < 10; attempt++) {
           const estimatedBytes = Math.max(0, Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 3 / 4));
@@ -3529,7 +3551,7 @@
           dataUrl = canvas.toDataURL('image/jpeg', q);
         }
         const finalBytes = Math.max(0, Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 3 / 4));
-        if (finalBytes > maxBinaryBytes) throw new Error('Foto kegiatan harus maksimal 3 MB setelah dikompresi. Pilih foto lain.');
+        if (finalBytes > maxBinaryBytes) throw new Error('Foto harus maksimal 1 MB setelah dikompresi. Pilih foto lain.');
         return dataUrl;
       } finally { URL.revokeObjectURL(imageUrl); }
     }
@@ -3541,7 +3563,7 @@
       const container = document.getElementById('lap-foto-preview-container');
       lapPhotoProcessing = true; tempLapFotoBase64 = null;
       try {
-        if (file.size > 20 * 1024 * 1024) throw new Error('Pilih foto dengan ukuran asli maksimal 20 MB; foto akan dikompresi sebelum dikirim.');
+        if (file.size > 20 * 1024 * 1024) throw new Error('Pilih foto dengan ukuran asli maksimal 20 MB; sistem akan mengompresnya menjadi maksimal 1 MB sebelum dikirim.');
         if (container) container.classList.remove('hidden');
         if (preview) { preview.removeAttribute('src'); preview.alt = 'Mengoptimalkan foto…'; }
         tempLapFotoBase64 = await compressImageFile(file);
