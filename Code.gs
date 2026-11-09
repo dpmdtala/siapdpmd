@@ -549,10 +549,21 @@ function updateAttendanceTime_(user, p) {
     if (attendanceDate.slice(0,7) !== today.slice(0,7)) throw new Error('Edit jam hanya diperbolehkan untuk tanggal pada bulan berjalan.');
     if (attendanceDate >= today) throw new Error('Aksi edit jam ini hanya tersedia untuk tanggal yang sudah terlewat.');
     const previousTime = String(row.jam || '');
-    updateById_('Attendance', attendanceId, {jam:attendanceTime});
+    // Hitung ulang keterlambatan berdasarkan jam Masuk yang baru.
+    // Batas masuk tepat waktu adalah pukul 08:00:00 WITA.
+    const timeParts = attendanceTime.split(':').map(Number);
+    const editedSeconds = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
+    const lateBySeconds = String(row.sesi || '') === 'Masuk' && String(row.status || '') === 'Hadir'
+      ? Math.max(0, editedSeconds - (8 * 3600)) : 0;
+    const lateByText = lateBySeconds > 0 ? formatDuration_(lateBySeconds) : '';
+    updateById_('Attendance', attendanceId, {
+      jam:attendanceTime,
+      lateBySeconds:lateBySeconds,
+      lateByText:lateByText
+    });
     audit_(user.id, 'UPDATE', 'Attendance', attendanceId,
-      'Mengubah jam presensi ' + String(row.sesi || '') + ' tanggal ' + attendanceDate + ' dari ' + previousTime + ' menjadi ' + attendanceTime + ' WITA melalui mode Presensi Manual.');
-    return {ok:true, attendanceId, jam:attendanceTime, message:'Jam presensi berhasil diperbarui.'};
+      'Mengubah jam presensi ' + String(row.sesi || '') + ' tanggal ' + attendanceDate + ' dari ' + previousTime + ' menjadi ' + attendanceTime + ' WITA; keterlambatan diperbarui menjadi ' + (lateByText || 'tepat waktu') + '.');
+    return {ok:true, attendanceId, jam:attendanceTime, lateBySeconds, lateByText, message:'Jam presensi dan keterangan keterlambatan berhasil diperbarui.'};
   } finally { lock.releaseLock(); }
 }
 
