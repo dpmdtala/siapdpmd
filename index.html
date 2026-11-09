@@ -1928,6 +1928,20 @@
     </nav>
   </footer>
 
+  <!-- MODAL EDIT JAM PRESENSI MANUAL -->
+  <div id="attendance-time-edit-modal" class="hidden fixed inset-0 z-[150] bg-slate-950/60 p-4 overflow-y-auto no-print" role="dialog" aria-modal="true" aria-labelledby="attendance-time-edit-title">
+    <div class="max-w-md mx-auto my-16 bg-white rounded-3xl shadow-2xl p-6 space-y-4">
+      <div class="flex items-start justify-between gap-3">
+        <div><h3 id="attendance-time-edit-title" class="font-extrabold text-lg text-slate-900">Edit Jam Presensi</h3><p id="attendance-time-edit-meta" class="text-xs text-slate-500 mt-1">Tanggal dan sesi presensi</p></div>
+        <button type="button" onclick="closeAttendanceTimeEdit()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-600" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <input type="hidden" id="attendance-time-edit-id">
+      <div><label for="attendance-time-edit-value" class="block text-xs font-bold text-slate-700 mb-1">Jam Presensi (WITA)</label><input id="attendance-time-edit-value" type="time" step="1" required class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base font-bold"></div>
+      <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">Edit jam hanya tersedia saat Admin membuka Presensi Manual, untuk catatan presensi milik Anda pada tanggal sebelumnya di bulan berjalan. Waktu transaksi perubahan tetap tercatat di riwayat audit.</p>
+      <div class="flex gap-2"><button type="button" onclick="closeAttendanceTimeEdit()" class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-xs font-bold text-slate-600">Batal</button><button id="attendance-time-edit-save" type="button" onclick="saveAttendanceTimeEdit()" class="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-xs font-bold text-white"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Perubahan</button></div>
+    </div>
+  </div>
+
   <!-- ================= SCRIPT ENGINE ================= -->
   <script>
     let currentUser = null;
@@ -2997,7 +3011,10 @@
       const fmtSession = (record, isHolidayOrWeekend) => {
         if (!record) return `<span class="inline-block rounded-md px-2 py-1 text-[10px] font-bold ${isHolidayOrWeekend?'bg-amber-50 text-amber-700':'bg-rose-50 text-rose-700'}">${isHolidayOrWeekend?'Libur':'Absen / Tidak melakukan presensi'}</span>`;
         const statusClass = record.status === 'Hadir' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700';
-        return `<div class="font-bold text-slate-800">${escapeHTML(formatTimeDisplay(record.jam))}</div><span class="inline-block mt-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${statusClass}">${escapeHTML(record.status || 'Tercatat')}</span>${record.lateBySeconds > 0 ? `<div class="mt-1 text-[10px] text-rose-600 font-bold">Terlambat ${escapeHTML(record.lateByText || '')}</div>`:''}${record.catatan ? `<div class="mt-1 text-[10px] text-slate-500">${escapeHTML(record.catatan)}</div>`:''}`;
+        const recordDate = dateKeyISO(record.tanggal);
+        const canEditPastTime = attendanceDateOpen && recordDate && recordDate.slice(0,7) === currentMonthKey && recordDate < getTodayWitaKey();
+        const editButton = canEditPastTime ? `<button type="button" onclick="openAttendanceTimeEdit(${safeJsArg(record.id)})" class="no-print mt-1 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100" title="Edit jam presensi tanggal terlewat"><i class="fa-solid fa-pen"></i> Edit jam</button>` : '';
+        return `<div class="font-bold text-slate-800">${escapeHTML(formatTimeDisplay(record.jam))}</div><span class="inline-block mt-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${statusClass}">${escapeHTML(record.status || 'Tercatat')}</span>${record.lateBySeconds > 0 ? `<div class="mt-1 text-[10px] text-rose-600 font-bold">Terlambat ${escapeHTML(record.lateByText || '')}</div>`:''}${record.catatan ? `<div class="mt-1 text-[10px] text-slate-500">${escapeHTML(record.catatan)}</div>`:''}${editButton}`;
       };
       let attendanceHtml = '';
       filteredMonths.slice().reverse().forEach(monthKey => {
@@ -3666,6 +3683,48 @@
         notify('Pengaturan presensi gagal diperbarui: ' + (err.message || err));
         renderGlobalAttendanceDatePolicy();
       } finally { if (button) button.disabled=false; }
+    }
+
+    function openAttendanceTimeEdit(attendanceId) {
+      if (!attendanceDateOpen) { notify('Edit jam hanya tersedia ketika Admin membuka Presensi Manual.'); return; }
+      const record = (dbAbsensi || []).find(a => String(a.id) === String(attendanceId) && String(a.userId) === String(currentUser?.id));
+      if (!record) { notify('Data presensi tidak ditemukan pada akun Anda.'); return; }
+      const dateKey = dateKeyISO(record.tanggal);
+      const today = getTodayWitaKey();
+      if (!dateKey || dateKey.slice(0,7) !== today.slice(0,7) || dateKey >= today) { notify('Edit jam hanya tersedia untuk tanggal sebelumnya pada bulan berjalan.'); return; }
+      const idInput = document.getElementById('attendance-time-edit-id');
+      const timeInput = document.getElementById('attendance-time-edit-value');
+      const meta = document.getElementById('attendance-time-edit-meta');
+      if (idInput) idInput.value = String(record.id);
+      if (timeInput) timeInput.value = formatTimeDisplay(record.jam || '').slice(0,8) || '08:00:00';
+      if (meta) meta.textContent = `${formatDateDisplay(record.tanggal)} • Presensi ${record.sesi || ''} • ${record.status || ''}`;
+      document.getElementById('attendance-time-edit-modal')?.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    }
+
+    function closeAttendanceTimeEdit() {
+      document.getElementById('attendance-time-edit-modal')?.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    async function saveAttendanceTimeEdit() {
+      if (!attendanceDateOpen) { notify('Admin telah mengunci Presensi Manual. Edit jam tidak dapat dilanjutkan.'); closeAttendanceTimeEdit(); return; }
+      const attendanceId = document.getElementById('attendance-time-edit-id')?.value || '';
+      const jam = document.getElementById('attendance-time-edit-value')?.value || '';
+      if (!attendanceId || !/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(jam)) { notify('Pilih jam presensi yang valid.'); return; }
+      const button = document.getElementById('attendance-time-edit-save');
+      if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Menyimpan…'; }
+      try {
+        await gasCall('updateAttendanceTime', {attendanceId, jam});
+        await refreshServerData();
+        renderPjlpTables();
+        closeAttendanceTimeEdit();
+        notify('Jam presensi berhasil diperbarui.');
+      } catch (err) {
+        notify('Gagal memperbarui jam presensi: ' + (err.message || err));
+      } finally {
+        if (button) { button.disabled = false; button.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Perubahan'; }
+      }
     }
 
     function renderRhkPanel() {
