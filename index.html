@@ -2778,8 +2778,11 @@
           if (!record) return `<span class="inline-block rounded-md px-2 py-1 text-[10px] font-bold ${isDayOff?'bg-amber-50 text-amber-700':'bg-rose-50 text-rose-700'}">${isDayOff?'Libur':'Absen / Tidak melakukan presensi'}</span>`;
           const time = `<span class="font-bold">${escapeHTML(formatTimeDisplay(record.jam || ''))}</span>`;
           const status = `<span class="ml-1 text-[10px] font-semibold text-slate-600">${escapeHTML(record.status || 'Tercatat')}</span>`;
+          const lateSeconds = Number(record.lateBySeconds);
+          const late = Number.isFinite(lateSeconds) && lateSeconds > 0
+            ? `<div class="mt-1 text-[10px] font-bold text-rose-600">Terlambat ${escapeHTML(record.lateByText || formatDurationDisplay(lateSeconds))}</div>` : '';
           const note = record.catatan ? `<div class="text-[10px] text-slate-500 mt-1">${escapeHTML(record.catatan)}</div>` : '';
-          return `${time}${status}${note}`;
+          return `${time}${status}${late}${note}`;
         };
         const recapRows = [];
         for (let d=1; d<=daysInSelectedMonth; d++) {
@@ -4361,12 +4364,18 @@ async function handleSaveLaporan(e) {
       }).join('');
     }
 
+    function formatDurationDisplay(totalSeconds) {
+      const seconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+      const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), sec = seconds % 60;
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')} (jam:menit:detik)`;
+    }
+
     function attendanceTimingDetail(a) {
       if (String(a.sesi || '') !== 'Masuk' || String(a.status || '') !== 'Hadir') return '<span class="text-slate-400">—</span>';
       let seconds = Number(a.lateBySeconds);
       if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
       // Backfill presentation for historical rows that predate lateBySeconds.
-      if (!a.lateBySeconds && a.jam) {
+      if ((a.lateBySeconds === undefined || a.lateBySeconds === null || a.lateBySeconds === '') && a.jam) {
         const m = String(a.jam).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
         if (m) seconds = Math.max(0, Number(m[1])*3600 + Number(m[2])*60 + Number(m[3] || 0) - 8*3600);
       }
