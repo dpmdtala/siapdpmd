@@ -868,7 +868,7 @@
                       <th class="py-3 px-3">Rencana Hasil Kerja (RHK)</th>
                       <th class="py-3 px-3">Uraian Pekerjaan / Kegiatan</th>
                       <th class="py-3 px-3 text-center">Volume</th>
-                      <th class="py-3 px-3">Output Pekerjaan</th>
+                      <th class="py-3 px-3">Output Pekerjaan (Satuan)</th>
                       <th class="py-3 px-3 text-center">Foto Dokumentasi</th>
                       <th class="py-3 px-3 text-center">Status</th>
                     </tr>
@@ -999,13 +999,13 @@
           </div>
           <div class="overflow-x-auto border border-slate-200 rounded-xl">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="py-3 px-3">Waktu</th><th class="p-3">Rencana Hasil Kerja (RHK)</th><th class="p-3">Uraian Pekerjaan / Kegiatan</th><th class="p-3 text-center">Volume</th><th class="p-3">Output Pekerjaan</th><th class="p-3">Foto Dokumentasi</th></tr></thead>
+              <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Tanggal</th><th class="py-3 px-3">Waktu</th><th class="p-3">Rencana Hasil Kerja (RHK)</th><th class="p-3">Uraian Pekerjaan / Kegiatan</th><th class="p-3 text-center">Volume</th><th class="p-3">Output Pekerjaan (Satuan)</th><th class="p-3">Foto Dokumentasi</th></tr></thead>
               <tbody id="rekap-kinerja-month-body" class="divide-y divide-slate-100"><tr><td colspan="7" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr></tbody>
             </table>
           </div>
           <section class="border border-slate-200 rounded-xl overflow-hidden" id="rekap-rhk-summary-section">
             <h4 class="px-4 py-3 bg-slate-50 font-bold text-slate-800 text-xs">Ringkasan Realisasi RHK</h4>
-            <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-white text-slate-600"><tr><th class="p-3">Rencana Hasil Kerja</th><th class="p-3">Output Pekerjaan</th><th class="p-3 text-right">Target Tahunan (Hasil Perhitungan)</th><th class="p-3 text-right">Target Bulanan</th><th class="p-3 text-right">Realisasi Bulanan</th><th class="p-3 text-right">Realisasi Kumulatif</th><th class="p-3 text-right">Capaian Tahunan</th></tr></thead><tbody id="rekap-rhk-summary-body"><tr><td colspan="7" class="p-3 text-center text-slate-400">Belum ada realisasi RHK.</td></tr></tbody></table></div>
+            <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-white text-slate-600"><tr><th class="p-3">Rencana Hasil Kerja</th><th class="p-3 text-right">Target Tahunan (Hasil Perhitungan)</th><th class="p-3 text-right">Target Bulanan</th><th class="p-3 text-right">Realisasi Bulanan</th><th class="p-3 text-right">Realisasi Kumulatif</th><th class="p-3 text-right">Capaian Tahunan</th></tr></thead><tbody id="rekap-rhk-summary-body"><tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada realisasi RHK.</td></tr></tbody></table></div>
             <p class="px-3 py-2 text-[10px] text-slate-500">Realisasi dihitung dari laporan harian berstatus Disetujui. Laporan Pending dan Ditolak tidak diperhitungkan.</p>
           </section>
         </div>
@@ -1312,10 +1312,11 @@
           <table class="w-full text-left text-xs">
             <thead>
               <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                <th class="py-3.5 px-4">Nama Pegawai & Bidang</th>
+                <th class="py-3.5 px-4">Nama Pegawai</th>
+                <th class="py-3.5 px-4">Hari</th>
                 <th class="py-3.5 px-4">Tanggal & Waktu</th>
-                <th class="py-3.5 px-4">Sesi</th>
-                <th class="py-3.5 px-4">Status</th>
+                <th class="py-3.5 px-4">Presensi Masuk</th>
+                <th class="py-3.5 px-4">Presensi Pulang</th>
                 <th class="py-3.5 px-4">Catatan / Koordinat</th>
                 <th class="py-3.5 px-4 text-center">Aksi Hapus</th>
               </tr>
@@ -2813,7 +2814,29 @@
       }
       const reportBody = document.getElementById('rekap-kinerja-month-body');
       if (reportBody) {
-        reportBody.innerHTML = reportRows.length ? reportRows.map(r => `<tr><td class="p-3">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(r.kegiatan||'')}</td><td class="p-3">${escapeHTML(r.output||'')}</td><td class="p-2 text-center align-middle">${r.foto ? `<a href="#" data-report-photo-id="${escapeHTML(String(r.id))}" onclick="openReportPhotoById(${safeJsArg(r.id)});return false" class="inline-flex items-center gap-1 text-blue-700 underline font-semibold"><i class="fa-regular fa-image"></i> Lihat foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`).join('') : '<tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
+        reportBody.innerHTML = reportRows.length ? reportRows.map(r => {
+          const rhk = (dbRhk || []).find(x => String(x.id) === String(r.rhkId));
+          const rhkName = rhk?.uraianHasilKerja || r.rhkUraian || '—';
+          const volume = r.volume ?? r.realisasiQty ?? '';
+          const unit = r.output || rhk?.satuanTarget || '';
+          return `<tr><td class="p-3 whitespace-nowrap">${escapeHTML(formatDateDisplay(r.tanggal))}</td><td class="p-3 whitespace-nowrap">${escapeHTML(r.jamMulai ? formatTimeDisplay(r.jamMulai) : '—')}–${escapeHTML(r.jamSelesai ? formatTimeDisplay(r.jamSelesai) : '—')}</td><td class="p-3">${escapeHTML(rhkName)}</td><td class="p-3">${escapeHTML(r.kegiatan || '')}</td><td class="p-3 text-center font-bold">${escapeHTML(String(volume))}</td><td class="p-3">${escapeHTML(unit)}</td><td class="p-2 text-center align-middle">${r.foto ? `<a href="#" data-report-photo-id="${escapeHTML(String(r.id))}" onclick="openReportPhotoById(${safeJsArg(r.id)});return false" class="inline-flex items-center gap-1 text-blue-700 underline font-semibold"><i class="fa-regular fa-image"></i> Lihat foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td></tr>`;
+        }).join('') : '<tr><td colspan="7" class="p-3 text-center text-slate-400">Belum ada laporan pada periode ini.</td></tr>';
+      }
+      const summaryBody = document.getElementById('rekap-rhk-summary-body');
+      if (summaryBody) {
+        const [summaryYear, summaryMonth] = monthReports.split('-').map(Number);
+        const approvedYearReports = (dbLaporan || []).filter(x => x.status === 'Disetujui' && Number(String(dateKeyISO(x.tanggal)).slice(0,4)) === summaryYear);
+        const usedRhkIds = new Set(reportRows.map(x => String(x.rhkId || '')).filter(Boolean));
+        const summaryRows = (dbRhk || []).filter(x => usedRhkIds.has(String(x.id))).map(rhk => {
+          const linked = approvedYearReports.filter(x => String(x.rhkId || '') === String(rhk.id));
+          const monthlyRealization = linked.filter(x => Number(String(dateKeyISO(x.tanggal)).slice(5,7)) === summaryMonth).reduce((sum,x) => sum + Number(x.volume ?? x.realisasiQty ?? 0), 0);
+          const cumulative = linked.reduce((sum,x) => sum + Number(x.volume ?? x.realisasiQty ?? 0), 0);
+          const annualTarget = getRhkAnnualTarget(rhk);
+          const monthlyTarget = getRhkMonthlyTarget(rhk, summaryMonth);
+          const achievement = annualTarget > 0 ? (cumulative / annualTarget * 100) : 0;
+          return `<tr><td class="p-3">${escapeHTML(rhk.uraianHasilKerja || '—')}</td><td class="p-3 text-right">${formatRhkQuantity(annualTarget)}</td><td class="p-3 text-right">${formatRhkQuantity(monthlyTarget)}</td><td class="p-3 text-right">${formatRhkQuantity(monthlyRealization)}</td><td class="p-3 text-right">${formatRhkQuantity(cumulative)}</td><td class="p-3 text-right">${achievement.toFixed(2)}%</td></tr>`;
+        });
+        summaryBody.innerHTML = summaryRows.length ? summaryRows.join('') : '<tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada realisasi RHK yang disetujui pada periode ini.</td></tr>';
       }
     }
 
@@ -2967,7 +2990,7 @@
               <td class="py-3 px-3">${escapeHTML((dbRhk||[]).find(x=>String(x.id)===String(l.rhkId))?.uraianHasilKerja||l.rhkUraian||'—')}</td>
               <td class="py-3 px-3">${escapeHTML(l.kegiatan)}</td>
               <td class="py-3 px-3 text-center font-bold">${escapeHTML(String(l.volume ?? l.realisasiQty ?? '—'))}</td>
-              <td class="py-3 px-3 font-bold">${escapeHTML(l.output)}</td>
+              <td class="py-3 px-3 font-bold">${escapeHTML(l.output || (dbRhk||[]).find(x=>String(x.id)===String(l.rhkId))?.satuanTarget || '')}</td>
               <td data-print-photo="1" class="py-3 px-3 text-center">${l.foto ? `<a href="#" onclick="openReportPhotoById(${safeJsArg(l.id)});return false" class="text-blue-700 underline text-xs font-semibold">Buka foto</a>` : '<span class="text-slate-400">Tidak ada foto</span>'}</td>
               <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Disetujui'?'bg-blue-100 text-blue-800':(l.status==='Ditolak'?'bg-rose-100 text-rose-800':'bg-amber-100 text-amber-800')}">${escapeHTML(l.status)}</span></td>
             </tr>
@@ -4150,34 +4173,47 @@ async function handleSaveLaporan(e) {
       populateAdminMonthFilter('admin-filter-hadir-bulan');
       ensureHistoryDateFilter('admin-hadir-table-body','admin-hadir-filter-tanggal','Tanggal presensi',renderAdminAbsensiTable);
       const tbody = document.getElementById('admin-hadir-table-body');
-      tbody.innerHTML = "";
+      if (!tbody) return;
+      tbody.innerHTML = '';
       const bidangFilter = document.getElementById('admin-filter-hadir-bidang')?.value || 'Semua';
       const statusFilter = document.getElementById('admin-filter-hadir-status')?.value || 'Semua';
       const monthFilter = document.getElementById('admin-filter-hadir-bulan')?.value || adminCurrentMonthKeys()[0];
       const searchKey = (document.getElementById('admin-search-hadir')?.value || '').toLowerCase();
       const selectedDate = document.getElementById('admin-hadir-filter-tanggal')?.value || '';
-
-      dbAbsensi.filter(a => {
-        if (monthFilter && dateKeyISO(a.tanggal).slice(0,7) !== monthFilter) return false;
-        if (selectedDate && dateKeyISO(a.tanggal) !== selectedDate) return false;
-        const owner = dbUsers.find(u => u.id === a.userId);
-        if (bidangFilter !== 'Semua' && owner && owner.bidang !== bidangFilter) return false;
-        if (statusFilter !== 'Semua' && a.status !== statusFilter) return false;
-        if (searchKey && owner && !String(owner.nama || '').toLowerCase().includes(searchKey)) return false;
-        return true;
-      }).forEach(a => {
-        const owner = dbUsers.find(u => u.id === a.userId);
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 transition">
-            <td class="py-3.5 px-4 font-bold text-slate-900">${escapeHTML(owner ? owner.nama : 'Pegawai')}</td>
-            <td class="py-3.5 px-4">${escapeHTML(formatDateDisplay(a.tanggal))} • ${escapeHTML(formatTimeDisplay(a.jam))}</td>
-            <td class="py-3.5 px-4 font-bold">${escapeHTML(a.sesi)}</td>
-            <td class="py-3.5 px-4"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">${escapeHTML(a.status)}</span></td>
-            <td class="py-3.5 px-4">${escapeHTML(a.catatan)}${a.lateBySeconds > 0 ? `<div class="text-rose-600 font-bold">Terlambat ${escapeHTML(a.lateByText || '')}</div>` : ''}</td>
-            <td class="py-3.5 px-4 text-center"><button onclick="deleteServerRecord('deleteAttendance',${safeJsArg(a.id)})" class="px-2 py-1 bg-rose-50 text-rose-600 rounded text-[10px] font-bold">Hapus</button></td>
-          </tr>
-        `;
+      const grouped = new Map();
+      (dbAbsensi || []).forEach(a => {
+        const dateKey = dateKeyISO(a.tanggal);
+        if (!dateKey || (monthFilter && dateKey.slice(0,7) !== monthFilter) || (selectedDate && dateKey !== selectedDate)) return;
+        if (statusFilter !== 'Semua' && a.status !== statusFilter) return;
+        const owner = (dbUsers || []).find(u => String(u.id) === String(a.userId));
+        if (bidangFilter !== 'Semua' && owner && owner.bidang !== bidangFilter) return;
+        if (searchKey && !(String(owner?.nama || '').toLowerCase().includes(searchKey))) return;
+        const key = `${a.userId}|${dateKey}`;
+        if (!grouped.has(key)) grouped.set(key, {owner, dateKey, masuk:[], pulang:[], records:[]});
+        const group = grouped.get(key);
+        const session = String(a.sesi || '').toLowerCase() === 'masuk' ? 'masuk' : 'pulang';
+        group[session].push(a); group.records.push(a);
       });
+      const groups = Array.from(grouped.values()).sort((a,b) => b.dateKey.localeCompare(a.dateKey) || String(a.owner?.nama||'').localeCompare(String(b.owner?.nama||''),'id'));
+      const renderSession = rows => rows.length ? rows.sort((a,b)=>String(a.jam||'').localeCompare(String(b.jam||''))).map(a => {
+        const late = Number(a.lateBySeconds) > 0 ? `<div class="text-[10px] text-rose-600 font-bold">Terlambat ${escapeHTML(a.lateByText || formatDurationDisplay(Number(a.lateBySeconds)))}</div>` : '';
+        return `<div class="mb-1 last:mb-0"><b>${escapeHTML(formatTimeDisplay(a.jam || '—'))}</b><div class="text-[10px] text-slate-600">${escapeHTML(a.status || 'Tercatat')}</div>${late}</div>`;
+      }).join('') : '<span class="text-slate-400">—</span>';
+      tbody.innerHTML = groups.length ? groups.map(g => {
+        const [yy,mm,dd] = g.dateKey.split('-').map(Number);
+        const day = new Date(yy,mm-1,dd).toLocaleDateString('id-ID',{weekday:'long'});
+        const dateLabel = formatDateDisplay(g.dateKey);
+        const notes = g.records.map(a => {
+          const bits = [];
+          if (a.status && a.status !== 'Hadir') bits.push(`<b>${escapeHTML(a.status)}</b>`);
+          if (a.catatan) bits.push(escapeHTML(a.catatan));
+          if (a.latitude !== '' && a.latitude != null && a.longitude !== '' && a.longitude != null) bits.push(`Koordinat: ${escapeHTML(String(a.latitude))}, ${escapeHTML(String(a.longitude))}`);
+          else if (a.status === 'Hadir' && Number.isFinite(Number(a.distanceMeters)) && a.distanceMeters !== '') bits.push(`Jarak dari kantor: ${escapeHTML(String(a.distanceMeters))} m`);
+          return bits.length ? `<div class="mb-1 last:mb-0">${bits.join(' · ')}</div>` : '';
+        }).filter(Boolean).join('') || '<span class="text-slate-400">—</span>';
+        const deleteButtons = g.records.map(a => `<button onclick="deleteServerRecord('deleteAttendance',${safeJsArg(a.id)})" title="Hapus presensi ${escapeHTML(a.sesi || '')} ${escapeHTML(formatTimeDisplay(a.jam || ''))}" class="mb-1 mr-1 px-2 py-1 bg-rose-50 text-rose-600 rounded text-[10px] font-bold">Hapus ${escapeHTML(a.sesi || '')}</button>`).join('');
+        return `<tr class="hover:bg-slate-50 transition"><td class="py-3.5 px-4 font-bold text-slate-900">${escapeHTML(g.owner?.nama || 'Pegawai')}</td><td class="py-3.5 px-4 capitalize">${escapeHTML(day)}</td><td class="py-3.5 px-4 whitespace-nowrap">${escapeHTML(dateLabel)}</td><td class="py-3.5 px-4">${renderSession(g.masuk)}</td><td class="py-3.5 px-4">${renderSession(g.pulang)}</td><td class="py-3.5 px-4 min-w-48">${notes}</td><td class="py-3.5 px-4 text-center">${deleteButtons}</td></tr>`;
+      }).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-400">Tidak ada data presensi pada filter yang dipilih.</td></tr>';
     }
 
     function renderAdminLaporanTable() {
