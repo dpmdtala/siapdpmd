@@ -194,6 +194,7 @@ function api(action, payload, token) {
     case 'downloadArchive': return downloadArchive_(user, payload.archiveId);
     case 'downloadAttendanceEvidence': return downloadAttendanceEvidence_(user, payload.attendanceId);
     case 'saveAttendance': requireRole_(user, ['PJLP']); return saveAttendance_(user, payload);
+    case 'updateAttendanceTime': requireRole_(user, ['PJLP']); return updateAttendanceTime_(user, payload);
     case 'saveReport': requireRole_(user, ['PJLP']); return saveReport_(user, payload);
     case 'saveArchive': requireRole_(user, ['PJLP']); return saveArchive_(user, payload);
     case 'approveReport': requireRole_(user, ['SuperAdmin','Verifikator']); return approveReport_(user, payload.reportId);
@@ -523,6 +524,36 @@ function getMonthlyProductivity_(viewer) {
   ranked.sort((a,b) => b.total-a.total || a.nama.localeCompare(b.nama, 'id'));
   const top = ranked.length ? ranked[0] : null;
   return {ok:true, period:monthKey, employee:top};
+}
+
+function updateAttendanceTime_(user, p) {
+  const attendanceId = required_(p.attendanceId, 'Data presensi');
+  const suppliedTime = String(p.jam || '').trim();
+  if (!/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(suppliedTime)) {
+    throw new Error('Jam presensi harus menggunakan format HH:MM atau HH:MM:SS.');
+  }
+  const attendanceTime = suppliedTime.length === 5 ? suppliedTime + ':00' : suppliedTime;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    if (!getGlobalAttendanceDatePolicy_()) {
+      throw new Error('Edit jam presensi hanya tersedia ketika Admin membuka Presensi Manual.');
+    }
+    const row = findById_('Attendance', attendanceId);
+    if (!row) throw new Error('Data presensi tidak ditemukan.');
+    if (String(row.userId) !== String(user.id)) throw new Error('Anda hanya dapat mengedit presensi milik akun sendiri.');
+    const now = new Date();
+    const today = Utilities.formatDate(now, APP.TZ, 'yyyy-MM-dd');
+    const attendanceDate = normalizeDateKey_(row.tanggal);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(attendanceDate)) throw new Error('Tanggal pada data presensi tidak valid.');
+    if (attendanceDate.slice(0,7) !== today.slice(0,7)) throw new Error('Edit jam hanya diperbolehkan untuk tanggal pada bulan berjalan.');
+    if (attendanceDate >= today) throw new Error('Aksi edit jam ini hanya tersedia untuk tanggal yang sudah terlewat.');
+    const previousTime = String(row.jam || '');
+    updateById_('Attendance', attendanceId, {jam:attendanceTime});
+    audit_(user.id, 'UPDATE', 'Attendance', attendanceId,
+      'Mengubah jam presensi ' + String(row.sesi || '') + ' tanggal ' + attendanceDate + ' dari ' + previousTime + ' menjadi ' + attendanceTime + ' WITA melalui mode Presensi Manual.');
+    return {ok:true, attendanceId, jam:attendanceTime, message:'Jam presensi berhasil diperbarui.'};
+  } finally { lock.releaseLock(); }
 }
 
 function saveAttendance_(user, p) {
