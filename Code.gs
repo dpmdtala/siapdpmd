@@ -1193,6 +1193,9 @@ function requireSession_(token) {
   const sess = JSON.parse(raw);
   const user = findById_('Users', sess.id);
   if (!user || user.status !== 'Aktif') throw new Error('Akun tidak aktif.');
+  // Perpanjang sesi selama akun masih aktif digunakan. Reload halaman tidak
+  // membuat sesi baru dan aktivitas API menjaga token tetap hidup.
+  CacheService.getScriptCache().put('sess:' + token, raw, APP.SESSION_TTL_SECONDS);
   return safeUser_(user);
 }
 function requireRole_(user, roles) { if (roles.indexOf(user.role) < 0) throw new Error('Akses ditolak.'); }
