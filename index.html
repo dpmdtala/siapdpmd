@@ -1428,6 +1428,18 @@
 
   </main>
 
+  <!-- MODAL PROFIL LENGKAP PEGAWAI UNTUK SUPER ADMIN -->
+  <div id="admin-employee-profile-modal" class="hidden fixed inset-0 z-[160] bg-slate-950/60 backdrop-blur-sm p-4 overflow-y-auto no-print" role="dialog" aria-modal="true" aria-labelledby="admin-employee-profile-title">
+    <div class="max-w-3xl mx-auto my-6 bg-white rounded-3xl shadow-2xl overflow-hidden">
+      <div class="bg-gradient-to-r from-slate-950 via-indigo-950 to-blue-950 text-white p-5 sm:p-6 flex items-start justify-between gap-4">
+        <div><p class="text-[10px] uppercase tracking-widest text-indigo-200 font-bold">Data Kepegawaian</p><h3 id="admin-employee-profile-title" class="text-lg sm:text-xl font-black mt-1">Profil Lengkap Pegawai</h3><p class="text-xs text-slate-300 mt-1">Informasi biodata pegawai yang tersimpan di SIAP-DPMD</p></div>
+        <button type="button" onclick="closeAdminEmployeeProfile()" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="admin-employee-profile-content" class="p-5 sm:p-7 max-h-[72vh] overflow-y-auto"></div>
+      <div class="p-4 border-t border-slate-200 flex justify-end"><button type="button" onclick="closeAdminEmployeeProfile()" class="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold">Tutup</button></div>
+    </div>
+  </div>
+
   <!-- ================= MODAL EDIT PROFIL ================= -->
   <div id="edit-profile-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-200 relative max-h-[90vh] flex flex-col">
@@ -2042,8 +2054,24 @@
     let dbArsip = [];
     let gasSessionToken = '';
     const SIAP_SESSION_KEY = 'siapdpmd_session_v1';
+    const SIAP_PAGE_STATE_KEY = 'siapdpmd_last_page_v1';
+    let restoringPageState = false;
     function persistSession() { try { if (gasSessionToken) localStorage.setItem(SIAP_SESSION_KEY, gasSessionToken); else localStorage.removeItem(SIAP_SESSION_KEY); } catch (_) {} }
     function readSavedSession() { try { return localStorage.getItem(SIAP_SESSION_KEY) || ''; } catch (_) { return ''; } }
+    function saveLastPageState(view, tab) {
+      try {
+        const previous = JSON.parse(localStorage.getItem(SIAP_PAGE_STATE_KEY) || '{}');
+        const state = Object.assign({}, previous, {view: view || previous.view || 'landing', savedAt: Date.now(), scrollY: Math.max(0, window.scrollY || 0)});
+        if (tab) state.tab = tab;
+        if (currentUser) state.role = currentUser.role;
+        localStorage.setItem(SIAP_PAGE_STATE_KEY, JSON.stringify(state));
+      } catch (_) {}
+    }
+    function readLastPageState() {
+      try { const state = JSON.parse(localStorage.getItem(SIAP_PAGE_STATE_KEY) || '{}'); return state && typeof state === 'object' ? state : {}; }
+      catch (_) { return {}; }
+    }
+    function clearLastPageState() { try { localStorage.removeItem(SIAP_PAGE_STATE_KEY); } catch (_) {} }
     let gasReady = false;
     // Kebijakan tanggal global dibaca dari backend; default terbuka untuk mempertahankan perilaku Revisi 6.
     let reportDateOpen = true;
@@ -2260,7 +2288,7 @@
       return false;
     }
 
-    function switchView(viewName) {
+    function switchView(viewName, options = {}) {
       document.getElementById('view-landing').classList.add('hidden');
       document.getElementById('view-pjlp').classList.add('hidden');
       document.getElementById('view-verifikator').classList.add('hidden');
@@ -2270,8 +2298,9 @@
       if (targetView) targetView.classList.remove('hidden');
 
       if (viewName === 'verifikator') renderVerifikatorDashboard();
-      if (viewName === 'superadmin') switchAdminTab('users');
+      if (viewName === 'superadmin' && !options.skipDefaultTab) switchAdminTab('users');
       if (viewName === 'pjlp') renderPjlpTables();
+      if (!restoringPageState) saveLastPageState(viewName, viewName === 'pjlp' ? 'profile' : (viewName === 'superadmin' ? 'users' : (viewName === 'verifikator' ? 'laporan' : '')));
     }
 
     async function handleLoginSubmit(e) {
@@ -2457,6 +2486,7 @@
       try { if (gasSessionToken) await gasCall('logout', {}); } catch (_) {}
       gasSessionToken = '';
       persistSession();
+      clearLastPageState();
       currentUser = null;
       clearLoginCredentials();
       const alertBox = document.getElementById('modal-alert'); if (alertBox) { alertBox.textContent=''; alertBox.classList.add('hidden'); }
@@ -4058,6 +4088,7 @@ async function handleSaveLaporan(e) {
       if (tabName === 'laporan') renderAdminLaporanTable();
       if (tabName === 'arsip') renderAdminArsipTable();
       if (tabName === 'audit') loadAuditLog();
+      if (!restoringPageState) saveLastPageState('superadmin', tabName);
     }
 
     function switchPjlpTab(tabName) {
@@ -4088,6 +4119,7 @@ async function handleSaveLaporan(e) {
       if (tabName === 'rhk') renderRhkPanel();
       activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
       if (tabName === 'hadir') { locationVerified = false; lastGpsPosition = null; checkUserLocation({silent:true}); }
+      if (!restoringPageState) saveLastPageState('pjlp', tabName);
     }
 
     function switchVerifTab(tabName) {
@@ -4098,6 +4130,7 @@ async function handleSaveLaporan(e) {
       });
       document.getElementById(`verif-tab-${tabName}`).classList.remove('hidden');
       document.getElementById(`verif-tab-btn-${tabName}`).className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
+      if (!restoringPageState) saveLastPageState('verifikator', tabName);
     }
 
     // Menu khusus Super Admin untuk menyetujui atau menolak akun baru.
@@ -4110,6 +4143,27 @@ async function handleSaveLaporan(e) {
       if (!pending.length) { tbody.innerHTML = '<tr><td colspan="5" class="p-5 text-center text-slate-400">Tidak ada pendaftaran yang menunggu persetujuan.</td></tr>'; return; }
       tbody.innerHTML = pending.map(u => `<tr class="hover:bg-amber-50"><td class="py-3 px-4 font-bold">${escapeHTML(u.nama || '')}</td><td class="py-3 px-4">${escapeHTML(u.nik || '')}<br><span class="text-slate-500">${escapeHTML(u.email || '')}</span></td><td class="py-3 px-4">${escapeHTML(u.bidang || '')}<br><span class="text-slate-500">${escapeHTML(u.jabatan || '')}</span></td><td class="py-3 px-4">${escapeHTML(u.createdAt || u.updatedAt || '-')}${u.legacyRegistration ? '<br><span class="text-amber-700 text-[10px]">Pendaftaran dari versi sebelumnya — perlu ditinjau</span>' : ''}</td><td class="py-3 px-4 text-center whitespace-nowrap"><button onclick="reviewRegistration(${safeJsArg(u.id)}, 'approve')" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold">Setujui</button> <button onclick="reviewRegistration(${safeJsArg(u.id)}, 'reject')" class="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold">Tolak</button></td></tr>`).join('');
     }
+
+    // Profil lengkap pegawai hanya dapat dibuka dari panel Super Admin.
+    function openAdminEmployeeProfile(userId) {
+      if (!currentUser || currentUser.role !== 'SuperAdmin') { notify('Akses hanya untuk Super Admin.'); return; }
+      const u = (dbUsers || []).find(item => String(item.id) === String(userId));
+      if (!u) { notify('Data profil pegawai tidak ditemukan.'); return; }
+      const content = document.getElementById('admin-employee-profile-content');
+      const modal = document.getElementById('admin-employee-profile-modal');
+      if (!content || !modal) return;
+      const fields = [
+        ['Nama Lengkap',u.nama],['NIK',u.nik],['Username Login',u.username],['Email',u.email],['Nomor HP / WhatsApp',u.hp],
+        ['Role Akun',u.role],['Status Akun',u.registrationPending ? 'Menunggu Persetujuan' : u.status],['Bidang / Unit Kerja',u.bidang],['Jabatan',u.jabatan],
+        ['Tempat / Tanggal Lahir',u.ttl],['Jenis Kelamin',u.jenisKelamin],['Umur',ageFromTtl(u.ttl)],['Pendidikan Terakhir',u.pendidikanTerakhir],
+        ['Status Perkawinan',u.kawin],['TMT Kerja',u.tmt ? formatDateDisplay(u.tmt) : '—'],['Masa Kerja',tenureFromTmt(u.tmt)],
+        ['Alamat Lengkap',u.alamat],['Nomor Rekening BANK KALSEL',u.rekening],['Tanggal Dibuat',u.createdAt],['Terakhir Diperbarui',u.updatedAt]
+      ];
+      const avatar = u.avatar ? `<img src="${escapeHTML(u.avatar)}" alt="Foto ${escapeHTML(u.nama)}" class="w-24 h-28 rounded-2xl object-cover border border-slate-200 shadow-sm" onerror="this.style.display='none'">` : `<div class="w-24 h-28 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl"><i class="fa-solid fa-user"></i></div>`;
+      content.innerHTML = `<div class="flex flex-col sm:flex-row gap-4 items-start mb-6">${avatar}<div class="min-w-0"><h4 class="text-xl font-black text-slate-900">${escapeHTML(u.nama || '—')}</h4><p class="text-sm text-slate-600 mt-1">${escapeHTML(u.jabatan || 'Jabatan belum diisi')}</p><p class="text-xs text-slate-500">${escapeHTML(u.bidang || 'Bidang belum diisi')}</p><span class="inline-flex mt-3 rounded-full px-3 py-1 text-[10px] font-bold ${u.status === 'Aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${escapeHTML(u.registrationPending ? 'Menunggu Persetujuan' : (u.status || 'Status belum diisi'))}</span></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${fields.map(([label,value]) => `<div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] uppercase tracking-wide text-slate-500 font-bold">${escapeHTML(label)}</p><p class="text-sm text-slate-900 font-semibold mt-1 break-words">${escapeHTML(value || '—')}</p></div>`).join('')}</div>`;
+      modal.classList.remove('hidden');
+    }
+    function closeAdminEmployeeProfile() { const modal = document.getElementById('admin-employee-profile-modal'); if (modal) modal.classList.add('hidden'); }
 
     // Admin Renderers
     function renderAdminUserTable() {
@@ -4125,6 +4179,7 @@ async function handleSaveLaporan(e) {
             <td class="py-3.5 px-4 font-bold text-slate-700">${escapeHTML(u.role)}<div class="text-xs">${u.registrationPending ? 'Menunggu Persetujuan' : escapeHTML(u.status || '')}</div></td>
             <td class="py-3.5 px-4 text-center space-x-1">
               ${(u.registrationPending === true || u.status === "Menunggu Persetujuan") ? `<button onclick="reviewRegistration(${safeJsArg(u.id)}, 'approve')" class="px-2 py-1 bg-emerald-600 text-white rounded">Setujui</button><button onclick="reviewRegistration(${safeJsArg(u.id)}, 'reject')" class="px-2 py-1 bg-amber-600 text-white rounded">Tolak</button>` : ""}
+              <button onclick="openAdminEmployeeProfile(${safeJsArg(u.id)})" class="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-lg text-[10px] border border-indigo-200">Lihat Profil</button>
               <button onclick="openEditProfileModal(${safeJsArg(u.id)})" class="px-2.5 py-1.5 bg-blue-50 text-blue-700 font-bold rounded-lg text-[10px] border border-blue-200">Edit</button>
               <button onclick="openResetPassModal(${safeJsArg(u.id)}, this.dataset.userName)" data-user-name="${escapeHTML(u.nama)}" class="px-2.5 py-1.5 bg-slate-900 text-white font-bold rounded-lg text-[10px]">Key</button>
               <button onclick="deleteUser(${safeJsArg(u.id)})" class="px-2.5 py-1.5 bg-rose-50 text-rose-600 font-bold rounded-lg text-[10px] border border-rose-200">Del</button>
@@ -4637,11 +4692,21 @@ async function handleSaveLaporan(e) {
         if (!dateInput.value) dateInput.value = todayKey;
       }
     }
+    let pageStateScrollPending = false;
+    window.addEventListener('beforeunload', () => { if (currentUser) saveLastPageState(undefined, undefined); });
+    window.addEventListener('scroll', () => {
+      if (!currentUser || pageStateScrollPending) return;
+      pageStateScrollPending = true;
+      requestAnimationFrame(() => { pageStateScrollPending = false; saveLastPageState(undefined, undefined); });
+    }, {passive:true});
     window.onload = async function() {
+      const savedPage = readLastPageState();
+      restoringPageState = true;
       switchView('landing');
+      restoringPageState = false;
       updateLiveClock();
       setInterval(updateLiveClock, 1000);
-      // Sinkronkan status buka/kunci lintas akun secara berkala; backend tetap menjadi sumber validasi utama.
+      // Sinkronkan status buka/kunci lintas akun secara berkala.
       setInterval(() => { if (currentUser && currentUser.role === 'PJLP' && gasSessionToken) { syncGlobalReportDatePolicy().catch(() => {}); syncGlobalAttendanceDatePolicy().catch(() => {}); } }, 30000);
       gasSessionToken = readSavedSession();
       let lastError = null;
@@ -4655,31 +4720,52 @@ async function handleSaveLaporan(e) {
       }
       if (!gasReady) {
         console.error('Health check SIAP-DPMD gagal:', lastError);
-        notify('Server Google Apps Script belum merespons. Muat ulang halaman; jika tetap gagal, periksa deployment Web App dan izin akses.');
+        notify('Koneksi server belum tersedia. Sesi tetap disimpan; muat ulang atau coba kembali tanpa login ulang.');
         return;
       }
-      // Restore authenticated session after refresh; only clear saved token if the server rejects it.
       if (gasSessionToken) {
         try {
           const session = await gasCall('getCurrentUser', {});
           currentUser = session.user;
           window.verifikatorNama = session.verifikatorNama || '';
           updateUserNavbar();
-          if (currentUser.role === 'SuperAdmin') switchView('superadmin');
-          else if (currentUser.role === 'Verifikator') switchView('verifikator');
-          else switchView('pjlp');
+          const expectedView = currentUser.role === 'SuperAdmin' ? 'superadmin' : (currentUser.role === 'Verifikator' ? 'verifikator' : 'pjlp');
+          const savedView = savedPage.view === expectedView ? savedPage.view : expectedView;
+          restoringPageState = true;
+          switchView(savedView, {skipDefaultTab:true});
           await refreshServerData();
-          if (currentUser.role === 'SuperAdmin') switchAdminTab('users');
-          else if (currentUser.role === 'Verifikator') renderVerifikatorDashboard();
-          else renderPjlpTables();
+          if (savedView === 'superadmin') {
+            const allowed = ['registrasi','users','hadir','laporan','arsip','audit'];
+            switchAdminTab(allowed.includes(savedPage.tab) ? savedPage.tab : 'users');
+          } else if (savedView === 'verifikator') {
+            const allowed = ['laporan','hadir'];
+            switchVerifTab(allowed.includes(savedPage.tab) ? savedPage.tab : 'laporan');
+            renderVerifikatorDashboard();
+          } else {
+            const allowed = ['profile','hadir','rhk','kegiatan','rekap-hadir','rekap-kinerja','arsip'];
+            switchPjlpTab(allowed.includes(savedPage.tab) ? savedPage.tab : 'profile');
+            renderPjlpTables();
+          }
+          restoringPageState = false;
+          saveLastPageState(savedView, savedPage.tab);
           renderMonthlyProductiveEmployee();
+          if (Number.isFinite(Number(savedPage.scrollY)) && Number(savedPage.scrollY) > 0) requestAnimationFrame(() => window.scrollTo({top:Number(savedPage.scrollY), behavior:'auto'}));
           return;
         } catch (err) {
-          console.warn('Sesi tersimpan tidak dapat dipulihkan:', err);
-          gasSessionToken = ''; persistSession(); currentUser = null;
+          console.warn('Sesi tersimpan belum dapat dipulihkan:', err);
+          const message = String(err && err.message || '');
+          const sessionInvalid = /sesi (tidak tersedia|kedaluwarsa)|akun tidak aktif|akses ditolak/i.test(message);
+          if (sessionInvalid) {
+            gasSessionToken = ''; persistSession(); currentUser = null;
+            notify('Sesi telah berakhir. Silakan masuk kembali.');
+          } else {
+            // Gangguan jaringan/server tidak boleh menghapus token sesi yang masih tersimpan.
+            notify('Koneksi belum stabil. Sesi tetap disimpan; muat ulang kembali tanpa login ulang.');
+          }
+          restoringPageState = false;
         }
       }
-      switchView('landing');
+      if (!gasSessionToken) switchView('landing');
     };
   </script>
 </body>
