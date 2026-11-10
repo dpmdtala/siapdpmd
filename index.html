@@ -1073,6 +1073,9 @@
         <button id="verif-tab-btn-hadir" onclick="switchVerifTab('hadir')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-calendar-user"></i> Presensi Staf Bidang
         </button>
+        <button id="verif-tab-btn-rhk" onclick="switchVerifTab('rhk')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
+          <i class="fa-solid fa-chart-line"></i> RHK & Capaian Kinerja Staf
+        </button>
       </div>
 
       <!-- TAB 1 VERIFIKASI LAPORAN -->
@@ -1157,6 +1160,20 @@
         </div>
       </div>
 
+      <!-- TAB 3 RHK & CAPAIAN KINERJA STAF BIDANG -->
+      <div id="verif-tab-rhk" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
+        <div class="border-b border-slate-100 pb-4">
+          <h3 class="font-black text-slate-900 text-lg">RHK & Capaian Kinerja Staf Bidang</h3>
+          <p class="text-xs text-slate-500 mt-1">Menampilkan Rencana Hasil Kerja dan realisasi kinerja PJLP yang berada dalam bidang/sub bagian Anda. Realisasi dihitung dari laporan berstatus Disetujui.</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <div class="flex-1"><label class="block text-[10px] font-bold text-slate-500 mb-1">Pegawai</label><select id="verif-rhk-filter-pegawai" onchange="renderStaffRhkPerformance('verif')" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs"><option value="Semua">Semua Pegawai Bidang</option></select></div>
+          <div class="w-full sm:w-56"><label class="block text-[10px] font-bold text-slate-500 mb-1">Bulan Penilaian</label><select id="verif-rhk-filter-bulan" onchange="renderStaffRhkPerformance('verif')" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs"></select></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="verif-rhk-summary-cards"></div>
+        <div class="overflow-x-auto border border-slate-200 rounded-xl"><table class="w-full text-left text-xs"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Nama Pegawai</th><th class="p-3">Rencana Hasil Kerja</th><th class="p-3 text-right">Target Bulanan</th><th class="p-3 text-right">Realisasi Bulanan</th><th class="p-3 text-right">Capaian Bulanan</th><th class="p-3 text-right">Target Tahunan</th><th class="p-3 text-right">Realisasi Kumulatif</th><th class="p-3 text-right">Capaian Tahunan</th></tr></thead><tbody id="verif-rhk-performance-body"><tr><td colspan="8" class="p-4 text-center text-slate-400">Pilih periode untuk melihat capaian kinerja.</td></tr></tbody></table></div>
+      </div>
+
     </section>
 
     <!-- ================= VIEW 4: SUPER ADMIN CONTROL PANEL ================= -->
@@ -1226,6 +1243,9 @@
         <button id="admin-tab-btn-laporan" onclick="switchAdminTab('laporan')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-clipboard-list"></i> Semua Laporan Kinerja Harian
         </button>
+        <button id="admin-tab-btn-rhk" onclick="switchAdminTab('rhk')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
+          <i class="fa-solid fa-chart-line"></i> RHK & Capaian Kinerja Pegawai
+        </button>
         <button id="admin-tab-btn-arsip" onclick="switchAdminTab('arsip')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-folder-tree"></i> Semua Arsip Berkas Pegawai
         </button>
@@ -1277,6 +1297,20 @@
             </tbody>
           </table>
         </div>
+      </div>
+
+      <!-- ADMIN TAB: RHK & CAPAIAN KINERJA SELURUH PEGAWAI -->
+      <div id="admin-tab-rhk" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
+        <div class="border-b border-slate-100 pb-4">
+          <h3 class="font-black text-slate-900 text-lg">RHK & Capaian Kinerja Seluruh Pegawai</h3>
+          <p class="text-xs text-slate-500 mt-1">Super Admin dapat memantau RHK, target, realisasi bulanan, dan capaian tahunan seluruh pegawai PJLP lintas bidang. Realisasi hanya menghitung laporan yang telah disetujui.</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <div class="flex-1"><label class="block text-[10px] font-bold text-slate-500 mb-1">Pegawai</label><select id="admin-rhk-filter-pegawai" onchange="renderStaffRhkPerformance('admin')" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs"><option value="Semua">Semua Pegawai</option></select></div>
+          <div class="w-full sm:w-56"><label class="block text-[10px] font-bold text-slate-500 mb-1">Bulan Penilaian</label><select id="admin-rhk-filter-bulan" onchange="renderStaffRhkPerformance('admin')" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs"></select></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="admin-rhk-summary-cards"></div>
+        <div class="overflow-x-auto border border-slate-200 rounded-xl"><table class="w-full text-left text-xs"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Nama Pegawai</th><th class="p-3">Bidang</th><th class="p-3">Rencana Hasil Kerja</th><th class="p-3 text-right">Target Bulanan</th><th class="p-3 text-right">Realisasi Bulanan</th><th class="p-3 text-right">Capaian Bulanan</th><th class="p-3 text-right">Target Tahunan</th><th class="p-3 text-right">Realisasi Kumulatif</th><th class="p-3 text-right">Capaian Tahunan</th></tr></thead><tbody id="admin-rhk-performance-body"><tr><td colspan="9" class="p-4 text-center text-slate-400">Pilih periode untuk melihat capaian kinerja.</td></tr></tbody></table></div>
       </div>
 
       <!-- ADMIN TAB 2: HADIR -->
@@ -2185,8 +2219,12 @@
             renderAdminAbsensiTable();
             renderAdminLaporanTable();
             renderAdminArsipTable();
+            const adminRhkPanel = document.getElementById('admin-tab-rhk');
+            if (adminRhkPanel && !adminRhkPanel.classList.contains('hidden')) renderStaffRhkPerformance('admin');
           } else if (currentUser.role === 'Verifikator') {
             renderVerifikatorDashboard();
+            const verifRhkPanel = document.getElementById('verif-tab-rhk');
+            if (verifRhkPanel && !verifRhkPanel.classList.contains('hidden')) renderStaffRhkPerformance('verif');
           } else {
             renderPjlpTables();
           }
@@ -4072,7 +4110,7 @@ async function handleSaveLaporan(e) {
 
     // Super Admin & Verifikator Tabs
     function switchAdminTab(tabName) {
-      ['registrasi', 'users', 'hadir', 'laporan', 'arsip', 'audit'].forEach(t => {
+      ['registrasi', 'users', 'hadir', 'laporan', 'rhk', 'arsip', 'audit'].forEach(t => {
         const tabEl = document.getElementById(t === 'audit' ? 'admin-tab-audit-panel' : `admin-tab-${t}`);
         const btnEl = document.getElementById(`admin-tab-btn-${t}`);
         if (tabEl) tabEl.classList.add('hidden');
@@ -4086,6 +4124,7 @@ async function handleSaveLaporan(e) {
       if (tabName === 'users') renderAdminUserTable();
       if (tabName === 'hadir') renderAdminAbsensiTable();
       if (tabName === 'laporan') renderAdminLaporanTable();
+      if (tabName === 'rhk') renderStaffRhkPerformance('admin');
       if (tabName === 'arsip') renderAdminArsipTable();
       if (tabName === 'audit') loadAuditLog();
       if (!restoringPageState) saveLastPageState('superadmin', tabName);
@@ -4123,13 +4162,15 @@ async function handleSaveLaporan(e) {
     }
 
     function switchVerifTab(tabName) {
-      document.getElementById('verif-tab-laporan').classList.add('hidden');
-      document.getElementById('verif-tab-hadir').classList.add('hidden');
-      ['laporan', 'hadir'].forEach(t => {
-        document.getElementById(`verif-tab-btn-${t}`).className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
+      ['laporan', 'hadir', 'rhk'].forEach(t => {
+        const panel=document.getElementById(`verif-tab-${t}`), button=document.getElementById(`verif-tab-btn-${t}`);
+        if(panel) panel.classList.add('hidden');
+        if(button) button.className = "px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition text-slate-600 font-bold";
       });
-      document.getElementById(`verif-tab-${tabName}`).classList.remove('hidden');
-      document.getElementById(`verif-tab-btn-${tabName}`).className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
+      const activePanel=document.getElementById(`verif-tab-${tabName}`), activeButton=document.getElementById(`verif-tab-btn-${tabName}`);
+      if(activePanel) activePanel.classList.remove('hidden');
+      if(activeButton) activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
+      if(tabName==='rhk') renderStaffRhkPerformance('verif');
       if (!restoringPageState) saveLastPageState('verifikator', tabName);
     }
 
@@ -4435,6 +4476,71 @@ async function handleSaveLaporan(e) {
       const attendanceMonths = [...new Set(attendance.map(a => verifMonthKey(a.tanggal)).filter(Boolean))].sort().reverse().map(k => ({value:k,label:verifMonthLabel(k)}));
       fillVerifSelect('verif-filter-bulan', reportMonths, 'Semua Bulan Kinerja');
       fillVerifSelect('verif-hadir-filter-bulan', attendanceMonths, 'Semua Bulan Kehadiran');
+    }
+
+    function populateStaffRhkFilters(scope) {
+      const prefix = scope === 'admin' ? 'admin' : 'verif';
+      const employeeSelect = document.getElementById(`${prefix}-rhk-filter-pegawai`);
+      const monthSelect = document.getElementById(`${prefix}-rhk-filter-bulan`);
+      if (!employeeSelect || !monthSelect) return;
+      const previousEmployee = employeeSelect.value || 'Semua';
+      const previousMonth = monthSelect.value || '';
+      const employees = (dbUsers || []).filter(u => u.role === 'PJLP' && String(u.status || 'Aktif') !== 'Menunggu Persetujuan' && String(u.status || 'Aktif') !== 'Ditolak');
+      const sorted = employees.slice().sort((a,b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id'));
+      employeeSelect.innerHTML = `<option value="Semua">${scope === 'admin' ? 'Semua Pegawai' : 'Semua Pegawai Bidang'}</option>` + sorted.map(u => `<option value="${escapeHTML(String(u.id))}">${escapeHTML(u.nama || 'Pegawai')} — ${escapeHTML(u.bidang || '')}</option>`).join('');
+      employeeSelect.value = sorted.some(u => String(u.id) === previousEmployee) ? previousEmployee : 'Semua';
+      const months = [];
+      for (let y=2026; y<=2027; y++) for (let m=(y===2026?10:1); m<=12; m++) months.push({key:`${y}-${String(m).padStart(2,'0')}`,label:`${RHK_MONTH_NAMES[m-1]} ${y}`});
+      monthSelect.innerHTML = months.map(m => `<option value="${m.key}">${m.label}</option>`).join('');
+      const now = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Makassar'}));
+      const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      const fallback = months.some(m=>m.key===currentKey) ? currentKey : '2026-10';
+      monthSelect.value = months.some(m=>m.key===previousMonth) ? previousMonth : fallback;
+    }
+
+    function renderStaffRhkPerformance(scope) {
+      if (!currentUser || !['SuperAdmin','Verifikator'].includes(currentUser.role)) return;
+      if (scope === 'verif' && currentUser.role !== 'Verifikator') return;
+      if (scope === 'admin' && currentUser.role !== 'SuperAdmin') return;
+      populateStaffRhkFilters(scope);
+      const prefix = scope === 'admin' ? 'admin' : 'verif';
+      const selectedEmployee = document.getElementById(`${prefix}-rhk-filter-pegawai`)?.value || 'Semua';
+      const monthKey = document.getElementById(`${prefix}-rhk-filter-bulan`)?.value || '2026-10';
+      const [year, month] = monthKey.split('-').map(Number);
+      const employees = (dbUsers || []).filter(u => u.role === 'PJLP' && (selectedEmployee === 'Semua' || String(u.id) === selectedEmployee));
+      const employeeIds = new Set(employees.map(u => String(u.id)));
+      const rhks = (dbRhk || []).filter(r => employeeIds.has(String(r.userId)) && Number(r.tahun) === year);
+      const approvedReports = (dbLaporan || []).filter(r => r.status === 'Disetujui' && employeeIds.has(String(r.userId)) && Number(String(dateKeyISO(r.tanggal)).slice(0,4)) === year);
+      const rows = [];
+      let totalTarget = 0, totalRealized = 0, staffWithRhk = new Set();
+      employees.forEach(employee => {
+        const employeeRhks = rhks.filter(r => String(r.userId) === String(employee.id));
+        employeeRhks.forEach(rhk => {
+          staffWithRhk.add(String(employee.id));
+          const linked = approvedReports.filter(r => String(r.userId) === String(employee.id) && String(r.rhkId || '') === String(rhk.id));
+          const monthlyTarget = getRhkMonthlyTarget(rhk, month);
+          const monthlyRealized = linked.filter(r => Number(String(dateKeyISO(r.tanggal)).slice(5,7)) === month).reduce((sum,r) => sum + Number(r.volume ?? r.realisasiQty ?? 0), 0);
+          const annualTarget = getRhkAnnualTarget(rhk);
+          const cumulative = linked.reduce((sum,r) => sum + Number(r.volume ?? r.realisasiQty ?? 0), 0);
+          const monthlyPct = monthlyTarget > 0 ? monthlyRealized / monthlyTarget * 100 : null;
+          const annualPct = annualTarget > 0 ? cumulative / annualTarget * 100 : null;
+          totalTarget += monthlyTarget;
+          totalRealized += monthlyRealized;
+          const pctLabel = v => v === null ? '—' : `${v.toFixed(1)}%`;
+          const pctClass = v => v === null ? 'text-slate-400' : v > 100 ? 'text-emerald-700' : v >= 80 ? 'text-blue-700' : 'text-amber-700';
+          rows.push(`<tr class="border-t border-slate-100 hover:bg-slate-50"><td class="p-3 font-bold">${escapeHTML(employee.nama || '—')}</td>${scope==='admin'?`<td class="p-3">${escapeHTML(employee.bidang || '—')}</td>`:''}<td class="p-3">${escapeHTML(rhk.uraianHasilKerja || '—')}<div class="text-[10px] text-slate-500">Satuan: ${escapeHTML(rhk.satuanTarget || '—')}</div></td><td class="p-3 text-right tabular-nums">${formatRhkQuantity(monthlyTarget)}</td><td class="p-3 text-right font-bold tabular-nums">${formatRhkQuantity(monthlyRealized)}</td><td class="p-3 text-right font-bold ${pctClass(monthlyPct)}">${pctLabel(monthlyPct)}</td><td class="p-3 text-right tabular-nums">${formatRhkQuantity(annualTarget)}</td><td class="p-3 text-right font-bold tabular-nums">${formatRhkQuantity(cumulative)}</td><td class="p-3 text-right font-bold ${pctClass(annualPct)}">${pctLabel(annualPct)}</td></tr>`);
+        });
+      });
+      const body = document.getElementById(`${prefix}-rhk-performance-body`);
+      const colspan = scope === 'admin' ? 9 : 8;
+      if (body) body.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="${colspan}" class="p-5 text-center text-slate-400">Belum ada RHK untuk pegawai dan tahun yang dipilih.</td></tr>`;
+      const cardHost = document.getElementById(`${prefix}-rhk-summary-cards`);
+      const overallPct = totalTarget > 0 ? totalRealized / totalTarget * 100 : null;
+      if (cardHost) cardHost.innerHTML = [
+        {label:'Pegawai dalam cakupan',value:String(employees.length),sub:scope==='admin'?'Seluruh pegawai PJLP':'Pegawai PJLP pada bidang Anda'},
+        {label:'Total target bulanan',value:formatRhkQuantity(totalTarget),sub:'Akumulasi target RHK pada periode'},
+        {label:'Realisasi disetujui',value:formatRhkQuantity(totalRealized),sub:overallPct===null?'Belum ada target RHK':`Capaian gabungan ${overallPct.toFixed(1)}%`}
+      ].map(c=>`<div class="rounded-xl border border-slate-200 bg-slate-50 p-4"><div class="text-[10px] font-bold uppercase tracking-wide text-slate-500">${escapeHTML(c.label)}</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHTML(c.value)}</div><div class="mt-1 text-[10px] text-slate-500">${escapeHTML(c.sub)}</div></div>`).join('');
     }
 
     function renderVerifikatorDashboard() {
