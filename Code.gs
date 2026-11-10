@@ -187,6 +187,7 @@ function api(action, payload, token) {
     case 'updateProfile': return updateProfile_(user, payload);
     case 'changePassword': return changePassword_(user, payload);
     case 'adminCreateUser': requireRole_(user, ['SuperAdmin']); return adminCreateUser_(payload, user);
+    case 'reviewRegistration': requireRole_(user, ['SuperAdmin']); return reviewRegistration_(user, payload);
     case 'deleteUser': requireRole_(user, ['SuperAdmin']); return deleteUser_(payload.userId, user);
     case 'deleteAttendance': requireRole_(user, ['SuperAdmin']); return deleteRecord_('Attendance', payload.recordId, user);
     case 'deleteReport': requireRole_(user, ['SuperAdmin']); return deleteRecord_('Reports', payload.recordId, user);
@@ -203,6 +204,17 @@ function api(action, payload, token) {
   }
 }
 
+function isUnreviewedSelfRegistration_(user) {
+  if (!user || user.role !== 'PJLP') return false;
+  try {
+    const logs = readRows_('AuditLog').filter(x => String(x.entity || '') === 'Users' && String(x.entityId || '') === String(user.id));
+    return logs.some(x => x.action === 'REGISTER') && !logs.some(x => ['REGISTER_APPROVED','REGISTER_REJECTED'].includes(x.action));
+  } catch (e) {
+    console.warn('Pemeriksaan persetujuan pendaftaran dilewati:', e.message);
+    return false;
+  }
+}
+
 function login_(p) {
   const identifier = String(p.identifier || '').trim().toLowerCase();
   const password = String(p.password || '');
@@ -213,9 +225,16 @@ function login_(p) {
   if (failCount >= 8) throw new Error('Terlalu banyak percobaan masuk. Coba kembali setelah 15 menit.');
   const users = readRows_('Users');
   const user = users.find(u => String(u.email || '').trim().toLowerCase() === identifier || String(u.nik || '').trim().toLowerCase() === identifier || String(u.username || '').trim().toLowerCase() === identifier);
-  if (!user || user.status !== 'Aktif' || !verifyPassword_(password, user.passwordHash)) {
+  if (!user || !verifyPassword_(password, user.passwordHash)) {
     cache.put(throttleKey, String(failCount + 1), 900);
     throw new Error('Username/email/NIK atau kata sandi salah, atau akun tidak aktif.');
+  }
+  if (user.status === 'Menunggu Persetujuan' || isUnreviewedSelfRegistration_(user)) {
+    throw new Error('Pendaftaran akun Anda masih menunggu persetujuan Admin DPMD.');
+  }
+  if (user.status !== 'Aktif') {
+    cache.put(throttleKey, String(failCount + 1), 900);
+    throw new Error('Akun tidak aktif. Silakan hubungi Admin DPMD.');
   }
   // Migrate old unsalted SHA-256 hashes transparently after successful authentication.
   if (!String(user.passwordHash || '').startsWith('pbkdf2-sha256$')) {
@@ -262,7 +281,7 @@ function register_(p) {
   const now = new Date().toISOString();
   const obj = makeUser_({
     id:'usr-' + Utilities.getUuid(), nama, nik, username, hp, email, password,
-    bidang, jabatan, role:'PJLP', status:'Aktif', ttl, tmt, jenisKelamin,
+    bidang, jabatan, role:'PJLP', status:'Menunggu Persetujuan', ttl, tmt, jenisKelamin,
     pendidikanTerakhir, kawin, rekening, alamat
   }, now);
   obj.pendidikanTerakhir = pendidikanTerakhir;
@@ -394,7 +413,22 @@ function invalidateRhkCache_() {
 }
 
 function getAppData_(user) {
-  let users = readRows_('Users').map(safeUser_);
+  const rawUsers = readRows_('Users');
+  // Backward compatibility: pendaftaran dari versi lama sempat langsung berstatus Aktif.
+  // Tandai sebagai perlu ditinjau bila memiliki audit REGISTER tanpa keputusan admin.
+  let registrationAudit = [];
+  if (user.role === 'SuperAdmin') {
+    try { registrationAudit = readRows_('AuditLog').filter(x => String(x.entity || '') === 'Users' && ['REGISTER','REGISTER_APPROVED','REGISTER_REJECTED'].includes(String(x.action || ''))); } catch (e) { console.warn('Audit registrasi tidak dapat dibaca:', e.message); }
+  }
+  const registrationCreated = new Set(registrationAudit.filter(x => x.action === 'REGISTER').map(x => String(x.entityId)));
+  const registrationReviewed = new Set(registrationAudit.filter(x => ['REGISTER_APPROVED','REGISTER_REJECTED'].includes(x.action)).map(x => String(x.entityId)));
+  let users = rawUsers.map(u => {
+    const legacyPending = user.role === 'SuperAdmin' && u.role === 'PJLP' && registrationCreated.has(String(u.id)) && !registrationReviewed.has(String(u.id));
+    const safe = safeUser_(u);
+    safe.registrationPending = u.status === 'Menunggu Persetujuan' || legacyPending;
+    safe.legacyRegistration = legacyPending && u.status !== 'Menunggu Persetujuan';
+    return safe;
+  });
   let attendance = readRows_('Attendance').map(a => {
     a.latitude = numberOrBlank_(a.latitude); a.longitude = numberOrBlank_(a.longitude);
     return a;
@@ -1093,6 +1127,29 @@ function adminCreateUser_(p, actor) {
   appendObjects_('Users', [row]);
   audit_(actor.id, 'CREATE', 'Users', row.id, 'Akun baru: ' + row.email);
   return {ok:true, id:row.id};
+}
+
+function reviewRegistration_(actor, p) {
+  const userId = String(p.userId || '').trim();
+  const decision = String(p.decision || '').trim().toLowerCase();
+  if (!userId || !['approve','reject'].includes(decision)) throw new Error('Data keputusan pendaftaran tidak valid.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const target = findById_('Users', userId);
+    if (!target || target.role !== 'PJLP') throw new Error('Pendaftar tidak ditemukan.');
+    const logs = readRows_('AuditLog').filter(x => String(x.entity || '') === 'Users' && String(x.entityId || '') === userId);
+    const hasRegistration = logs.some(x => x.action === 'REGISTER');
+    const alreadyReviewed = logs.some(x => ['REGISTER_APPROVED','REGISTER_REJECTED'].includes(x.action));
+    if (target.status !== 'Menunggu Persetujuan' && !(hasRegistration && !alreadyReviewed)) {
+      throw new Error('Pendaftaran ini sudah diproses atau bukan pendaftaran mandiri.');
+    }
+    const approved = decision === 'approve';
+    updateById_('Users', userId, {status:approved ? 'Aktif' : 'Ditolak', updatedAt:new Date().toISOString()});
+    audit_(actor.id, approved ? 'REGISTER_APPROVED' : 'REGISTER_REJECTED', 'Users', userId,
+      approved ? 'Pendaftaran akun PJLP disetujui dan akun diaktifkan oleh Super Admin.' : 'Pendaftaran akun PJLP ditolak oleh Super Admin.');
+    return {ok:true, status:approved ? 'Aktif' : 'Ditolak', message:approved ? 'Pendaftaran disetujui. Akun telah diaktifkan.' : 'Pendaftaran ditolak.'};
+  } finally { lock.releaseLock(); }
 }
 
 function deleteUser_(id, actor) {
