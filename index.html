@@ -1933,12 +1933,13 @@
   <div id="attendance-time-edit-modal" class="hidden fixed inset-0 z-[150] bg-slate-950/60 p-4 overflow-y-auto no-print" role="dialog" aria-modal="true" aria-labelledby="attendance-time-edit-title">
     <div class="max-w-md mx-auto my-16 bg-white rounded-3xl shadow-2xl p-6 space-y-4">
       <div class="flex items-start justify-between gap-3">
-        <div><h3 id="attendance-time-edit-title" class="font-extrabold text-lg text-slate-900">Edit Jam Presensi</h3><p id="attendance-time-edit-meta" class="text-xs text-slate-500 mt-1">Tanggal dan sesi presensi</p></div>
+        <div><h3 id="attendance-time-edit-title" class="font-extrabold text-lg text-slate-900">Edit Tanggal & Jam Presensi</h3><p id="attendance-time-edit-meta" class="text-xs text-slate-500 mt-1">Tanggal dan sesi presensi</p></div>
         <button type="button" onclick="closeAttendanceTimeEdit()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-600" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <input type="hidden" id="attendance-time-edit-id">
+      <div><label for="attendance-date-edit-value" class="block text-xs font-bold text-slate-700 mb-1">Tanggal Presensi</label><input id="attendance-date-edit-value" type="date" required class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base font-bold"></div>
       <div><label for="attendance-time-edit-value" class="block text-xs font-bold text-slate-700 mb-1">Jam Presensi (WITA)</label><input id="attendance-time-edit-value" type="time" step="1" required class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base font-bold"></div>
-      <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">Edit jam hanya tersedia saat Admin membuka Presensi Manual, untuk catatan presensi milik Anda pada tanggal sebelumnya di bulan berjalan. Waktu transaksi perubahan tetap tercatat di riwayat audit.</p>
+      <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">Edit tanggal dan jam tersedia saat Admin membuka Presensi Manual, untuk bulan lalu dan bulan berjalan. Tidak boleh membuat duplikasi sesi pada tanggal tujuan. Waktu transaksi perubahan tetap tercatat di riwayat audit.</p>
       <div class="flex gap-2"><button type="button" onclick="closeAttendanceTimeEdit()" class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-xs font-bold text-slate-600">Batal</button><button id="attendance-time-edit-save" type="button" onclick="saveAttendanceTimeEdit()" class="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-xs font-bold text-white"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Perubahan</button></div>
     </div>
   </div>
@@ -3051,8 +3052,8 @@
         if (!record) return `<span class="inline-block rounded-md px-2 py-1 text-[10px] font-bold ${isHolidayOrWeekend?'bg-amber-50 text-amber-700':'bg-rose-50 text-rose-700'}">${isHolidayOrWeekend?'Libur':'Absen / Tidak melakukan presensi'}</span>`;
         const statusClass = record.status === 'Hadir' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700';
         const recordDate = dateKeyISO(record.tanggal);
-        const canEditPastTime = attendanceDateOpen && recordDate && recordDate.slice(0,7) === currentMonthKey && recordDate < getTodayWitaKey();
-        const editButton = canEditPastTime ? `<button type="button" onclick="openAttendanceTimeEdit(${safeJsArg(record.id)})" class="no-print mt-1 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100" title="Edit jam presensi tanggal terlewat"><i class="fa-solid fa-pen"></i> Edit jam</button>` : '';
+        const canEditPastTime = attendanceDateOpen && recordDate && recordDate >= getManualAttendanceMinDate() && recordDate <= getTodayWitaKey();
+        const editButton = canEditPastTime ? `<button type="button" onclick="openAttendanceTimeEdit(${safeJsArg(record.id)})" class="no-print mt-1 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100" title="Edit jam presensi tanggal terlewat"><i class="fa-solid fa-pen"></i> Edit tanggal/jam</button>` : '';
         return `<div class="font-bold text-slate-800">${escapeHTML(formatTimeDisplay(record.jam))}</div><span class="inline-block mt-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${statusClass}">${escapeHTML(record.status || 'Tercatat')}</span>${record.lateBySeconds > 0 ? `<div class="mt-1 text-[10px] text-rose-600 font-bold">Terlambat ${escapeHTML(record.lateByText || '')}</div>`:''}${record.catatan ? `<div class="mt-1 text-[10px] text-slate-500">${escapeHTML(record.catatan)}</div>`:''}${editButton}`;
       };
       let attendanceHtml = '';
@@ -3462,7 +3463,8 @@
       const todayLocalKey = getTodayWitaKey();
       const attendanceDate = attendanceDateOpen ? (document.getElementById('absen-tanggal')?.value || todayLocalKey) : todayLocalKey;
       const alreadyRecorded = (dbAbsensi || []).some(a => String(a.userId) === String(currentUser?.id) && dateKeyISO(a.tanggal) === attendanceDate && String(a.sesi || '').toLowerCase() === sesi.toLowerCase());
-      if (alreadyRecorded) { notify(`Anda sudah melakukan presensi ${sesi} pada tanggal ${formatDateDisplay(attendanceDate)}.`); return; }
+      if (alreadyRecorded && !attendanceDateOpen) { notify(`Anda sudah melakukan presensi ${sesi} pada tanggal ${formatDateDisplay(attendanceDate)}.`); return; }
+      if (alreadyRecorded && attendanceDateOpen && !confirm(`Presensi ${sesi} tanggal ${formatDateDisplay(attendanceDate)} sudah ada. Timpa data tersebut dengan isian baru?`)) return;
       if (!attendanceDateOpen) {
         if (!lastGpsPosition || !locationVerified || !lastGpsPosition.capturedAt || Date.now() - lastGpsPosition.capturedAt > 120000) {
           const gpsReady = await checkUserLocation({silent:false});
@@ -3486,7 +3488,7 @@
           suratData:attendanceEvidenceDataUrl, suratNama:attendanceEvidenceName
         });
         await refreshServerData();
-        notify('Tersimpan');
+        notify(result.updated ? 'Presensi lama berhasil ditimpa.' : 'Tersimpan');
         clearSignature();
         const manualTimeAfterSave = document.getElementById('absen-jam');
         if (manualTimeAfterSave && attendanceDateOpen) { manualTimeAfterSave.dataset.userEdited = ''; manualTimeAfterSave.value = getCurrentWitaTimeInput(); }
@@ -3658,6 +3660,13 @@
       return attendanceDateOpen;
     }
 
+    function getManualAttendanceMinDate() {
+      const today = getTodayWitaKey();
+      const [year, month] = today.split('-').map(Number);
+      const d = new Date(year, month - 2, 1);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+    }
+
     function applyAttendanceDatePolicy() {
       const wrap = document.getElementById('absen-tanggal-wrap');
       const input = document.getElementById('absen-tanggal');
@@ -3667,7 +3676,7 @@
       const today = getTodayWitaKey();
       if (input) {
         input.max = today;
-        input.min = attendanceDateOpen ? today.slice(0,7) + '-01' : today;
+        input.min = attendanceDateOpen ? getManualAttendanceMinDate() : today;
         if (!attendanceDateOpen || !input.value || input.value < input.min || input.value > today) input.value = today;
       }
       if (wrap) wrap.classList.toggle('hidden', !attendanceDateOpen);
@@ -3678,7 +3687,7 @@
         if (attendanceDateOpen) {
           card.className = 'p-3.5 rounded-2xl text-xs font-bold border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-amber-50 text-amber-900 border-amber-200 w-full min-w-0';
           title.textContent = 'Mode Presensi Manual Dibuka Admin';
-          desc.textContent = 'Tidak memerlukan GPS atau radius kantor. Pilih tanggal pada bulan berjalan; jam mengikuti waktu input.';
+          desc.textContent = 'Tidak memerlukan GPS atau radius kantor. Pilih tanggal bulan lalu atau bulan berjalan dan tentukan jam presensi.';
         } else {
           const status = document.getElementById('absen-status')?.value || 'Hadir';
           card.className = 'p-3.5 rounded-2xl text-xs font-bold border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-sky-50 text-sky-900 border-sky-200 w-full min-w-0';
@@ -3739,9 +3748,11 @@
       if (!record) { notify('Data presensi tidak ditemukan pada akun Anda.'); return; }
       const dateKey = dateKeyISO(record.tanggal);
       const today = getTodayWitaKey();
-      if (!dateKey || dateKey.slice(0,7) !== today.slice(0,7) || dateKey >= today) { notify('Edit jam hanya tersedia untuk tanggal sebelumnya pada bulan berjalan.'); return; }
+      if (!dateKey || dateKey < getManualAttendanceMinDate() || dateKey > today) { notify('Edit tersedia untuk bulan lalu dan bulan berjalan.'); return; }
       const idInput = document.getElementById('attendance-time-edit-id');
       const timeInput = document.getElementById('attendance-time-edit-value');
+      const dateInput = document.getElementById('attendance-date-edit-value');
+      if (dateInput) { dateInput.min = getManualAttendanceMinDate(); dateInput.max = today; dateInput.value = dateKey; }
       const meta = document.getElementById('attendance-time-edit-meta');
       if (idInput) idInput.value = String(record.id);
       if (timeInput) timeInput.value = formatTimeDisplay(record.jam || '').slice(0,8) || '08:00:00';
@@ -3759,11 +3770,13 @@
       if (!attendanceDateOpen) { notify('Admin telah mengunci Presensi Manual. Edit jam tidak dapat dilanjutkan.'); closeAttendanceTimeEdit(); return; }
       const attendanceId = document.getElementById('attendance-time-edit-id')?.value || '';
       const jam = document.getElementById('attendance-time-edit-value')?.value || '';
+      const tanggal = document.getElementById('attendance-date-edit-value')?.value || '';
+      if (tanggal < getManualAttendanceMinDate() || tanggal > getTodayWitaKey()) { notify('Tanggal hanya boleh bulan lalu atau bulan berjalan.'); return; }
       if (!attendanceId || !/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(jam)) { notify('Pilih jam presensi yang valid.'); return; }
       const button = document.getElementById('attendance-time-edit-save');
       if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Menyimpan…'; }
       try {
-        await gasCall('updateAttendanceTime', {attendanceId, jam});
+        await gasCall('updateAttendanceTime', {attendanceId, jam, tanggal});
         await refreshServerData();
         renderPjlpTables();
         closeAttendanceTimeEdit();
