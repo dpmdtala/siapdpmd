@@ -546,8 +546,13 @@ function updateAttendanceTime_(user, p) {
     const today = Utilities.formatDate(now, APP.TZ, 'yyyy-MM-dd');
     const attendanceDate = normalizeDateKey_(row.tanggal);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(attendanceDate)) throw new Error('Tanggal pada data presensi tidak valid.');
-    if (attendanceDate.slice(0,7) !== today.slice(0,7)) throw new Error('Edit jam hanya diperbolehkan untuk tanggal pada bulan berjalan.');
-    if (attendanceDate >= today) throw new Error('Aksi edit jam ini hanya tersedia untuk tanggal yang sudah terlewat.');
+    const earliest = Utilities.formatDate(new Date(Date.UTC(Number(today.slice(0,4)), Number(today.slice(5,7)) - 2, 1, 12)), APP.TZ, 'yyyy-MM').slice(0,7);
+    const minDate = earliest < today.slice(0,7) ? earliest + '-01' : today.slice(0,7) + '-01';
+    if (attendanceDate < minDate || attendanceDate > today) throw new Error('Edit presensi hanya tersedia untuk bulan lalu dan bulan berjalan sampai hari ini.');
+    const newDate = String(p.tanggal || attendanceDate).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate) || newDate < minDate || newDate > today || isNaN(new Date(newDate + 'T12:00:00+08:00').getTime()) || Utilities.formatDate(new Date(newDate + 'T12:00:00+08:00'), APP.TZ, 'yyyy-MM-dd') !== newDate) throw new Error('Tanggal baru harus valid dan berada pada bulan lalu atau bulan berjalan.');
+    const collision = readRows_('Attendance').some(a => String(a.id) !== String(attendanceId) && String(a.userId) === String(user.id) && normalizeDateKey_(a.tanggal) === newDate && String(a.sesi || '').toLowerCase() === String(row.sesi || '').toLowerCase());
+    if (collision) throw new Error('Pada tanggal tujuan sudah ada presensi untuk sesi ini. Edit catatan tersebut atau pilih tanggal lain.');
     const previousTime = String(row.jam || '');
     // Hitung ulang keterlambatan berdasarkan jam Masuk yang baru.
     // Batas masuk tepat waktu adalah pukul 08:00:00 WITA.
@@ -557,13 +562,14 @@ function updateAttendanceTime_(user, p) {
       ? Math.max(0, editedSeconds - (8 * 3600)) : 0;
     const lateByText = lateBySeconds > 0 ? formatDuration_(lateBySeconds) : '';
     updateById_('Attendance', attendanceId, {
+      tanggal:newDate,
       jam:attendanceTime,
       lateBySeconds:lateBySeconds,
       lateByText:lateByText
     });
     audit_(user.id, 'UPDATE', 'Attendance', attendanceId,
-      'Mengubah jam presensi ' + String(row.sesi || '') + ' tanggal ' + attendanceDate + ' dari ' + previousTime + ' menjadi ' + attendanceTime + ' WITA; keterlambatan diperbarui menjadi ' + (lateByText || 'tepat waktu') + '.');
-    return {ok:true, attendanceId, jam:attendanceTime, lateBySeconds, lateByText, message:'Jam presensi dan keterangan keterlambatan berhasil diperbarui.'};
+      'Mengubah tanggal/jam presensi ' + String(row.sesi || '') + ' dari ' + attendanceDate + ' ' + previousTime + ' menjadi ' + newDate + ' ' + attendanceTime + ' WITA; keterlambatan diperbarui menjadi ' + (lateByText || 'tepat waktu') + '.');
+    return {ok:true, attendanceId, tanggal:newDate, jam:attendanceTime, lateBySeconds, lateByText, message:'Jam presensi dan keterangan keterlambatan berhasil diperbarui.'};
   } finally { lock.releaseLock(); }
 }
 
@@ -585,7 +591,9 @@ function saveAttendance_(user, p) {
   if (isNaN(parsedAttendanceDate.getTime()) || Utilities.formatDate(parsedAttendanceDate, APP.TZ, 'yyyy-MM-dd') !== attendanceDate) throw new Error('Tanggal presensi tidak valid.');
   if (attendanceDate > today) throw new Error('Tanggal presensi tidak boleh melewati hari ini.');
   if (attendanceDateOpen) {
-    if (attendanceDate.slice(0,7) !== today.slice(0,7)) throw new Error('Presensi manual hanya dapat diisi untuk tanggal pada bulan berjalan.');
+    const previousMonth = Utilities.formatDate(new Date(Date.UTC(Number(today.slice(0,4)), Number(today.slice(5,7)) - 2, 1, 12)), APP.TZ, 'yyyy-MM');
+    const minDate = (previousMonth < today.slice(0,7) ? previousMonth : today.slice(0,7)) + '-01';
+    if (attendanceDate < minDate) throw new Error('Presensi manual hanya dapat diisi mulai bulan lalu.');
   } else if (attendanceDate !== today) {
     throw new Error('Presensi tanggal sebelumnya sedang dikunci oleh Admin. Silakan gunakan tanggal hari ini.');
   }
@@ -642,7 +650,8 @@ function saveAttendance_(user, p) {
       normalizeDateKey_(a.tanggal) === attendanceDate &&
       String(a.sesi || '').trim().toLowerCase() === sesi.toLowerCase()
     );
-    if (existing.length) throw new Error('Anda sudah melakukan presensi ' + sesi + ' hari ini.');
+    if (existing.length && !attendanceDateOpen) throw new Error('Anda sudah melakukan presensi ' + sesi + ' pada tanggal ini.');
+    if (existing.length > 1) throw new Error('Ditemukan presensi ganda. Hubungi administrator sebelum mengubah data.');
 
     if (needsEvidence) {
       const evidenceMime = String(suratData).match(/^data:([^;,]+);base64,/i)[1].toLowerCase();
@@ -651,7 +660,7 @@ function saveAttendance_(user, p) {
     // Swafoto tidak lagi menjadi syarat presensi; kolom lama tetap dipertahankan untuk kompatibilitas data historis.
     const selfieFileId = '';
     const signatureFileId = saveDataUrlToDrive_(p.signature, 'TandaTangan_' + user.id + '_' + Date.now() + '.png', 'image/png');
-    const lateBySeconds = !attendanceDateOpen && sesi === 'Masuk' && status === 'Hadir' ? Math.max(0, policy.lateBySeconds) : 0;
+    const lateBySeconds = sesi === 'Masuk' && status === 'Hadir' ? (attendanceDateOpen ? Math.max(0, Number(attendanceTime.slice(0,2))*3600 + Number(attendanceTime.slice(3,5))*60 + Number(attendanceTime.slice(6,8)) - 8*3600) : Math.max(0, policy.lateBySeconds)) : 0;
     const row = {
       id:'abs-' + Utilities.getUuid(), userId:user.id,
       tanggal:attendanceDate,
@@ -663,6 +672,17 @@ function saveAttendance_(user, p) {
       selfieFileId, signatureFileId, suratFileId, suratNama, createdAt:now.toISOString()
     };
     ensureSheetColumns_('Attendance', ['suratFileId','suratNama']);
+    if (existing.length && attendanceDateOpen) {
+      const original = existing[0];
+      row.id = original.id;
+      // Jangan hapus metadata lokasi/bukti lama bila mode manual tidak mengirim penggantinya.
+      if (!needsEvidence) { row.suratFileId = original.suratFileId || ''; row.suratNama = original.suratNama || ''; }
+      if (!row.latitude && original.latitude !== undefined) { row.latitude = original.latitude; row.longitude = original.longitude; row.distanceMeters = original.distanceMeters; row.accuracy = original.accuracy; }
+      row.createdAt = original.createdAt || row.createdAt;
+      updateById_('Attendance', original.id, row);
+      audit_(user.id, 'UPDATE', 'Attendance', original.id, 'Menimpa presensi manual ' + sesi + ' tanggal ' + attendanceDate + ', jam baru ' + attendanceTime + ', status ' + status);
+      return {ok:true, id:original.id, updated:true, lateBySeconds, lateByText:row.lateByText, message:'Presensi yang sudah ada berhasil diperbarui.'};
+    }
     appendObjects_('Attendance', [row]);
     audit_(user.id, 'CREATE', 'Attendance', row.id, 'Presensi ' + status + ' / ' + sesi + ' / Tanggal ' + attendanceDate + (attendanceDateOpen ? ' / Input manual oleh pegawai; jam presensi ' + attendanceTime + ' WITA' : (lateBySeconds ? ' / Terlambat ' + formatDuration_(lateBySeconds) : '')));
     return {ok:true, id:row.id, lateBySeconds, lateByText:row.lateByText, distanceMeters:row.distanceMeters,
