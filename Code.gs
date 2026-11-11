@@ -37,6 +37,7 @@ function doPost(e) {
     const result = action === 'integrationSaveReport'
       ? integrationSaveReport_(payload)
       : api(action, payload, String(body.token || ''));
+    if (result && result.ok === true && isAppDataMutationAction_(action)) invalidateAppDataCache_();
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ok:false, message:(err && err.message) ? err.message : 'Permintaan gagal.'})).setMimeType(ContentService.MimeType.JSON);
@@ -160,7 +161,7 @@ function api(action, payload, token) {
   if (action === 'healthCheck') return {ok:true, app:'SIAP-DPMD', time:new Date().toISOString()};
   if (action === 'login') return login_(payload);
   if (action === 'register') return register_(payload);
-  if (action === 'logout') { if (token) CacheService.getScriptCache().remove('sess:' + token); return {ok:true}; }
+  if (action === 'logout') { if (token) { CacheService.getScriptCache().remove('sess:' + token); removePersistentSession_(token); } return {ok:true}; }
 
   // Jalur antaraplikasi LINTAS DPMD. Rahasia hanya dikirim server-ke-server,
   // tidak boleh ditanam di HTML/browser. Semua aksi pengguna tetap memakai sesi biasa.
@@ -215,6 +216,58 @@ function isUnreviewedSelfRegistration_(user) {
   }
 }
 
+const PERSISTENT_SESSION_PREFIX_ = 'SIAP_SESSION_';
+
+function persistentSessionKey_(token) {
+  return PERSISTENT_SESSION_PREFIX_ + sha256Hex_(String(token || '')).slice(0, 48);
+}
+
+function savePersistentSession_(token, session) {
+  PropertiesService.getScriptProperties().setProperty(persistentSessionKey_(token), JSON.stringify(session));
+}
+
+function removePersistentSession_(token) {
+  try { PropertiesService.getScriptProperties().deleteProperty(persistentSessionKey_(token)); } catch (e) { console.warn('Penghapusan sesi persisten dilewati:', e.message); }
+}
+
+function cleanupExpiredPersistentSessions_() {
+  const props = PropertiesService.getScriptProperties();
+  const last = Number(props.getProperty('SIAP_SESSION_LAST_CLEANUP') || 0);
+  const now = Date.now();
+  if (now - last < 24 * 60 * 60 * 1000) return;
+  const all = props.getProperties();
+  Object.keys(all).forEach(key => {
+    if (key.indexOf(PERSISTENT_SESSION_PREFIX_) !== 0) return;
+    try {
+      const item = JSON.parse(all[key]);
+      if (!item || Number(item.expiresAt || 0) <= now) props.deleteProperty(key);
+    } catch (_) { props.deleteProperty(key); }
+  });
+  props.setProperty('SIAP_SESSION_LAST_CLEANUP', String(now));
+}
+
+function getCachedLoginUsers_() {
+  const cache = CacheService.getScriptCache();
+  const key = 'auth:users:v1:' + getAppDataCacheVersion_();
+  const cached = cache.get(key);
+  if (cached !== null) {
+    try { return JSON.parse(cached); } catch (e) { cache.remove(key); }
+  }
+  const rows = readRows_('Users');
+  // Data ini hanya berada di cache sisi server; avatar dikeluarkan agar cache kecil.
+  const compact = rows.map(u => {
+    const copy = Object.assign({}, u);
+    delete copy.avatar;
+    return copy;
+  });
+  try {
+    const serialized = JSON.stringify(compact);
+    const bytes = Utilities.newBlob(serialized, 'application/json').getBytes().length;
+    if (bytes > 0 && bytes < 90000) cache.put(key, serialized, 20);
+  } catch (e) { console.warn('Cache autentikasi dilewati:', e.message); }
+  return compact;
+}
+
 function login_(p) {
   const identifier = String(p.identifier || '').trim().toLowerCase();
   const password = String(p.password || '');
@@ -223,7 +276,7 @@ function login_(p) {
   const throttleKey = 'loginfail:' + sha256Hex_(identifier);
   const failCount = Number(cache.get(throttleKey) || 0);
   if (failCount >= 8) throw new Error('Terlalu banyak percobaan masuk. Coba kembali setelah 15 menit.');
-  const users = readRows_('Users');
+  const users = getCachedLoginUsers_();
   const user = users.find(u => String(u.email || '').trim().toLowerCase() === identifier || String(u.nik || '').trim().toLowerCase() === identifier || String(u.username || '').trim().toLowerCase() === identifier);
   if (!user || !verifyPassword_(password, user.passwordHash)) {
     cache.put(throttleKey, String(failCount + 1), 900);
@@ -242,7 +295,13 @@ function login_(p) {
   }
   cache.remove(throttleKey);
   const token = Utilities.getUuid() + Utilities.getUuid();
-  CacheService.getScriptCache().put('sess:' + token, JSON.stringify({id:user.id, role:user.role, bidang:user.bidang, createdAt:Date.now()}), APP.SESSION_TTL_SECONDS);
+  const sessionNow = Date.now();
+  const sessionData = {id:user.id, role:user.role, bidang:user.bidang, createdAt:sessionNow, persistedAt:sessionNow, expiresAt:sessionNow + APP.SESSION_TTL_SECONDS * 1000};
+  const sessionJson = JSON.stringify(sessionData);
+  CacheService.getScriptCache().put('sess:' + token, sessionJson, APP.SESSION_TTL_SECONDS);
+  // Salinan server-side yang tahan terhadap eviksi CacheService saat pengguna reload.
+  try { savePersistentSession_(token, sessionData); cleanupExpiredPersistentSessions_(); }
+  catch (sessionStoreErr) { console.warn('Sesi persisten tidak tersedia; sesi cache tetap aktif:', sessionStoreErr.message); }
   audit_(user.id, 'LOGIN', 'Users', user.id, 'Login berhasil');
   return {ok:true, token, user:safeUser_(user), verifikatorNama:getVerifierName_(user, users)};
 }
@@ -412,7 +471,45 @@ function invalidateRhkCache_() {
   try { CacheService.getScriptCache().remove('ref:rhks:v1'); } catch (e) { console.warn('Invalidasi cache RHK:', e.message); }
 }
 
+function isAppDataMutationAction_(action) {
+  return [
+    'register','integrationSaveReport','saveRhk','updateRhk','deleteRhk',
+    'setGlobalReportDatePolicy','setGlobalAttendanceDatePolicy','rejectReport',
+    'deleteReportAsVerifier','bulkApproveReports','bulkApproveAllPendingReports',
+    'updateProfile','changePassword','adminCreateUser','reviewRegistration',
+    'deleteUser','deleteAttendance','deleteReport','deleteArchive','saveAttendance',
+    'updateAttendanceTime','saveReport','saveArchive','approveReport','resetPassword'
+  ].indexOf(String(action || '')) >= 0;
+}
+
+function getAppDataCacheVersion_() {
+  const props = PropertiesService.getScriptProperties();
+  return String(props.getProperty('SIAP_DPMD_APPDATA_CACHE_VERSION') || '1');
+}
+
+function invalidateAppDataCache_() {
+  // Versioned keys invalidate all role/user variants without needing cache-key enumeration.
+  PropertiesService.getScriptProperties().setProperty('SIAP_DPMD_APPDATA_CACHE_VERSION', String(Number(getAppDataCacheVersion_()) + 1));
+}
+
 function getAppData_(user) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'appdata:v1:' + getAppDataCacheVersion_() + ':' + sha256Hex_(String(user.id) + '|' + String(user.role) + '|' + String(user.bidang || '')).slice(0, 32);
+  const cached = cache.get(cacheKey);
+  if (cached !== null) {
+    try { return JSON.parse(cached); } catch (e) { cache.remove(cacheKey); }
+  }
+  const result = getAppDataFresh_(user);
+  try {
+    const serialized = JSON.stringify(result);
+    const byteLength = Utilities.newBlob(serialized, 'application/json').getBytes().length;
+    // Keep below CacheService's per-item size ceiling. Short TTL limits staleness.
+    if (byteLength > 0 && byteLength < 90000) cache.put(cacheKey, serialized, 8);
+  } catch (e) { console.warn('Cache data aplikasi dilewati:', e.message); }
+  return result;
+}
+
+function getAppDataFresh_(user) {
   const rawUsers = readRows_('Users');
   // Backward compatibility: pendaftaran dari versi lama sempat langsung berstatus Aktif.
   // Tandai sebagai perlu ditinjau bila memiliki audit REGISTER tanpa keputusan admin.
@@ -545,7 +642,10 @@ function getMonthlyProductivity_(viewer) {
   users.forEach(u => { byId[String(u.id)] = u; });
   const counts = {};
   readRows_('Reports').forEach(r => {
-    const dateKey = String(r.tanggal || '').slice(0, 7);
+    // Tanggal laporan dapat tersimpan sebagai Date, ISO (yyyy-MM-dd),
+    // maupun format tampilan lama DD:MM:YYYY / DD-MM-YYYY.
+    // Normalisasi lebih dahulu agar rekap produktivitas benar-benar bulanan.
+    const dateKey = normalizeDateKey_(r.tanggal).slice(0, 7);
     if (dateKey !== monthKey || !r.userId) return;
     const id = String(r.userId);
     counts[id] = (counts[id] || 0) + 1;
@@ -684,8 +784,8 @@ function saveAttendance_(user, p) {
       normalizeDateKey_(a.tanggal) === attendanceDate &&
       String(a.sesi || '').trim().toLowerCase() === sesi.toLowerCase()
     );
-    if (existing.length && !attendanceDateOpen) throw new Error('Anda sudah melakukan presensi ' + sesi + ' pada tanggal ini.');
     if (existing.length > 1) throw new Error('Ditemukan presensi ganda. Hubungi administrator sebelum mengubah data.');
+    if (existing.length) throw new Error('Presensi ' + sesi + ' tanggal ' + attendanceDate + ' sudah tersimpan dan tidak dapat ditimpa melalui formulir presensi. Jika ada kekeliruan, gunakan fitur Edit Tanggal/Jam pada Riwayat Kehadiran saat Presensi Manual dibuka.');
 
     if (needsEvidence) {
       const evidenceMime = String(suratData).match(/^data:([^;,]+);base64,/i)[1].toLowerCase();
@@ -706,17 +806,6 @@ function saveAttendance_(user, p) {
       selfieFileId, signatureFileId, suratFileId, suratNama, createdAt:now.toISOString()
     };
     ensureSheetColumns_('Attendance', ['suratFileId','suratNama']);
-    if (existing.length && attendanceDateOpen) {
-      const original = existing[0];
-      row.id = original.id;
-      // Jangan hapus metadata lokasi/bukti lama bila mode manual tidak mengirim penggantinya.
-      if (!needsEvidence) { row.suratFileId = original.suratFileId || ''; row.suratNama = original.suratNama || ''; }
-      if (!row.latitude && original.latitude !== undefined) { row.latitude = original.latitude; row.longitude = original.longitude; row.distanceMeters = original.distanceMeters; row.accuracy = original.accuracy; }
-      row.createdAt = original.createdAt || row.createdAt;
-      updateById_('Attendance', original.id, row);
-      audit_(user.id, 'UPDATE', 'Attendance', original.id, 'Menimpa presensi manual ' + sesi + ' tanggal ' + attendanceDate + ', jam baru ' + attendanceTime + ', status ' + status);
-      return {ok:true, id:original.id, updated:true, lateBySeconds, lateByText:row.lateByText, message:'Presensi yang sudah ada berhasil diperbarui.'};
-    }
     appendObjects_('Attendance', [row]);
     audit_(user.id, 'CREATE', 'Attendance', row.id, 'Presensi ' + status + ' / ' + sesi + ' / Tanggal ' + attendanceDate + (attendanceDateOpen ? ' / Input manual oleh pegawai; jam presensi ' + attendanceTime + ' WITA' : (lateBySeconds ? ' / Terlambat ' + formatDuration_(lateBySeconds) : '')));
     return {ok:true, id:row.id, lateBySeconds, lateByText:row.lateByText, distanceMeters:row.distanceMeters,
@@ -810,8 +899,16 @@ function saveReport_(user, p) {
       const sameIntegration = allReports.find(r => String(r.integrationId || '') === integrationId);
       if (sameIntegration) return {ok:true, id:sameIntegration.id, duplicate:true, message:'Transaksi integrasi ini sudah tercatat; tidak dibuat ulang.'};
     }
-    const duplicate = allReports.find(r => String(r.userId) === String(user.id) && normalizeDateKey_(r.tanggal) === tanggal && String(r.jamMulai || '') === jamMulai && String(r.jamSelesai || '') === jamSelesai);
-    if (duplicate) throw new Error('Anda sudah memiliki laporan pada tanggal dan rentang jam tersebut. Setiap rentang waktu hanya boleh digunakan satu kali per hari.');
+    const sameDayReports = allReports.filter(r => String(r.userId) === String(user.id) && normalizeDateKey_(r.tanggal) === tanggal);
+    const overlapping = sameDayReports.find(r => {
+      const oldStart = String(r.jamMulai || '').trim();
+      const oldEnd = String(r.jamSelesai || '').trim();
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(oldStart) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(oldEnd)) return false;
+      // Interval bersifat [mulai, selesai): kegiatan boleh tepat bersambung,
+      // tetapi tidak boleh saling menimpa walau hanya satu menit.
+      return jamMulai < oldEnd && jamSelesai > oldStart;
+    });
+    if (overlapping) throw new Error('Jadwal kegiatan bertumpang tindih dengan laporan yang sudah ada (' + overlapping.jamMulai + '–' + overlapping.jamSelesai + '). Pilih rentang waktu yang tidak bertabrakan.');
     const fotoFileId = saveDataUrlToDrive_(fotoData, 'Dokumentasi_' + user.id + '_' + Date.now(), null);
     const row = {id:'lap-' + Utilities.getUuid(), userId:user.id, nama:user.nama, bidang:user.bidang, tanggal, jamMulai, jamSelesai, kegiatan, output,
       volume:isIntegration ? '' : volume, realisasiQty:isIntegration ? '' : volume, rhkId:isIntegration ? '' : rhkId,
@@ -1188,14 +1285,41 @@ function resetPassword_(user, p) {
 
 function requireSession_(token) {
   if (!token) throw new Error('Sesi tidak tersedia. Silakan masuk kembali.');
-  const raw = CacheService.getScriptCache().get('sess:' + token);
-  if (!raw) throw new Error('Sesi kedaluwarsa. Silakan masuk kembali.');
-  const sess = JSON.parse(raw);
+  const cache = CacheService.getScriptCache();
+  const key = 'sess:' + token;
+  let raw = cache.get(key);
+  let fromPersistent = false;
+  const props = PropertiesService.getScriptProperties();
+  const persistentKey = persistentSessionKey_(token);
+  if (!raw) {
+    raw = props.getProperty(persistentKey);
+    if (!raw) throw new Error('Sesi kedaluwarsa. Silakan masuk kembali.');
+    fromPersistent = true;
+  }
+  let sess;
+  try { sess = JSON.parse(raw); } catch (_) { removePersistentSession_(token); throw new Error('Sesi tidak valid. Silakan masuk kembali.'); }
+  const now = Date.now();
+  if (Number(sess.expiresAt || 0) && Number(sess.expiresAt) <= now) {
+    cache.remove(key);
+    removePersistentSession_(token);
+    throw new Error('Sesi kedaluwarsa. Silakan masuk kembali.');
+  }
   const user = findById_('Users', sess.id);
-  if (!user || user.status !== 'Aktif') throw new Error('Akun tidak aktif.');
-  // Perpanjang sesi selama akun masih aktif digunakan. Reload halaman tidak
-  // membuat sesi baru dan aktivitas API menjaga token tetap hidup.
-  CacheService.getScriptCache().put('sess:' + token, raw, APP.SESSION_TTL_SECONDS);
+  if (!user || user.status !== 'Aktif') {
+    cache.remove(key);
+    removePersistentSession_(token);
+    throw new Error('Akun tidak aktif.');
+  }
+  // Perpanjang sesi aktif. Salinan persisten diperbarui paling sering tiap 30 menit
+  // agar reload tetap pulih meski CacheService melakukan eviksi lebih awal.
+  if (fromPersistent || now - Number(sess.persistedAt || sess.createdAt || 0) >= 30 * 60 * 1000) {
+    sess.persistedAt = now;
+    sess.expiresAt = now + APP.SESSION_TTL_SECONDS * 1000;
+    raw = JSON.stringify(sess);
+    try { savePersistentSession_(token, sess); }
+    catch (sessionStoreErr) { console.warn('Perpanjangan sesi persisten dilewati:', sessionStoreErr.message); }
+  }
+  cache.put(key, raw, APP.SESSION_TTL_SECONDS);
   return safeUser_(user);
 }
 function requireRole_(user, roles) { if (roles.indexOf(user.role) < 0) throw new Error('Akses ditolak.'); }
