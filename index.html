@@ -1396,6 +1396,7 @@
           <table class="w-full text-left text-xs">
             <thead>
               <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                <th class="py-3.5 px-4 text-center">No.</th>
                 <th class="py-3.5 px-4">Nama Pegawai & Bidang</th>
                 <th class="py-3.5 px-4">Tanggal</th>
                 <th class="py-3.5 px-4">Waktu</th>
@@ -2865,7 +2866,7 @@
           const date = new Date(attYear,attMonth-1,d);
           if (selectedIsCurrentMonth && date > nowWita) continue;
           const key = `${attYear}-${String(attMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-          const weekend = date.getDay() === 0 || date.getDay() === 6;
+          const weekend = date.getDay() === 0;
           const holiday = holidayMap[key];
           const dayOff = weekend || !!holiday;
           const dayLabel = date.toLocaleDateString('id-ID',{weekday:'long'});
@@ -2986,19 +2987,21 @@
       countEl('absen-stat-dinas-luar', countDistinctDays('Dinas Luar'));
       countEl('absen-stat-sakit', countDistinctDays('Sakit'));
       countEl('absen-stat-izin', countDistinctDays('Izin'));
-      const daysWithAttendance = new Set(monthAttendanceRecords.map(a=>dateKeyISO(a.tanggal)).filter(Boolean));
+      // Absen hanya dihitung untuk hari kerja yang sudah selesai (sampai kemarin).
+      // Hari ini tidak boleh langsung dianggap absen sebelum presensi hari itu selesai.
       const todayForAttendance = new Date(nowForStats.getFullYear(),nowForStats.getMonth(),nowForStats.getDate());
-      const totalElapsedDays = todayForAttendance.getDate();
       const holidayMapForStats = holidayDates || {};
-      let effectiveWorkdaysElapsed = 0;
-      for (let d=1; d<=totalElapsedDays; d++) {
+      const daysWithAttendance = new Set(monthAttendanceRecords
+        .map(a => dateKeyISO(a.tanggal))
+        .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key) && key.slice(0,7) === thisMonthKey && key < `${thisMonthKey}-${String(todayForAttendance.getDate()).padStart(2,'0')}`));
+      let effectiveCompletedWorkdays = 0;
+      for (let d=1; d<todayForAttendance.getDate(); d++) {
         const dayDate = new Date(nowForStats.getFullYear(),nowForStats.getMonth(),d);
         const key = `${nowForStats.getFullYear()}-${String(nowForStats.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const wd = dayDate.getDay();
-        if (wd !== 0 && !holidayMapForStats[key]) effectiveWorkdaysElapsed++;
+        // Hari kerja SIAP-DPMD: Senin sampai Sabtu. Minggu dan hari libur tidak dihitung.
+        if (dayDate.getDay() !== 0 && !holidayMapForStats[key]) effectiveCompletedWorkdays++;
       }
-      const daysWithAnyRecord = daysWithAttendance.size;
-      countEl('absen-stat-absen', Math.max(0,effectiveWorkdaysElapsed - daysWithAnyRecord));
+      countEl('absen-stat-absen', Math.max(0,effectiveCompletedWorkdays - daysWithAttendance.size));
       const laporanMonthSelect = document.getElementById('filter-riwayat-laporan-bulan');
       if (laporanMonthSelect) {
         const previous = laporanMonthSelect.value;
@@ -3137,7 +3140,7 @@
           // Jangan menampilkan tanggal yang belum terjadi pada bulan berjalan.
           if (monthKey === currentMonthKey && date > nowLocal) continue;
           const weekday = date.toLocaleDateString('id-ID',{weekday:'long'});
-          const weekend = date.getDay() === 0 || date.getDay() === 6;
+          const weekend = date.getDay() === 0;
           const holidayName = holidaySet[key] || '';
           const dayOff = weekend || !!holidayName;
           const rec = attendanceByDate[key] || {};
@@ -3532,8 +3535,7 @@
       const todayLocalKey = getTodayWitaKey();
       const attendanceDate = attendanceDateOpen ? (document.getElementById('absen-tanggal')?.value || todayLocalKey) : todayLocalKey;
       const alreadyRecorded = (dbAbsensi || []).some(a => String(a.userId) === String(currentUser?.id) && dateKeyISO(a.tanggal) === attendanceDate && String(a.sesi || '').toLowerCase() === sesi.toLowerCase());
-      if (alreadyRecorded && !attendanceDateOpen) { notify(`Anda sudah melakukan presensi ${sesi} pada tanggal ${formatDateDisplay(attendanceDate)}.`); return; }
-      if (alreadyRecorded && attendanceDateOpen && !confirm(`Presensi ${sesi} tanggal ${formatDateDisplay(attendanceDate)} sudah ada. Timpa data tersebut dengan isian baru?`)) return;
+      if (alreadyRecorded) { notify(`Presensi ${sesi} tanggal ${formatDateDisplay(attendanceDate)} sudah tersimpan dan tidak dapat ditimpa. Jika perlu koreksi, gunakan Edit Tanggal/Jam pada Riwayat Kehadiran saat Presensi Manual dibuka.`); return; }
       if (!attendanceDateOpen) {
         if (!lastGpsPosition || !locationVerified || !lastGpsPosition.capturedAt || Date.now() - lastGpsPosition.capturedAt > 120000) {
           const gpsReady = await checkUserLocation({silent:false});
@@ -3958,31 +3960,34 @@
       });
     }
 
-    async 
-async function handleSaveLaporan(e) {
+    let reportSubmissionInFlight = false;
+    async function handleSaveLaporan(e) {
       e.preventDefault();
+      if (reportSubmissionInFlight) { notify('Pengiriman kegiatan sedang diproses. Mohon tunggu.'); return; }
+      reportSubmissionInFlight = true;
       const form = e.currentTarget || document.getElementById('form-laporan');
       const submitBtn = form && form.querySelector('button[type="submit"]');
-      if (submitBtn && submitBtn.disabled) return;
-      const kegiatan = document.getElementById('lap-kegiatan').value.trim();
-      const output = document.getElementById('lap-output').value.trim();
-      const rhkId = document.getElementById('lap-rhk-id')?.value || '';
-      const volume = Number(document.getElementById('lap-volume')?.value || 0);
-      const jamMulai = document.getElementById('lap-jam-mulai').value;
-      const jamSelesai = document.getElementById('lap-jam-selesai').value;
-      const tanggalPelaksanaan = document.getElementById('lap-tanggal').value;
-      try { await syncGlobalReportDatePolicy(); } catch (policyErr) { notify('Status kunci tanggal belum dapat diverifikasi. Periksa koneksi lalu coba kembali.'); return; }
-      const todayWita = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Makassar', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
-      if (!tanggalPelaksanaan || tanggalPelaksanaan > todayWita || (!reportDateOpen && tanggalPelaksanaan !== todayWita)) {
-        notify(reportDateOpen ? 'Tanggal pelaksanaan wajib diisi dan tidak boleh melewati hari ini.' : 'Pengisian tanggal sebelumnya sedang dikunci oleh Admin. Silakan gunakan tanggal hari ini.'); return;
-      }
-      if (lapPhotoProcessing) { notify('Foto sedang dioptimalkan. Tunggu sampai pratinjau foto muncul, lalu kirim kembali.'); return; }
-      if (!rhkId || !Number.isFinite(volume) || volume <= 0) { notify('Pilih RHK dan isi volume pekerjaan dengan angka lebih dari nol.'); return; }
-      if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi, termasuk foto yang sudah selesai dioptimalkan!'); return; }
-      if (jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai.'); return; }
-      if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.innerHTML; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…'; }
-
+      const originalButtonHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…'; submitBtn.classList.add('opacity-60','cursor-wait'); }
       try {
+        const kegiatan = document.getElementById('lap-kegiatan').value.trim();
+        const output = document.getElementById('lap-output').value.trim();
+        const rhkId = document.getElementById('lap-rhk-id')?.value || '';
+        const volume = Number(document.getElementById('lap-volume')?.value || 0);
+        const jamMulai = document.getElementById('lap-jam-mulai').value;
+        const jamSelesai = document.getElementById('lap-jam-selesai').value;
+        const tanggalPelaksanaan = document.getElementById('lap-tanggal').value;
+        await syncGlobalReportDatePolicy();
+        const todayWita = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Makassar', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+        if (!tanggalPelaksanaan || tanggalPelaksanaan > todayWita || (!reportDateOpen && tanggalPelaksanaan !== todayWita)) {
+          notify(reportDateOpen ? 'Tanggal pelaksanaan wajib diisi dan tidak boleh melewati hari ini.' : 'Pengisian tanggal sebelumnya sedang dikunci oleh Admin. Silakan gunakan tanggal hari ini.'); return;
+        }
+        if (lapPhotoProcessing) { notify('Foto sedang dioptimalkan. Tunggu sampai pratinjau foto muncul, lalu kirim kembali.'); return; }
+        if (!rhkId || !Number.isFinite(volume) || volume <= 0) { notify('Pilih RHK dan isi volume pekerjaan dengan angka lebih dari nol.'); return; }
+        if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi, termasuk foto yang sudah selesai dioptimalkan!'); return; }
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(jamMulai) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(jamSelesai) || jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai dengan format waktu yang benar.'); return; }
+        const collision = (dbLaporan || []).find(r => String(r.userId) === String(currentUser?.id) && dateKeyISO(r.tanggal) === tanggalPelaksanaan && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.jamMulai || '')) && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.jamSelesai || '')) && jamMulai < String(r.jamSelesai) && jamSelesai > String(r.jamMulai));
+        if (collision) { notify(`Jadwal bertumpang tindih dengan kegiatan ${collision.jamMulai}–${collision.jamSelesai}. Silakan ubah jam pelaksanaan.`); return; }
         await gasCall('saveReport', {
           tanggal: tanggalPelaksanaan,
           jamMulai, jamSelesai, kegiatan, output, rhkId, volume, realisasiQty: volume, foto: tempLapFotoBase64
@@ -4001,9 +4006,10 @@ async function handleSaveLaporan(e) {
         tempLapFotoBase64 = null;
         renderPjlpTables();
       } catch (err) {
-        notify('Kegiatan harian gagal disimpan: ' + err.message);
+        notify('Kegiatan harian gagal disimpan: ' + (err.message || err));
       } finally {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = submitBtn.dataset.originalText || 'Kirim Kegiatan'; }
+        reportSubmissionInFlight = false;
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalButtonHtml || 'Kirim Kegiatan'; submitBtn.classList.remove('opacity-60','cursor-wait'); }
       }
     }
 
@@ -4365,7 +4371,7 @@ async function handleSaveLaporan(e) {
       const searchKey = (document.getElementById('admin-search-lap')?.value || '').toLowerCase();
       const selectedDate = document.getElementById('admin-laporan-filter-tanggal')?.value || '';
 
-      dbLaporan.filter(l => {
+      const filteredReports = dbLaporan.filter(l => {
         if (monthFilter && dateKeyISO(l.tanggal).slice(0,7) !== monthFilter) return false;
         if (selectedDate && dateKeyISO(l.tanggal) !== selectedDate) return false;
         const owner = dbUsers.find(u => u.id === l.userId);
@@ -4373,10 +4379,12 @@ async function handleSaveLaporan(e) {
         if (statusFilter !== 'Semua' && l.status !== statusFilter) return false;
         if (searchKey && !String(l.kegiatan || '').toLowerCase().includes(searchKey) && owner && !String(owner.nama || '').toLowerCase().includes(searchKey)) return false;
         return true;
-      }).forEach(l => {
+      });
+      filteredReports.forEach((l, index) => {
         const owner = dbUsers.find(u => u.id === l.userId);
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50 transition">
+            <td class="py-3.5 px-4 text-center font-bold text-slate-500">${index + 1}</td>
             <td class="py-3.5 px-4 font-bold text-slate-900">${escapeHTML(owner ? owner.nama : l.nama)}</td>
             <td class="py-3.5 px-4">${escapeHTML(formatDateDisplay(l.tanggal))}</td>
             <td class="py-3.5 px-4">${escapeHTML(l.jamMulai ? formatTimeDisplay(l.jamMulai) : "—")}–${escapeHTML(l.jamSelesai ? formatTimeDisplay(l.jamSelesai) : "—")}</td>
