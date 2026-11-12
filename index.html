@@ -2796,13 +2796,28 @@
       const key = dateKeyISO(dateValue);
       return key.slice(0,7) === monthKey;
     }
+    function isWeekendDate(date) {
+      const day = date.getDay();
+      return day === 0 || day === 6; // Minggu atau Sabtu
+    }
+    function isOfficialDayOff(dateKey) {
+      return !!((holidayDates || {})[dateKey]);
+    }
+    function isDpmDWorkday(date) {
+      if (isWeekendDate(date)) return false;
+      const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+      return !isOfficialDayOff(key);
+    }
+    function isDpmDWorkdayKey(dateKey) {
+      const m = String(dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      return !!m && isDpmDWorkday(new Date(Number(m[1]), Number(m[2])-1, Number(m[3])));
+    }
     function workdaysInMonth(monthKey) {
       const [year, month] = monthKey.split('-').map(Number);
       const count = new Date(year, month, 0).getDate();
       let workdays = 0;
       for (let day=1; day<=count; day++) {
-        const weekday = new Date(year, month-1, day).getDay();
-        if (weekday !== 0) workdays++;
+        if (isDpmDWorkday(new Date(year, month-1, day))) workdays++;
       }
       return workdays;
     }
@@ -2827,7 +2842,7 @@
       if (periodKinerja) periodKinerja.textContent = formatMonth(monthReports);
       const kinerjaWorkdayEl = document.getElementById('rekap-kinerja-hari-kerja-count');
       if (kinerjaWorkdayEl) kinerjaWorkdayEl.textContent = `${workdaysInMonth(monthReports)} Hari`;
-      const hadirMasukDays = new Set(attendanceRows.filter(a => a.sesi === 'Masuk' && a.status === 'Hadir').map(a => a.tanggal)).size;
+      const hadirMasukDays = new Set(attendanceRows.filter(a => a.sesi === 'Masuk' && a.status === 'Hadir' && isDpmDWorkdayKey(dateKeyISO(a.tanggal))).map(a => dateKeyISO(a.tanggal))).size;
       const hadirCount = document.getElementById('rekap-hadir-count');
       const workdayCount = document.getElementById('rekap-hari-kerja-count');
       if (hadirCount) hadirCount.textContent = `${hadirMasukDays} Hari`;
@@ -2866,7 +2881,7 @@
           const date = new Date(attYear,attMonth-1,d);
           if (selectedIsCurrentMonth && date > nowWita) continue;
           const key = `${attYear}-${String(attMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-          const weekend = date.getDay() === 0;
+          const weekend = isWeekendDate(date);
           const holiday = holidayMap[key];
           const dayOff = weekend || !!holiday;
           const dayLabel = date.toLocaleDateString('id-ID',{weekday:'long'});
@@ -2985,7 +3000,7 @@
       const nowForStats = new Date(new Date().toLocaleString('en-US', {timeZone:'Asia/Makassar'}));
       const thisMonthKey = `${nowForStats.getFullYear()}-${String(nowForStats.getMonth()+1).padStart(2,'0')}`;
       const monthAttendanceRecords = allMyAbsensi.filter(a => dateKeyISO(a.tanggal).slice(0,7) === thisMonthKey);
-      const countDistinctDays = status => new Set(monthAttendanceRecords.filter(a => String(a.status||'').toLowerCase() === status.toLowerCase()).map(a => dateKeyISO(a.tanggal)).filter(Boolean)).size;
+      const countDistinctDays = status => new Set(monthAttendanceRecords.filter(a => String(a.status||'').toLowerCase() === status.toLowerCase()).map(a => dateKeyISO(a.tanggal)).filter(isDpmDWorkdayKey)).size;
       const countEl = (id, value) => { const el=document.getElementById(id); if(el) el.textContent=String(value); };
       countEl('absen-stat-hadir', countDistinctDays('Hadir'));
       countEl('absen-stat-dinas-luar', countDistinctDays('Dinas Luar'));
@@ -3002,8 +3017,8 @@
       for (let d=1; d<todayForAttendance.getDate(); d++) {
         const dayDate = new Date(nowForStats.getFullYear(),nowForStats.getMonth(),d);
         const key = `${nowForStats.getFullYear()}-${String(nowForStats.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        // Hari kerja SIAP-DPMD: Senin sampai Sabtu. Minggu dan hari libur tidak dihitung.
-        if (dayDate.getDay() !== 0 && !holidayMapForStats[key]) effectiveCompletedWorkdays++;
+        // Hari kerja SIAP-DPMD: Senin sampai Jumat. Sabtu, Minggu, hari libur nasional, dan cuti bersama tidak dihitung.
+        if (!isWeekendDate(dayDate) && !holidayMapForStats[key]) effectiveCompletedWorkdays++;
       }
       countEl('absen-stat-absen', Math.max(0,effectiveCompletedWorkdays - daysWithAttendance.size));
       const laporanMonthSelect = document.getElementById('filter-riwayat-laporan-bulan');
@@ -3017,7 +3032,7 @@
       const riwayatLaporan = allMyLaporan.filter(l => dateKeyISO(l.tanggal).slice(0,7) === selectedReportMonth)
         .sort((a,b) => dateKeyISO(b.tanggal).localeCompare(dateKeyISO(a.tanggal)));
       const laporanBulanBerjalan = allMyLaporan.filter(l => dateKeyISO(l.tanggal).slice(0,7) === thisMonthKey);
-      const uniqueAttendanceDaysThisMonth = new Set(allMyAbsensi.filter(a => dateKeyISO(a.tanggal).slice(0,7) === thisMonthKey).map(a => dateKeyISO(a.tanggal)).filter(Boolean)).size;
+      const uniqueAttendanceDaysThisMonth = new Set(allMyAbsensi.filter(a => dateKeyISO(a.tanggal).slice(0,7) === thisMonthKey).map(a => dateKeyISO(a.tanggal)).filter(isDpmDWorkdayKey)).size;
       document.getElementById('stat-profile-hadir').innerText = `${uniqueAttendanceDaysThisMonth} Hari`;
       document.getElementById('stat-profile-kegiatan').innerText = `${laporanBulanBerjalan.length} Laporan`;
       const approvedCount = laporanBulanBerjalan.filter(l => l.status === 'Disetujui').length;
@@ -3144,7 +3159,7 @@
           // Jangan menampilkan tanggal yang belum terjadi pada bulan berjalan.
           if (monthKey === currentMonthKey && date > nowLocal) continue;
           const weekday = date.toLocaleDateString('id-ID',{weekday:'long'});
-          const weekend = date.getDay() === 0;
+          const weekend = isWeekendDate(date);
           const holidayName = holidaySet[key] || '';
           const dayOff = weekend || !!holidayName;
           const rec = attendanceByDate[key] || {};
