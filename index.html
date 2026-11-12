@@ -2886,12 +2886,14 @@
       // Nilai kinerja dihitung dari realisasi laporan yang telah disetujui dibanding target bulanan RHK.
       const [ratingYear, ratingMonth] = monthReports.split('-').map(Number);
       const activeRhk = (dbRhk || []).filter(x => String(x.userId) === String(currentUser?.id) && String(x.tahun) === String(ratingYear) && String(x.status || 'Aktif') === 'Aktif');
+      // Penilaian selalu memakai seluruh laporan pada bulan terpilih, bukan hanya baris yang sedang tampil setelah filter tanggal.
+      const performanceReportRows = (myLaporan || []).filter(r => isInMonth(r.tanggal, monthReports));
       let totalTarget = 0, totalRealization = 0;
       activeRhk.forEach(rhk => {
         const target = Number(getRhkMonthlyTarget(rhk, ratingMonth) || 0);
         if (target <= 0) return;
         totalTarget += target;
-        totalRealization += reportRows.filter(r => r.status === 'Disetujui' && String(r.rhkId) === String(rhk.id))
+        totalRealization += performanceReportRows.filter(r => r.status === 'Disetujui' && String(r.rhkId) === String(rhk.id))
           .reduce((sum,r) => sum + Number(r.volume ?? r.realisasiQty ?? 0), 0);
       });
       const performancePercent = totalTarget > 0 ? (totalRealization / totalTarget * 100) : null;
@@ -2900,6 +2902,8 @@
         badge.textContent = performanceValue;
         badge.className = `inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${performancePercent === null ? 'bg-slate-100 text-slate-700' : performancePercent > 100 ? 'bg-emerald-100 text-emerald-800' : performancePercent >= 80 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`;
         badge.dataset.performancePercent = performancePercent === null ? '' : performancePercent.toFixed(2);
+        // Simpan terpisah karena badge ini juga dipakai untuk status persetujuan pada tampilan aplikasi.
+        badge.dataset.performanceValue = performanceValue;
       }
       const reportBody = document.getElementById('rekap-kinerja-month-body');
       if (reportBody) {
@@ -3214,7 +3218,8 @@
       if (/REKAPITULASI KINERJA BULANAN/i.test(title) && currentUser) {
         const periode = document.getElementById('rekap-periode-kinerja')?.textContent?.trim() || document.getElementById('rekap-bulan-kinerja-select')?.selectedOptions?.[0]?.textContent?.trim() || 'Periode berjalan';
         const approved = document.getElementById('rekap-disetujui-count')?.textContent?.trim() || '0 Laporan';
-        const status = document.getElementById('rekap-status-badge')?.textContent?.trim() || 'Belum diverifikasi';
+        const statusBadge = document.getElementById('rekap-status-badge');
+        const status = statusBadge?.dataset?.performanceValue || 'Belum Dapat Dinilai';
         const photo = currentUser.avatar ? `<img src="${escapeHTML(currentUser.avatar)}" alt="Foto pegawai">` : '';
         const safe = v => escapeHTML(v || '—');
         const profile = `<section class="rekap-pegawai">${photo}<div class="rekap-pegawai-details"><div><b>Nama Pegawai:</b> ${safe(currentUser.nama)}</div><div><b>NIK:</b> ${safe(currentUser.nik)}</div><div><b>Bidang/Sub Bagian Kerja:</b> ${safe(currentUser.bidang)}</div><div><b>Tugas / Jabatan Kontrak:</b> ${safe(currentUser.jabatan)}</div></div></section>`;
