@@ -509,6 +509,50 @@ function getAppData_(user) {
   return result;
 }
 
+/** Kalender hari libur nasional dan cuti bersama Indonesia berdasarkan SKB 3 Menteri 2026-2027. */
+function getOfficialHolidayMap_() {
+  return {
+    // 2026 - hari libur nasional
+    '2026-01-01':'Tahun Baru 2026 Masehi', '2026-01-16':'Isra Mikraj Nabi Muhammad SAW',
+    '2026-02-17':'Tahun Baru Imlek 2577 Kongzili', '2026-03-19':'Hari Suci Nyepi',
+    '2026-03-21':'Idulfitri 1447 H', '2026-03-22':'Idulfitri 1447 H',
+    '2026-04-03':'Wafat Yesus Kristus', '2026-04-05':'Paskah',
+    '2026-05-01':'Hari Buruh Internasional', '2026-05-14':'Kenaikan Yesus Kristus',
+    '2026-05-27':'Iduladha 1447 H', '2026-05-31':'Hari Raya Waisak 2570 BE',
+    '2026-06-01':'Hari Lahir Pancasila', '2026-06-16':'Tahun Baru Islam 1448 H',
+    '2026-08-17':'Proklamasi Kemerdekaan RI', '2026-08-25':'Maulid Nabi Muhammad SAW',
+    '2026-12-25':'Hari Natal',
+    // 2026 - cuti bersama
+    '2026-02-16':'Cuti Bersama Imlek', '2026-03-18':'Cuti Bersama Nyepi',
+    '2026-03-20':'Cuti Bersama Idulfitri', '2026-03-23':'Cuti Bersama Idulfitri',
+    '2026-03-24':'Cuti Bersama Idulfitri', '2026-05-15':'Cuti Bersama Kenaikan Yesus Kristus',
+    '2026-05-28':'Cuti Bersama Iduladha', '2026-12-24':'Cuti Bersama Natal',
+    // 2027 - hari libur nasional
+    '2027-01-01':'Tahun Baru 2027 Masehi', '2027-01-05':'Isra Mikraj Nabi Muhammad SAW',
+    '2027-02-06':'Tahun Baru Imlek 2578 Kongzili', '2027-03-08':'Hari Suci Nyepi',
+    '2027-03-10':'Idulfitri 1448 H', '2027-03-11':'Idulfitri 1448 H',
+    '2027-03-26':'Wafat Yesus Kristus', '2027-03-28':'Paskah',
+    '2027-05-01':'Hari Buruh Internasional', '2027-05-06':'Kenaikan Yesus Kristus',
+    '2027-05-17':'Iduladha 1448 H', '2027-05-20':'Hari Raya Waisak 2571 BE',
+    '2027-06-01':'Hari Lahir Pancasila', '2027-06-06':'Tahun Baru Islam 1449 H',
+    '2027-08-15':'Maulid Nabi Muhammad SAW', '2027-08-17':'Proklamasi Kemerdekaan RI',
+    '2027-12-25':'Hari Natal', '2027-12-26':'Isra Mikraj Nabi Muhammad SAW',
+    // 2027 - cuti bersama
+    '2027-02-05':'Cuti Bersama Imlek', '2027-03-09':'Cuti Bersama Idulfitri',
+    '2027-03-12':'Cuti Bersama Idulfitri', '2027-03-15':'Cuti Bersama Idulfitri',
+    '2027-03-25':'Cuti Bersama Wafat Yesus Kristus', '2027-05-18':'Cuti Bersama Iduladha',
+    '2027-05-19':'Cuti Bersama Waisak', '2027-12-24':'Cuti Bersama Natal'
+  };
+}
+function isWeekendKey_(dateKey) {
+  const d = new Date(String(dateKey) + 'T12:00:00+08:00');
+  const day = d.getDay();
+  return day === 0 || day === 6;
+}
+function isDpmDWorkdayKey_(dateKey) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(dateKey)) && !isWeekendKey_(dateKey) && !getOfficialHolidayMap_()[dateKey];
+}
+
 function getAppDataFresh_(user) {
   const rawUsers = readRows_('Users');
   // Backward compatibility: pendaftaran dari versi lama sempat langsung berstatus Aktif.
@@ -549,7 +593,7 @@ function getAppDataFresh_(user) {
     archives = [];
     rhks = rhks.filter(r => ids.indexOf(String(r.userId)) >= 0);
   }
-  return {ok:true, users, attendance, reports, archives, rhks,
+  return {ok:true, users, attendance, reports, archives, rhks, holidays:getOfficialHolidayMap_(),
     reportDateOpen:getGlobalReportDatePolicy_(),
     attendanceDateOpen:getGlobalAttendanceDatePolicy_()};
 }
@@ -723,6 +767,7 @@ function saveAttendance_(user, p) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(attendanceDate)) throw new Error('Tanggal presensi tidak valid.');
   const parsedAttendanceDate = new Date(attendanceDate + 'T12:00:00+08:00');
   if (isNaN(parsedAttendanceDate.getTime()) || Utilities.formatDate(parsedAttendanceDate, APP.TZ, 'yyyy-MM-dd') !== attendanceDate) throw new Error('Tanggal presensi tidak valid.');
+  if (!isDpmDWorkdayKey_(attendanceDate)) throw new Error('Presensi tidak dapat dicatat pada hari Sabtu, Minggu, hari libur nasional, atau cuti bersama.');
   if (attendanceDate > today) throw new Error('Tanggal presensi tidak boleh melewati hari ini.');
   if (attendanceDateOpen) {
     const previousMonth = Utilities.formatDate(new Date(Date.UTC(Number(today.slice(0,4)), Number(today.slice(5,7)) - 2, 1, 12)), APP.TZ, 'yyyy-MM');
@@ -817,12 +862,13 @@ function saveAttendance_(user, p) {
 
 function getAttendancePolicy_(date, sesi) {
   const day = Number(Utilities.formatDate(date, APP.TZ, 'u')); // 1=Mon ... 7=Sun
+  const dateKey = Utilities.formatDate(date, APP.TZ, 'yyyy-MM-dd');
+  if (day >= 6 || getOfficialHolidayMap_()[dateKey]) return {allowed:false, message:'Presensi tidak tersedia pada hari Sabtu, Minggu, hari libur nasional, atau cuti bersama.'};
   const hh = Number(Utilities.formatDate(date, APP.TZ, 'H'));
   const mm = Number(Utilities.formatDate(date, APP.TZ, 'm'));
   const ss = Number(Utilities.formatDate(date, APP.TZ, 's'));
   const nowSeconds = hh * 3600 + mm * 60 + ss;
   const start = 8 * 3600;
-  if (day >= 6) return {allowed:false, message:'Presensi hanya tersedia pada hari kerja.'};
   const end = day === 5 ? 11 * 3600 + 30 * 60 : 16 * 3600 + 30 * 60;
   if (sesi === 'Masuk') {
     if (nowSeconds < start - 1800) return {allowed:false, message:'Presensi masuk dibuka pukul 07:30 WITA.'};
