@@ -791,6 +791,7 @@
                     <input type="time" id="lap-jam-selesai" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-blue-600 outline-none">
                   </div>
                 </div>
+                <p id="lap-jadwal-hint" class="text-[10px] text-blue-700 -mt-2">Jam mulai akan mengikuti akhir kegiatan terakhir pada tanggal yang dipilih. Jadwal kegiatan tidak boleh bertumpang tindih.</p>
 
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Rencana Hasil Kerja (RHK) <span class="text-rose-500">*</span></label>
@@ -960,7 +961,10 @@
               <p class="text-xs text-slate-500">Pratinjau berkas kelengkapan administrasi penggajian</p>
             </div>
             <div class="flex items-center gap-3 no-print">
-              <input type="date" id="filter-rekap-kinerja-tanggal" aria-label="Filter tanggal rekap kinerja" onchange="renderPjlpTables()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"><select id="rekap-bulan-kinerja-select" onchange="renderPjlpTables()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white">
+              <div class="flex items-center gap-2 flex-wrap">
+                <label class="text-[10px] font-bold text-slate-500">Dari <input type="date" id="filter-rekap-kinerja-dari" aria-label="Tanggal awal rekap kinerja" onchange="renderPjlpTables()" class="ml-1 px-2 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"></label>
+                <label class="text-[10px] font-bold text-slate-500">Sampai <input type="date" id="filter-rekap-kinerja-sampai" aria-label="Tanggal akhir rekap kinerja" onchange="renderPjlpTables()" class="ml-1 px-2 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"></label>
+              </div><select id="rekap-bulan-kinerja-select" onchange="renderPjlpTables()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white">
                 <option value="">Bulan berjalan</option>
               </select>
               <button onclick="handlePrintRekapKinerja()" class="px-5 py-2.5 bg-sky-400 hover:bg-sky-300 text-slate-950 font-bold rounded-xl text-xs shadow-md transition flex items-center gap-2">
@@ -2193,6 +2197,7 @@
       holidayDates = result.holidays || {};
       dbLaporan = result.reports || [];
       dbRhk = result.rhks || [];
+      syncNextActivityStartTime(false);
       reportDateOpen = result.reportDateOpen !== false;
       attendanceDateOpen = result.attendanceDateOpen === true;
       applyReportDatePolicy();
@@ -2203,6 +2208,9 @@
       if (currentUser) {
         const refreshed = dbUsers.find(u => u.id === currentUser.id);
         if (refreshed) currentUser = refreshed;
+        // Data profil hasil getAppData memuat avatar dari database; perbarui navbar
+        // setelah refresh agar foto langsung tampil pada login pertama tanpa edit profil.
+        updateUserNavbar();
         if (currentUser.role === 'SuperAdmin') renderPendingRegistrations();
       }
       return result;
@@ -2825,13 +2833,33 @@
       const selected = document.getElementById(inputId)?.value || '';
       return selected ? rows.filter(row => dateKeyISO(row.tanggal) === selected) : rows;
     }
+    function getKinerjaDateRange() {
+      return { from: document.getElementById('filter-rekap-kinerja-dari')?.value || '', to: document.getElementById('filter-rekap-kinerja-sampai')?.value || '' };
+    }
+    function applyKinerjaDateRange(rows) {
+      const {from,to} = getKinerjaDateRange();
+      if (from && to && from > to) return [];
+      return (rows || []).filter(row => { const key=dateKeyISO(row.tanggal); return (!from || key >= from) && (!to || key <= to); });
+    }
+    function countDpmDWorkdaysBetween(from, to) {
+      if (!from || !to || from > to) return 0;
+      const a=new Date(from+'T12:00:00'), b=new Date(to+'T12:00:00'); let count=0;
+      for (let d=new Date(a); d<=b; d.setDate(d.getDate()+1)) if (isDpmDWorkday(d)) count++;
+      return count;
+    }
+    function formatKinerjaDateRange(monthKey) {
+      const {from,to}=getKinerjaDateRange();
+      if (!from && !to) { const [y,m]=monthKey.split('-').map(Number); return new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(new Date(y,m-1,1)); }
+      const fmt=v=>v?new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(new Date(v+'T12:00:00')):'';
+      return from && to ? `${fmt(from)} s.d. ${fmt(to)}` : from ? `Mulai ${fmt(from)}` : `Sampai ${fmt(to)}`;
+    }
 
     function renderMonthlyRecaps(myAbsensi, myLaporan) {
       ensureMonthOptions();
       const monthAttendance = monthKeyFromSelect('rekap-bulan-hadir-select');
       const monthReports = monthKeyFromSelect('rekap-bulan-kinerja-select');
       const attendanceRows = applyDateFilter(myAbsensi.filter(a => isInMonth(a.tanggal, monthAttendance)), 'filter-rekap-hadir-tanggal').sort((a,b) => `${dateKeyISO(a.tanggal)} ${a.jam}`.localeCompare(`${dateKeyISO(b.tanggal)} ${b.jam}`));
-      const reportRows = applyDateFilter(myLaporan.filter(r => isInMonth(r.tanggal, monthReports)), 'filter-rekap-kinerja-tanggal').sort((a,b) => dateKeyISO(a.tanggal).localeCompare(dateKeyISO(b.tanggal)));
+      const reportRows = applyKinerjaDateRange(myLaporan.filter(r => isInMonth(r.tanggal, monthReports))).sort((a,b) => dateKeyISO(a.tanggal).localeCompare(dateKeyISO(b.tanggal)) || String(a.jamMulai||'').localeCompare(String(b.jamMulai||'')));
       const formatMonth = key => {
         const [y,m] = key.split('-').map(Number);
         return new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(new Date(y,m-1,1));
@@ -2839,9 +2867,16 @@
       const periodHadir = document.getElementById('rekap-periode-hadir');
       const periodKinerja = document.getElementById('rekap-periode-kinerja');
       if (periodHadir) periodHadir.textContent = formatMonth(monthAttendance);
-      if (periodKinerja) periodKinerja.textContent = formatMonth(monthReports);
+      if (periodKinerja) periodKinerja.textContent = formatKinerjaDateRange(monthReports);
       const kinerjaWorkdayEl = document.getElementById('rekap-kinerja-hari-kerja-count');
-      if (kinerjaWorkdayEl) kinerjaWorkdayEl.textContent = `${workdaysInMonth(monthReports)} Hari`;
+      const kinerjaRange = getKinerjaDateRange();
+      const [krYear,krMonth] = monthReports.split('-').map(Number);
+      const monthStart = `${monthReports}-01`;
+      const monthEnd = `${monthReports}-${String(new Date(krYear,krMonth,0).getDate()).padStart(2,'0')}`;
+      const rangeStart = kinerjaRange.from ? (kinerjaRange.from < monthStart ? monthStart : kinerjaRange.from) : monthStart;
+      const rangeEnd = kinerjaRange.to ? (kinerjaRange.to > monthEnd ? monthEnd : kinerjaRange.to) : monthEnd;
+      const rangeWorkdays = (kinerjaRange.from || kinerjaRange.to) ? countDpmDWorkdaysBetween(rangeStart,rangeEnd) : workdaysInMonth(monthReports);
+      if (kinerjaWorkdayEl) kinerjaWorkdayEl.textContent = `${rangeWorkdays} Hari`;
       const hadirMasukDays = new Set(attendanceRows.filter(a => a.sesi === 'Masuk' && a.status === 'Hadir' && isDpmDWorkdayKey(dateKeyISO(a.tanggal))).map(a => dateKeyISO(a.tanggal))).size;
       const hadirCount = document.getElementById('rekap-hadir-count');
       const workdayCount = document.getElementById('rekap-hari-kerja-count');
@@ -3347,8 +3382,9 @@
     function handlePrintRekapKinerja() {
       if (!currentUser) return;
       const selectedMonth = monthKeyFromSelect('rekap-bulan-kinerja-select');
-      const myLaporan = dbLaporan.filter(l => l.userId === currentUser.id && dateKeyISO(l.tanggal).slice(0,7) === selectedMonth);
+      const myLaporan = applyKinerjaDateRange(dbLaporan.filter(l => l.userId === currentUser.id && dateKeyISO(l.tanggal).slice(0,7) === selectedMonth));
       const approvedTotal = myLaporan.filter(l => l.status === 'Disetujui').length;
+      if (myLaporan.length === 0) { notify('Tidak ada kegiatan pada rentang tanggal yang dipilih untuk dicetak.'); return; }
 
       if (currentUser.role === 'PJLP' && (myLaporan.length === 0 || approvedTotal < myLaporan.length)) {
         notify('Peringatan: Rekap Kinerja Bulanan belum dapat dicetak karena laporan harian Anda belum sepenuhnya disetujui oleh Atasan / Verifikator Bidang.');
@@ -3518,7 +3554,9 @@
     window.addEventListener('DOMContentLoaded', () => {
       sigCanvas = document.getElementById('sig-canvas');
       document.querySelectorAll('input[name="absen-sesi"]').forEach(el => el.addEventListener('change', () => validateAttendanceWindow(false)));
-      document.getElementById('lap-tanggal')?.addEventListener('change', e => { e.target.dataset.userSelected = 'true'; });
+      document.getElementById('lap-tanggal')?.addEventListener('change', e => { e.target.dataset.userSelected = 'true'; syncNextActivityStartTime(true); });
+      document.getElementById('lap-jam-mulai')?.addEventListener('input', e => { e.target.dataset.autoFilled = 'false'; validateActivityTimeOverlap(false); });
+      document.getElementById('lap-jam-selesai')?.addEventListener('input', () => validateActivityTimeOverlap(false));
       document.getElementById('absen-status')?.addEventListener('change', () => { locationVerified=false; lastGpsPosition=null; if (attendanceDateOpen) applyAttendanceDatePolicy(); else checkUserLocation({silent:true}); });
       document.getElementById('absen-tanggal')?.addEventListener('change', () => validateAttendanceWindow(false));
       const manualTimeInput = document.getElementById('absen-jam');
@@ -3981,6 +4019,34 @@
     }
 
     let reportSubmissionInFlight = false;
+    function getNextActivityStartTime(dateKey) {
+      if (!dateKey || !currentUser) return '';
+      const sameDay = (dbLaporan || []).filter(r => String(r.userId) === String(currentUser.id) && dateKeyISO(r.tanggal) === dateKey && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.jamSelesai || '')));
+      if (!sameDay.length) return '';
+      return sameDay.map(r => String(r.jamSelesai).trim()).sort().pop();
+    }
+    function syncNextActivityStartTime(force=false) {
+      const dateInput=document.getElementById('lap-tanggal'), startInput=document.getElementById('lap-jam-mulai');
+      if (!dateInput || !startInput) return;
+      const next=getNextActivityStartTime(dateInput.value);
+      if (force || !startInput.value || startInput.dataset.autoFilled === 'true') {
+        startInput.value=next; startInput.dataset.autoFilled=next?'true':'false';
+      }
+      const hint=document.getElementById('lap-jadwal-hint');
+      if (hint) hint.textContent = next ? `Kegiatan berikutnya otomatis dimulai pukul ${next} WITA (akhir kegiatan terakhir). Jam selesai silakan diisi manual.` : 'Jam mulai akan mengikuti akhir kegiatan terakhir pada tanggal yang dipilih. Jadwal kegiatan tidak boleh bertumpang tindih.';
+    }
+    function validateActivityTimeOverlap(showMessage=false) {
+      const dateKey=document.getElementById('lap-tanggal')?.value || '';
+      const start=document.getElementById('lap-jam-mulai')?.value || '';
+      const end=document.getElementById('lap-jam-selesai')?.value || '';
+      const startEl=document.getElementById('lap-jam-mulai'), endEl=document.getElementById('lap-jam-selesai');
+      if (startEl) startEl.setCustomValidity(''); if (endEl) endEl.setCustomValidity('');
+      if (!dateKey || !start || !end || end <= start) return true;
+      const collision=(dbLaporan||[]).find(r=>String(r.userId)===String(currentUser?.id) && dateKeyISO(r.tanggal)===dateKey && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.jamMulai||'')) && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.jamSelesai||'')) && start < String(r.jamSelesai) && end > String(r.jamMulai));
+      if (collision) { const msg=`Jadwal bertumpang tindih dengan kegiatan ${collision.jamMulai}–${collision.jamSelesai}.`; if(endEl)endEl.setCustomValidity(msg); if(showMessage)notify(msg+' Pilih jam yang tidak bertabrakan.'); return false; }
+      return true;
+    }
+
     async function handleSaveLaporan(e) {
       e.preventDefault();
       if (reportSubmissionInFlight) { notify('Pengiriman kegiatan sedang diproses. Mohon tunggu.'); return; }
@@ -4006,8 +4072,7 @@
         if (!rhkId || !Number.isFinite(volume) || volume <= 0) { notify('Pilih RHK dan isi volume pekerjaan dengan angka lebih dari nol.'); return; }
         if (!kegiatan || !output || !tempLapFotoBase64 || !jamMulai || !jamSelesai) { notify('Seluruh field wajib diisi, termasuk foto yang sudah selesai dioptimalkan!'); return; }
         if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(jamMulai) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(jamSelesai) || jamSelesai <= jamMulai) { notify('Jam selesai harus setelah jam mulai dengan format waktu yang benar.'); return; }
-        const collision = (dbLaporan || []).find(r => String(r.userId) === String(currentUser?.id) && dateKeyISO(r.tanggal) === tanggalPelaksanaan && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.jamMulai || '')) && /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.jamSelesai || '')) && jamMulai < String(r.jamSelesai) && jamSelesai > String(r.jamMulai));
-        if (collision) { notify(`Jadwal bertumpang tindih dengan kegiatan ${collision.jamMulai}–${collision.jamSelesai}. Silakan ubah jam pelaksanaan.`); return; }
+        if (!validateActivityTimeOverlap(true)) return;
         await gasCall('saveReport', {
           tanggal: tanggalPelaksanaan,
           jamMulai, jamSelesai, kegiatan, output, rhkId, volume, realisasiQty: volume, foto: tempLapFotoBase64
@@ -4020,7 +4085,9 @@
         document.getElementById('lap-rhk-id').value = '';
         document.getElementById('lap-rhk-id').dispatchEvent(new Event('change'));
         document.getElementById('lap-jam-mulai').value = '';
+        document.getElementById('lap-jam-mulai').dataset.autoFilled = 'false';
         document.getElementById('lap-jam-selesai').value = '';
+        syncNextActivityStartTime(true);
         document.getElementById('lap-foto-file').value = '';
         document.getElementById('lap-foto-preview-container').classList.add('hidden');
         tempLapFotoBase64 = null;
