@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mengarahkan ke SIAP-DPMD</title>
+  <meta name="robots" content="noindex">
+</head>
+<body>
+  <p>Mengarahkan ke SIAP-DPMD…</p>
+  <script>
+    (function () {
+      var base = '/siapdpmd/';
+      var path = window.location.pathname || base;
+      var route = path.indexOf(base) === 0 ? path.slice(base.length) : '';
+      route = route.replace(/^\/+|\/+$/g, '');
+      if (!route) route = 'dashboard';
+      var target = base + '?__siap_route=' + encodeURIComponent(route);
+      window.location.replace(target);
+    })();
+  </script>
+</body>
+</html>
