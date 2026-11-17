@@ -3274,17 +3274,22 @@
         const safe = v => escapeHTML(v || '—');
         const profile = `<section class="rekap-pegawai">${photo}<div class="rekap-pegawai-details"><div><b>Nama Pegawai:</b> ${safe(currentUser.nama)}</div><div><b>NIK:</b> ${safe(currentUser.nik)}</div><div><b>Bidang/Sub Bagian Kerja:</b> ${safe(currentUser.bidang)}</div><div><b>Tugas / Jabatan Kontrak:</b> ${safe(currentUser.jabatan)}</div></div></section>`;
         const meta = `<section class="rekap-meta-grid"><div class="rekap-meta-item"><div class="rekap-meta-label">Periode Rekap</div><div class="rekap-meta-value">${safe(periode)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Total Hari Kerja</div><div class="rekap-meta-value">${safe(document.getElementById("rekap-kinerja-hari-kerja-count")?.textContent?.trim() || "—")}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Laporan Disetujui</div><div class="rekap-meta-value">${safe(approved)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Nilai Kinerja</div><div class="rekap-meta-value">${safe(status)}</div></div></section>`;
-        const bidangPegawai = String(currentUser.bidang || '').trim().toLowerCase();
-        const pejabatMengetahui = bidangPegawai === 'sekretariat'
-          ? 'Kepala Sub Bagian Umum dan Kepegawaian'
-          : bidangPegawai === 'bidang bina pemberdayaan masyarakat'
-            ? 'Kepala Bidang Bina Pemberdayaan Masyarakat'
-            : bidangPegawai === 'bidang bina pemerintahan desa'
-              ? 'Kepala Bidang Bina Pemerintahan Desa'
-              : bidangPegawai === 'bidang bina perencanaan, keuangan, aset, evaluasi dan data desa'
-                ? 'Kepala Bidang Bina Perencanaan, Keuangan, Aset, Evaluasi dan Data Desa'
-                : 'Kepala Unit Kerja';
-        const signatures = `<section class="rekap-signatures"><div class="rekap-signature"><div class="signature-heading">Mengetahui,</div><div class="signature-role">${safe(pejabatMengetahui)}</div><div class="sign-space"></div><div class="signature-name">&nbsp;</div></div><div class="rekap-signature"><div class="signature-heading">${safe(currentUser.jabatan || 'Tugas / Jabatan Kontrak')}</div><div class="signature-role">Pegawai PJLP</div><div class="sign-space"></div><div class="signature-name">${safe(currentUser.nama)}</div></div></section>`;
+        const bidangAsli = String(currentUser.bidang || '').trim();
+        const bidangPegawai = bidangAsli.toLowerCase().replace(/\\s+/g, ' ');
+        const verifikatorBidang = (dbUsers || []).find(u =>
+          String(u.role || '').toLowerCase() === 'verifikator' &&
+          String(u.bidang || '').trim().toLowerCase().replace(/\\s+/g, ' ') === bidangPegawai
+        );
+        const pejabatMap = [
+          { match: b => b === 'sekretariat', jabatan: 'Kepala Sub Bagian Umum dan Kepegawaian', nama: 'SUBI HARTATI, ST' },
+          { match: b => b.includes('bina pemberdayaan masyarakat'), jabatan: 'Kepala Bidang Bina Pemberdayaan Masyarakat', nama: 'ADY TASADA KESUMA TAHJI, S.Gz, M.M' },
+          { match: b => b.includes('bina pemerintahan desa'), jabatan: 'Kepala Bidang Bina Pemerintahan Desa' },
+          { match: b => b.includes('bina perencanaan') || b.includes('keuangan, aset'), jabatan: 'Kepala Bidang Bina Perencanaan, Keuangan, Aset, Evaluasi dan Data Desa' }
+        ];
+        const pejabat = pejabatMap.find(x => x.match(bidangPegawai));
+        const pejabatMengetahui = pejabat?.jabatan || (bidangPegawai === 'sekretariat' ? 'Kepala Sub Bagian Umum dan Kepegawaian' : `Kepala ${bidangAsli}`);
+        const namaPenandatangan = pejabat?.nama || verifikatorBidang?.nama || window.verifikatorNama || 'Nama Verifikator Bidang';
+        const signatures = `<section class="rekap-signatures"><div class="rekap-signature"><div class="signature-heading">Mengetahui,</div><div class="signature-role">${safe(pejabatMengetahui)}</div><div class="sign-space"></div><div class="signature-name">${safe(namaPenandatangan)}</div></div><div class="rekap-signature"><div class="signature-heading">${safe(currentUser.jabatan || 'Tugas / Jabatan Kontrak')}</div><div class="signature-role">Pegawai PJLP</div><div class="sign-space"></div><div class="signature-name">${safe(currentUser.nama)}</div></div></section>`;
         finalBodyHtml = `${profile}${meta}${bodyHtml}${signatures}`;
       }
       const printDate = new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(new Date());
