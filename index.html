@@ -417,6 +417,9 @@
         <button id="pjlp-tab-btn-arsip" onclick="switchPjlpTab('arsip')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
           <i class="fa-solid fa-folder-open"></i> Arsip Kepegawaian
         </button>
+        <button id="pjlp-tab-btn-final" onclick="switchPjlpTab('final')" class="px-4 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2 transition">
+          <i class="fa-solid fa-award"></i> Penilaian Kinerja Final Tahunan
+        </button>
       </div>
 
       <!-- TAB 1: PROFIL PEGAWAI & GRAFIK ANALITIK -->
@@ -1036,6 +1039,22 @@
         </div>
       </div>
 
+      <!-- TAB 7: PENILAIAN KINERJA FINAL TAHUNAN -->
+      <div id="pjlp-tab-final" class="hidden space-y-6">
+        <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div><h3 class="font-black text-slate-900 text-lg">Penilaian Kinerja Final Tahunan PJLP</h3><p class="text-xs text-slate-500 mt-1">Nilai akhir dihitung dari rata-rata persentase capaian kinerja bulanan berdasarkan realisasi RHK yang telah disetujui.</p></div>
+            <div class="flex gap-2 no-print"><select id="final-kinerja-year" onchange="renderAnnualFinalPerformance()" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold"></select><button type="button" onclick="printAnnualFinalPerformance()" class="rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-xs font-bold"><i class="fa-solid fa-print mr-1"></i> Cetak Penilaian Final</button></div>
+          </div>
+          <div id="final-kinerja-summary" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+          <div id="printable-final-kinerja" class="space-y-4">
+            <div class="text-center hidden print:block"><h2 class="font-black text-base">PENILAIAN KINERJA FINAL TAHUNAN PJLP</h2><p class="text-xs">Dinas Pemberdayaan Masyarakat dan Desa Kabupaten Tanah Laut</p></div>
+            <div class="overflow-x-auto border border-slate-200 rounded-xl"><table class="w-full text-left text-xs"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Bulan</th><th class="p-3 text-right">Target RHK Bulanan</th><th class="p-3 text-right">Realisasi Disetujui</th><th class="p-3 text-right">Capaian</th><th class="p-3">Predikat Bulanan</th></tr></thead><tbody id="final-kinerja-month-body"><tr><td colspan="5" class="p-4 text-center text-slate-400">Data penilaian belum tersedia.</td></tr></tbody></table></div>
+            <p class="text-[10px] text-slate-500">Metode: rata-rata aritmetika persentase capaian bulanan. Bulan tanpa target RHK tidak dinilai; bulan terjadwal dengan target tetapi tanpa realisasi disetujui dihitung 0%. Laporan Pending dan Ditolak tidak diperhitungkan.</p>
+            <section class="rekap-signatures"><div class="rekap-signature"><div class="signature-heading">Mengetahui,</div><div class="signature-role" id="final-kinerja-approver-role">Atasan / Verifikator Bidang</div><div class="sign-space"></div><div class="signature-name" id="final-kinerja-approver-name">—</div></div><div class="rekap-signature"><div class="signature-heading">Pegawai PJLP</div><div class="signature-role" id="final-kinerja-employee-role">—</div><div class="sign-space"></div><div class="signature-name" id="final-kinerja-employee-name">—</div></div></section>
+          </div>
+        </div>
+      </div>
 
     </section>
 
@@ -2111,6 +2130,55 @@
       catch (_) { return {}; }
     }
     function clearLastPageState() { try { localStorage.removeItem(SIAP_PAGE_STATE_KEY); } catch (_) {} }
+
+    const SIAP_BASE_PATH = (() => { const path = window.location.pathname || '/'; const marker = '/siapdpmd'; const at = path.indexOf(marker); return at >= 0 ? path.slice(0, at + marker.length) + '/' : '/'; })();
+    const SIAP_ROUTE_TO_STATE = {
+      dashboard:{view:'pjlp',tab:'profile'}, presensi:{view:'pjlp',tab:'hadir'}, rhk:{view:'pjlp',tab:'rhk'}, kegiatan:{view:'pjlp',tab:'kegiatan'},
+      'rekap-kehadiran':{view:'pjlp',tab:'rekap-hadir'}, 'rekap-kinerja':{view:'pjlp',tab:'rekap-kinerja'}, arsip:{view:'pjlp',tab:'arsip'},
+      'penilaian-final-tahunan':{view:'pjlp',tab:'final'}, 'verifikasi-laporan':{view:'verifikator',tab:'laporan'}, 'monitoring-presensi':{view:'verifikator',tab:'hadir'},
+      'monitoring-rhk':{view:'verifikator',tab:'rhk'}, 'admin-pegawai':{view:'superadmin',tab:'users'}, 'admin-presensi':{view:'superadmin',tab:'hadir'},
+      'admin-laporan':{view:'superadmin',tab:'laporan'}, 'admin-rhk':{view:'superadmin',tab:'rhk'}, 'admin-arsip':{view:'superadmin',tab:'arsip'}, 'admin-audit':{view:'superadmin',tab:'audit'}
+    };
+    function routeNameForState(view, tab) {
+      if (view === 'pjlp') return ({profile:'dashboard',hadir:'presensi',rhk:'rhk',kegiatan:'kegiatan','rekap-hadir':'rekap-kehadiran','rekap-kinerja':'rekap-kinerja',arsip:'arsip',final:'penilaian-final-tahunan'})[tab] || 'dashboard';
+      if (view === 'verifikator') return ({laporan:'verifikasi-laporan',hadir:'monitoring-presensi',rhk:'monitoring-rhk'})[tab] || 'verifikasi-laporan';
+      if (view === 'superadmin') return ({users:'admin-pegawai',hadir:'admin-presensi',laporan:'admin-laporan',rhk:'admin-rhk',arsip:'admin-arsip',audit:'admin-audit',registrasi:'admin-pegawai'})[tab] || 'admin-pegawai';
+      return '';
+    }
+    function updateBrowserRoute(view, tab, replace) {
+      if (!view || view === 'landing') { if (window.location.pathname !== SIAP_BASE_PATH) window.history.replaceState({siapRoute:true},'',SIAP_BASE_PATH); return; }
+      const route = routeNameForState(view,tab);
+      if (!route) return;
+      const target = SIAP_BASE_PATH + route;
+      if (window.location.pathname !== target) window.history[replace?'replaceState':'pushState']({siapRoute:true,view,tab},'',target);
+    }
+    function getRequestedRouteState() {
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get('__siap_route');
+      if (requested) {
+        const clean = requested.replace(/^\/+|\/+$/g,'').split('/').pop();
+        const state = SIAP_ROUTE_TO_STATE[clean] || null;
+        if (state) { window.history.replaceState({siapRoute:true,view:state.view,tab:state.tab},'',SIAP_BASE_PATH+clean); return state; }
+      }
+      const path = window.location.pathname;
+      if (path.startsWith(SIAP_BASE_PATH) && path !== SIAP_BASE_PATH) {
+        const clean = path.slice(SIAP_BASE_PATH.length).replace(/^\/+|\/+$/g,'').split('/').pop();
+        return SIAP_ROUTE_TO_STATE[clean] || null;
+      }
+      return null;
+    }
+    window.addEventListener('popstate', () => {
+      if (!currentUser) return;
+      const state = getRequestedRouteState() || {view:'pjlp',tab:'profile'};
+      const roleView = currentUser.role==='SuperAdmin'?'superadmin':currentUser.role==='Verifikator'?'verifikator':'pjlp';
+      if (state.view !== roleView) return;
+      restoringPageState = true;
+      switchView(roleView,{skipDefaultTab:true});
+      if (roleView==='pjlp') switchPjlpTab(state.tab);
+      else if (roleView==='verifikator') switchVerifTab(state.tab);
+      else switchAdminTab(state.tab);
+      restoringPageState = false;
+    });
     let gasReady = false;
     // Kebijakan tanggal global dibaca dari backend; default terbuka untuk mempertahankan perilaku Revisi 6.
     let reportDateOpen = true;
@@ -2534,6 +2602,7 @@
       gasSessionToken = '';
       persistSession();
       clearLastPageState();
+      updateBrowserRoute('landing','',true);
       currentUser = null;
       clearLoginCredentials();
       const alertBox = document.getElementById('modal-alert'); if (alertBox) { alertBox.textContent=''; alertBox.classList.add('hidden'); }
@@ -3317,6 +3386,11 @@
         const el = document.getElementById(elementId);
         if (!el) { printWindow.close(); notify('Bagian yang akan dicetak tidak ditemukan.'); return; }
         const clone = el.cloneNode(true);
+        if (elementId === 'printable-final-kinerja' && currentUser) {
+          const safe = v => escapeHTML(v || '—');
+          const profile = `<section class="rekap-pegawai"><div class="rekap-pegawai-details"><div><b>Nama Pegawai:</b> ${safe(currentUser.nama)}</div><div><b>NIK:</b> ${safe(currentUser.nik)}</div><div><b>Bidang/Sub Bagian Kerja:</b> ${safe(currentUser.bidang)}</div><div><b>Tugas / Jabatan Kontrak:</b> ${safe(currentUser.jabatan)}</div><div><b>Tahun Penilaian:</b> ${safe(document.getElementById('final-kinerja-year')?.value || new Date().getFullYear())}</div></div></section>`;
+          clone.insertAdjacentHTML('afterbegin', profile);
+        }
         if (elementId === 'printable-laporan-container' && currentUser) {
           const u = currentUser;
           const safe = v => escapeHTML(v || '—');
@@ -3392,6 +3466,53 @@
     function printAbsensiRiwayat() { printElement('RIWAYAT PRESENSI / DAFTAR HADIR','printable-absensi-container'); }
     function printLaporanRiwayat() { printElement('RIWAYAT LAPORAN KEGIATAN SAYA','printable-laporan-container'); }
     function printRekapHadir() { printElement('REKAPITULASI KEHADIRAN BULANAN PJLP','printable-rekap-hadir-container'); }
+
+    function annualPerformanceForEmployee(employeeId, year) {
+      const employeeRhks = (dbRhk || []).filter(r => String(r.userId) === String(employeeId) && Number(r.tahun) === Number(year));
+      const approved = (dbLaporan || []).filter(r => String(r.userId) === String(employeeId) && r.status === 'Disetujui' && String(dateKeyISO(r.tanggal)).slice(0,4) === String(year));
+      const now = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Makassar'}));
+      const lastMonth = Number(year) < now.getFullYear() ? 12 : Number(year) > now.getFullYear() ? 0 : now.getMonth()+1;
+      const months = [];
+      for (let m=1; m<=lastMonth; m++) {
+        const target = employeeRhks.reduce((sum,rhk)=>sum+getRhkMonthlyTarget(rhk,m),0);
+        if (target <= 0) continue;
+        const realization = approved.filter(r=>Number(String(dateKeyISO(r.tanggal)).slice(5,7))===m)
+          .reduce((sum,r)=>sum+Number(r.volume ?? r.realisasiQty ?? 0),0);
+        const percent = realization / target * 100;
+        const rating = percent > 100 ? 'Di Atas Ekspektasi' : percent >= 80 ? 'Sesuai Ekspektasi' : 'Di Bawah Ekspektasi';
+        months.push({month:m,target,realization,percent,rating});
+      }
+      const average = months.length ? months.reduce((sum,x)=>sum+x.percent,0)/months.length : null;
+      const finalRating = average === null ? 'Belum Dapat Dinilai' : average > 100 ? 'Di Atas Ekspektasi' : average >= 80 ? 'Sesuai Ekspektasi' : 'Di Bawah Ekspektasi';
+      return {months,average,finalRating,year,monthsAssessed:months.length};
+    }
+
+    function renderAnnualFinalPerformance() {
+      if (!currentUser || currentUser.role !== 'PJLP') return;
+      const yearEl = document.getElementById('final-kinerja-year');
+      const now = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Makassar'}));
+      const year = Number(yearEl?.value || now.getFullYear());
+      if (yearEl && !yearEl.options.length) yearEl.innerHTML = [now.getFullYear(),now.getFullYear()-1].map(y=>`<option value="${y}">${y}</option>`).join('');
+      const result = annualPerformanceForEmployee(currentUser.id,year);
+      const averageLabel = result.average === null ? '—' : `${result.average.toFixed(2)}%`;
+      const badgeClass = result.finalRating==='Di Atas Ekspektasi'?'bg-emerald-100 text-emerald-800':result.finalRating==='Sesuai Ekspektasi'?'bg-blue-100 text-blue-800':result.finalRating==='Di Bawah Ekspektasi'?'bg-amber-100 text-amber-800':'bg-slate-100 text-slate-700';
+      const summary = document.getElementById('final-kinerja-summary');
+      if (summary) summary.innerHTML = `<div class="rounded-xl border border-slate-200 bg-slate-50 p-4"><p class="text-[10px] font-bold uppercase text-slate-500">Rata-rata capaian tahunan</p><p class="text-2xl font-black text-slate-900 mt-1">${averageLabel}</p></div><div class="rounded-xl border border-slate-200 bg-slate-50 p-4"><p class="text-[10px] font-bold uppercase text-slate-500">Bulan yang dinilai</p><p class="text-2xl font-black text-slate-900 mt-1">${result.monthsAssessed} Bulan</p></div><div class="rounded-xl border border-slate-200 bg-slate-50 p-4"><p class="text-[10px] font-bold uppercase text-slate-500">Predikat final ${year}</p><p class="mt-2"><span class="inline-block rounded-full px-3 py-1 text-xs font-extrabold ${badgeClass}">${escapeHTML(result.finalRating)}</span></p></div>`;
+      const body = document.getElementById('final-kinerja-month-body');
+      if (body) body.innerHTML = result.months.length ? result.months.map(x=>`<tr class="border-t border-slate-100"><td class="p-3 font-semibold">${RHK_MONTH_NAMES[x.month-1]}</td><td class="p-3 text-right tabular-nums">${formatRhkQuantity(x.target)}</td><td class="p-3 text-right tabular-nums">${formatRhkQuantity(x.realization)}</td><td class="p-3 text-right font-bold tabular-nums">${x.percent.toFixed(2)}%</td><td class="p-3">${escapeHTML(x.rating)}</td></tr>`).join('') : '<tr><td colspan="5" class="p-4 text-center text-slate-400">Belum ada target RHK terjadwal pada tahun ini.</td></tr>';
+      const role = String(currentUser.bidang||'').toLowerCase().includes('sekretariat') ? 'Kepala Sub Bagian Umum dan Kepegawaian' : String(currentUser.bidang||'').toLowerCase().includes('bina pemberdayaan masyarakat') ? 'Kepala Bidang Bina Pemberdayaan Masyarakat' : String(currentUser.bidang||'').toLowerCase().includes('bina pemerintahan desa') ? 'Kepala Bidang Bina Pemerintahan Desa' : 'Kepala Bidang';
+      const verifier = (dbUsers||[]).find(u=>u.role==='Verifikator'&&String(u.bidang||'').trim().toLowerCase()===String(currentUser.bidang||'').trim().toLowerCase());
+      const approverRole = document.getElementById('final-kinerja-approver-role'); if(approverRole) approverRole.textContent=role;
+      const approverName = document.getElementById('final-kinerja-approver-name'); if(approverName) approverName.textContent=verifier?.nama || window.verifikatorNama || 'Verifikator Bidang';
+      const employeeRole = document.getElementById('final-kinerja-employee-role'); if(employeeRole) employeeRole.textContent=currentUser.jabatan||'Pegawai PJLP';
+      const employeeName = document.getElementById('final-kinerja-employee-name'); if(employeeName) employeeName.textContent=currentUser.nama||'—';
+    }
+
+    function printAnnualFinalPerformance() {
+      if (!currentUser || currentUser.role !== 'PJLP') return;
+      renderAnnualFinalPerformance();
+      printElement('PENILAIAN KINERJA FINAL TAHUNAN PJLP','printable-final-kinerja');
+    }
 
     function handlePrintRekapKinerja() {
       if (!currentUser) return;
@@ -4234,7 +4355,7 @@
       if (tabName === 'rhk') renderStaffRhkPerformance('admin');
       if (tabName === 'arsip') renderAdminArsipTable();
       if (tabName === 'audit') loadAuditLog();
-      if (!restoringPageState) saveLastPageState('superadmin', tabName);
+      if (!restoringPageState) { saveLastPageState('superadmin', tabName); updateBrowserRoute('superadmin', tabName); }
     }
 
     function switchPjlpTab(tabName) {
@@ -4243,7 +4364,7 @@
       if (tabName !== 'hadir' && typeof stopCameraStream === 'function') {
         try { stopCameraStream(); } catch (err) { console.warn('Pembersihan kamera dilewati:', err); }
       }
-      const allowedTabs = ['profile', 'hadir', 'rhk', 'kegiatan', 'rekap-hadir', 'rekap-kinerja', 'arsip'];
+      const allowedTabs = ['profile', 'hadir', 'rhk', 'kegiatan', 'rekap-hadir', 'rekap-kinerja', 'arsip', 'final'];
       if (!allowedTabs.includes(tabName)) {
         console.warn('Tab PJLP tidak dikenal:', tabName);
         return;
@@ -4263,9 +4384,10 @@
       }
       activePanel.classList.remove('hidden');
       if (tabName === 'rhk') renderRhkPanel();
+      if (tabName === 'final') renderAnnualFinalPerformance();
       activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
       if (tabName === 'hadir') { locationVerified = false; lastGpsPosition = null; checkUserLocation({silent:true}); }
-      if (!restoringPageState) saveLastPageState('pjlp', tabName);
+      if (!restoringPageState) { saveLastPageState('pjlp', tabName); updateBrowserRoute('pjlp', tabName); }
     }
 
     function switchVerifTab(tabName) {
@@ -4278,7 +4400,7 @@
       if(activePanel) activePanel.classList.remove('hidden');
       if(activeButton) activeButton.className = "px-4 py-2.5 rounded-xl bg-blue-600 text-white flex items-center gap-2 transition shadow-sm";
       if(tabName==='rhk') renderStaffRhkPerformance('verif');
-      if (!restoringPageState) saveLastPageState('verifikator', tabName);
+      if (!restoringPageState) { saveLastPageState('verifikator', tabName); updateBrowserRoute('verifikator', tabName); }
     }
 
     // Menu khusus Super Admin untuk menyetujui atau menolak akun baru.
@@ -4915,6 +5037,7 @@
       requestAnimationFrame(() => { pageStateScrollPending = false; saveLastPageState(undefined, undefined); });
     }, {passive:true});
     window.onload = async function() {
+      const requestedRouteState = getRequestedRouteState();
       const savedPage = readLastPageState();
       restoringPageState = true;
       switchView('landing');
@@ -4945,24 +5068,26 @@
           window.verifikatorNama = session.verifikatorNama || '';
           updateUserNavbar();
           const expectedView = currentUser.role === 'SuperAdmin' ? 'superadmin' : (currentUser.role === 'Verifikator' ? 'verifikator' : 'pjlp');
-          const savedView = savedPage.view === expectedView ? savedPage.view : expectedView;
+          const requestedMatchesRole = requestedRouteState && requestedRouteState.view === expectedView;
+          const savedView = requestedMatchesRole ? requestedRouteState.view : (savedPage.view === expectedView ? savedPage.view : expectedView);
           restoringPageState = true;
           switchView(savedView, {skipDefaultTab:true});
           await refreshServerData();
           if (savedView === 'superadmin') {
             const allowed = ['registrasi','users','hadir','laporan','arsip','audit'];
-            switchAdminTab(allowed.includes(savedPage.tab) ? savedPage.tab : 'users');
+            switchAdminTab(allowed.includes(requestedMatchesRole ? requestedRouteState.tab : savedPage.tab) ? (requestedMatchesRole ? requestedRouteState.tab : savedPage.tab) : 'users');
           } else if (savedView === 'verifikator') {
             const allowed = ['laporan','hadir'];
-            switchVerifTab(allowed.includes(savedPage.tab) ? savedPage.tab : 'laporan');
+            switchVerifTab(allowed.includes(requestedMatchesRole ? requestedRouteState.tab : savedPage.tab) ? (requestedMatchesRole ? requestedRouteState.tab : savedPage.tab) : 'laporan');
             renderVerifikatorDashboard();
           } else {
-            const allowed = ['profile','hadir','rhk','kegiatan','rekap-hadir','rekap-kinerja','arsip'];
-            switchPjlpTab(allowed.includes(savedPage.tab) ? savedPage.tab : 'profile');
+            const allowed = ['profile','hadir','rhk','kegiatan','rekap-hadir','rekap-kinerja','arsip','final'];
+            switchPjlpTab(allowed.includes(requestedMatchesRole ? requestedRouteState.tab : savedPage.tab) ? (requestedMatchesRole ? requestedRouteState.tab : savedPage.tab) : 'profile');
             renderPjlpTables();
           }
           restoringPageState = false;
-          saveLastPageState(savedView, savedPage.tab);
+          saveLastPageState(savedView, requestedMatchesRole ? requestedRouteState.tab : savedPage.tab);
+          updateBrowserRoute(savedView, requestedMatchesRole ? requestedRouteState.tab : savedPage.tab, true);
           renderMonthlyProductiveEmployee();
           if (Number.isFinite(Number(savedPage.scrollY)) && Number(savedPage.scrollY) > 0) requestAnimationFrame(() => window.scrollTo({top:Number(savedPage.scrollY), behavior:'auto'}));
           return;
@@ -4980,7 +5105,7 @@
           restoringPageState = false;
         }
       }
-      if (!gasSessionToken) switchView('landing');
+      if (!gasSessionToken) { switchView('landing'); updateBrowserRoute('landing','',true); }
     };
   </script>
 </body>
