@@ -877,7 +877,8 @@ function getAttendancePolicy_(date, sesi) {
   }
   if (sesi === 'Pulang') {
     if (nowSeconds < end) return {allowed:false, message:'Presensi pulang belum dibuka.'};
-    if (nowSeconds > end + 7200) return {allowed:false, message:'Batas presensi pulang telah berakhir.'};
+    const pulangDeadline = day === 5 ? 19 * 3600 : end + 7200;
+    if (nowSeconds > pulangDeadline) return {allowed:false, message: day === 5 ? 'Batas presensi pulang hari Jumat telah berakhir pukul 19:00 WITA.' : 'Batas presensi pulang telah berakhir.'};
     return {allowed:true, lateBySeconds:0};
   }
   return {allowed:false, message:'Sesi presensi tidak valid.'};
