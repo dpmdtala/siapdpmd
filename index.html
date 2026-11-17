@@ -3274,8 +3274,17 @@
         const safe = v => escapeHTML(v || '—');
         const profile = `<section class="rekap-pegawai">${photo}<div class="rekap-pegawai-details"><div><b>Nama Pegawai:</b> ${safe(currentUser.nama)}</div><div><b>NIK:</b> ${safe(currentUser.nik)}</div><div><b>Bidang/Sub Bagian Kerja:</b> ${safe(currentUser.bidang)}</div><div><b>Tugas / Jabatan Kontrak:</b> ${safe(currentUser.jabatan)}</div></div></section>`;
         const meta = `<section class="rekap-meta-grid"><div class="rekap-meta-item"><div class="rekap-meta-label">Periode Rekap</div><div class="rekap-meta-value">${safe(periode)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Total Hari Kerja</div><div class="rekap-meta-value">${safe(document.getElementById("rekap-kinerja-hari-kerja-count")?.textContent?.trim() || "—")}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Laporan Disetujui</div><div class="rekap-meta-value">${safe(approved)}</div></div><div class="rekap-meta-item"><div class="rekap-meta-label">Nilai Kinerja</div><div class="rekap-meta-value">${safe(status)}</div></div></section>`;
-        window.verifikatorNama = window.verifikatorNama || '';
-        const signatures = `<section class="rekap-signatures"><div class="rekap-signature"><div class="signature-heading">Mengetahui,</div><div class="signature-role">Verifikator / Atasan</div><div class="sign-space"></div><div class="signature-name">${safe(window.verifikatorNama || 'Nama Verifikator / Atasan')}</div></div><div class="rekap-signature"><div class="signature-heading">${safe(currentUser.jabatan || 'Tugas / Jabatan Kontrak')}</div><div class="signature-role">Pegawai PJLP</div><div class="sign-space"></div><div class="signature-name">${safe(currentUser.nama)}</div></div></section>`;
+        const bidangPegawai = String(currentUser.bidang || '').trim().toLowerCase();
+        const pejabatMengetahui = bidangPegawai === 'sekretariat'
+          ? 'Kepala Sub Bagian Umum dan Kepegawaian'
+          : bidangPegawai === 'bidang bina pemberdayaan masyarakat'
+            ? 'Kepala Bidang Bina Pemberdayaan Masyarakat'
+            : bidangPegawai === 'bidang bina pemerintahan desa'
+              ? 'Kepala Bidang Bina Pemerintahan Desa'
+              : bidangPegawai === 'bidang bina perencanaan, keuangan, aset, evaluasi dan data desa'
+                ? 'Kepala Bidang Bina Perencanaan, Keuangan, Aset, Evaluasi dan Data Desa'
+                : 'Kepala Unit Kerja';
+        const signatures = `<section class="rekap-signatures"><div class="rekap-signature"><div class="signature-heading">Mengetahui,</div><div class="signature-role">${safe(pejabatMengetahui)}</div><div class="sign-space"></div><div class="signature-name">&nbsp;</div></div><div class="rekap-signature"><div class="signature-heading">${safe(currentUser.jabatan || 'Tugas / Jabatan Kontrak')}</div><div class="signature-role">Pegawai PJLP</div><div class="sign-space"></div><div class="signature-name">${safe(currentUser.nama)}</div></div></section>`;
         finalBodyHtml = `${profile}${meta}${bodyHtml}${signatures}`;
       }
       const printDate = new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Makassar'}).format(new Date());
